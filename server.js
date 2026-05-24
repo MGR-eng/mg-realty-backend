@@ -12,7 +12,10 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // Google OAuth token — set GOOGLE_ACCESS_TOKEN in Render env vars.
 // To get one: https://developers.google.com/oauthplayground
 // Scopes needed: Gmail send, Calendar, Drive/Sheets
-const googleToken = () => process.env.GOOGLE_ACCESS_TOKEN || '';
+const googleToken = () => {
+  const t = process.env.GOOGLE_ACCESS_TOKEN || '';
+  return t.startsWith('Bearer ') ? t : `Bearer ${t}`;
+};
 
 const GMAIL_MCP   = () => ({ type: 'url', url: 'https://gmailmcp.googleapis.com/mcp/v1',    name: 'gmail',  authorization_token: googleToken() });
 const GCAL_MCP    = () => ({ type: 'url', url: 'https://calendarmcp.googleapis.com/mcp/v1',  name: 'gcal',   authorization_token: googleToken() });
