@@ -20,12 +20,16 @@ const GDRIVE_MCP  = () => ({ type: 'url', url: 'https://drivemcp.googleapis.com/
 
 async function callClaude(prompt, mcpServers = []) {
   const params = {
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 1024,
     messages: [{ role: 'user', content: prompt }],
   };
-  if (mcpServers.length) params.mcp_servers = mcpServers;
-  const resp = await anthropic.messages.create(params);
+  const options = {};
+  if (mcpServers.length) {
+    params.mcp_servers = mcpServers;
+    options.headers = { 'anthropic-beta': 'mcp-client-2025-04-04' };
+  }
+  const resp = await anthropic.messages.create(params, options);
   return resp.content.filter(b => b.type === 'text').map(b => b.text).join('');
 }
 
