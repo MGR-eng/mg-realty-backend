@@ -84,6 +84,7 @@ Return only: {"ok":true}`;
     const result = await callClaude(prompt, [GMAIL_MCP()]);
     res.json({ ok: result.includes('ok'), raw: result });
   } catch (e) {
+    console.error('DIGEST ERROR:', e.message, e.stack);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
