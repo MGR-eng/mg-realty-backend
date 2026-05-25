@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import Anthropic from '@anthropic-ai/sdk';
 import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 const app = express();
 app.use(cors({ origin: '*' }));
@@ -38,6 +39,33 @@ async function googleToken() {
 const GMAIL_MCP  = async () => ({ type: 'url', url: 'https://gmailmcp.googleapis.com/mcp/v1',   name: 'gmail',  authorization_token: await googleToken() });
 const GCAL_MCP   = async () => ({ type: 'url', url: 'https://calendarmcp.googleapis.com/mcp/v1', name: 'gcal',   authorization_token: await googleToken() });
 const GDRIVE_MCP = async () => ({ type: 'url', url: 'https://drivemcp.googleapis.com/mcp/v1',    name: 'gdrive', authorization_token: await googleToken() });
+
+// ── Service Account token for Google Sheets (never expires) ──
+let saTokenCache = null;
+let saTokenExpiry = 0;
+
+async function serviceAccountToken() {
+  if (saTokenCache && Date.now() < saTokenExpiry - 60000) return saTokenCache;
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const key   = (process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '').replace(/\\n/g, '\n');
+  const now   = Math.floor(Date.now() / 1000);
+  const payload = { iss: email, scope: 'https://www.googleapis.com/auth/spreadsheets', aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now };
+  const hdr  = Buffer.from(JSON.stringify({alg:'RS256',typ:'JWT'})).toString('base64url');
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(`${hdr}.${body}`);
+  const jwt  = `${hdr}.${body}.${sign.sign(key,'base64url')}`;
+  const r    = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({ grant_type: 'urn:ietf:wg:oauth:2.0:jwt-bearer', assertion: jwt })
+  });
+  const data = await r.json();
+  if (!data.access_token) throw new Error('SA token failed: ' + JSON.stringify(data));
+  saTokenCache = data.access_token;
+  saTokenExpiry = Date.now() + (data.expires_in || 3600) * 1000;
+  console.log('Service account token refreshed');
+  return saTokenCache;
+}
 
 async function callClaude(prompt, mcpServers = []) {
   const params = {
@@ -159,7 +187,7 @@ app.post('/gmail/digest', async (req, res) => {
 app.post('/drive/backup', async (req, res) => {
   try {
     const { sheetId, leadsCsv, activityCsv } = req.body;
-    const token = await googleToken();
+    const token = await serviceAccountToken();
 
     const csvToRows = csv => csv.trim().split('\n').map(r =>
       r.split(',').map(c => c.replace(/^"|"$/g,'').replace(/""/g,'"'))
