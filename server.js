@@ -11,17 +11,33 @@ app.use(express.urlencoded({ extended: true }));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Google OAuth token — set GOOGLE_ACCESS_TOKEN in Render env vars.
-// To get one: https://developers.google.com/oauthplayground
-// Scopes needed: Gmail send, Calendar, Drive/Sheets
-const googleToken = () => {
-  const t = process.env.GOOGLE_ACCESS_TOKEN || '';
-  return t.startsWith('Bearer ') ? t : `Bearer ${t}`;
-};
+// Google OAuth — auto-refresh using refresh token
+let cachedToken = null;
+let tokenExpiry = 0;
 
-const GMAIL_MCP   = () => ({ type: 'url', url: 'https://gmailmcp.googleapis.com/mcp/v1',    name: 'gmail',  authorization_token: googleToken() });
-const GCAL_MCP    = () => ({ type: 'url', url: 'https://calendarmcp.googleapis.com/mcp/v1',  name: 'gcal',   authorization_token: googleToken() });
-const GDRIVE_MCP  = () => ({ type: 'url', url: 'https://drivemcp.googleapis.com/mcp/v1',     name: 'gdrive', authorization_token: googleToken() });
+async function googleToken() {
+  if (cachedToken && Date.now() < tokenExpiry - 60000) return cachedToken;
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id:     process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      grant_type:    'refresh_token'
+    })
+  });
+  const data = await r.json();
+  if (!data.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(data));
+  cachedToken = data.access_token;
+  tokenExpiry = Date.now() + (data.expires_in || 3600) * 1000;
+  console.log('Google token refreshed');
+  return cachedToken;
+}
+
+const GMAIL_MCP  = async () => ({ type: 'url', url: 'https://gmailmcp.googleapis.com/mcp/v1',   name: 'gmail',  authorization_token: await googleToken() });
+const GCAL_MCP   = async () => ({ type: 'url', url: 'https://calendarmcp.googleapis.com/mcp/v1', name: 'gcal',   authorization_token: await googleToken() });
+const GDRIVE_MCP = async () => ({ type: 'url', url: 'https://drivemcp.googleapis.com/mcp/v1',    name: 'gdrive', authorization_token: await googleToken() });
 
 async function callClaude(prompt, mcpServers = []) {
   const params = {
@@ -97,7 +113,7 @@ app.post('/gmail/digest', async (req, res) => {
       </div>`;
 
     // Send via Gmail API (HTTPS, works on Render free tier)
-    const token = (process.env.GOOGLE_ACCESS_TOKEN || '').replace(/^Bearer\s+/i, '');
+    const token = await googleToken();
     const raw = Buffer.from(
       `From: MG Realty <goldenmb@gmail.com>\r\nTo: ${to}\r\nSubject: ${subject}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${html}`
     ).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
