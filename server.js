@@ -96,12 +96,23 @@ app.post('/gmail/digest', async (req, res) => {
         </div>
       </div>`;
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: 'goldenmb@gmail.com', pass: process.env.GMAIL_APP_PASSWORD }
+    // Send via Gmail API (HTTPS, works on Render free tier)
+    const token = (process.env.GOOGLE_ACCESS_TOKEN || '').replace(/^Bearer\s+/i, '');
+    const raw = Buffer.from(
+      `From: MG Realty <goldenmb@gmail.com>\r\nTo: ${to}\r\nSubject: ${subject}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${html}`
+    ).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+    const gmailRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw })
     });
 
-    await transporter.sendMail({ from: 'MG Realty <goldenmb@gmail.com>', to, subject, html });
+    if (!gmailRes.ok) {
+      const err = await gmailRes.text();
+      throw new Error(`Gmail API: ${gmailRes.status} ${err}`);
+    }
+
     console.log(`Digest sent to ${to}`);
     res.json({ ok: true });
   } catch (e) {
