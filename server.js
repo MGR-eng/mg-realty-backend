@@ -57,6 +57,24 @@ async function callClaude(prompt, mcpServers = []) {
 // ── Health check ─────────────────────────────────────────────
 app.get('/', (req, res) => res.json({ ok: true, service: 'MG Realty CRM Backend' }));
 
+// ── Privacy Policy ────────────────────────────────────────────
+app.get('/privacy', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty Privacy Policy</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px">
+<h1>Privacy Policy</h1><p><strong>Last updated:</strong> ${new Date().toLocaleDateString()}</p>
+<p>MG Realty ("we") operates an internal CRM assistant accessible via SMS. This policy describes how we handle information.</p>
+<h2>Information We Collect</h2><p>We collect SMS messages sent to our business number for the purpose of managing real estate client relationships.</p>
+<h2>How We Use Information</h2><p>Messages are processed by an AI assistant to help manage leads, appointments, and follow-ups. No data is sold or shared with third parties.</p>
+<h2>Contact</h2><p>Matt Golden · goldenmb@gmail.com</p>
+</body></html>`));
+
+// ── Terms of Service ──────────────────────────────────────────
+app.get('/terms', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty Terms of Service</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px">
+<h1>Terms of Service</h1><p><strong>Last updated:</strong> ${new Date().toLocaleDateString()}</p>
+<p>By texting MG Realty's SMS number, you agree to receive automated responses from our AI CRM assistant.</p>
+<h2>Use</h2><p>This service is for internal business use by MG Realty staff only. Messages are processed to assist with real estate client management.</p>
+<h2>Opt-Out</h2><p>Reply STOP at any time to opt out of messages.</p>
+<h2>Contact</h2><p>Matt Golden · goldenmb@gmail.com</p>
+</body></html>`));
+
 // ── Calendar: create event ────────────────────────────────────
 app.post('/calendar/create', async (req, res) => {
   try {
