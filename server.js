@@ -42,10 +42,7 @@ const GDRIVE_MCP = async () => ({ type: 'url', url: 'https://drivemcp.googleapis
 
 // ── Service Account token for Google Sheets (never expires) ──
 const sheetsAuth = new GoogleAuth({
-  credentials: {
-    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    private_key: (process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '').replace(/\\n/g, '\n')
-  },
+  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '{}'),
   scopes: ['https://www.googleapis.com/auth/spreadsheets']
 });
 
