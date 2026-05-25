@@ -155,21 +155,35 @@ app.post('/gmail/digest', async (req, res) => {
   }
 });
 
-// ── Google Drive: backup leads + activity ─────────────────────
+// ── Google Sheets: backup leads + activity ───────────────────
 app.post('/drive/backup', async (req, res) => {
   try {
     const { sheetId, leadsCsv, activityCsv } = req.body;
-    const prompt = `Update Google Spreadsheet ID "${sheetId}".
-Replace "Leads" sheet content with this CSV:
-${leadsCsv}
+    const token = await googleToken();
 
-Replace "Activity Log" sheet content with this CSV:
-${activityCsv}
+    const csvToRows = csv => csv.trim().split('\n').map(r =>
+      r.split(',').map(c => c.replace(/^"|"$/g,'').replace(/""/g,'"'))
+    );
 
-Return only: {"ok":true}`;
-    const result = await callClaude(prompt, [GDRIVE_MCP()]);
-    res.json({ ok: result.includes('ok'), raw: result });
+    const writeSheet = async (range, values) => {
+      const r = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+        {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values })
+        }
+      );
+      if (!r.ok) throw new Error(`Sheets API: ${r.status} ${await r.text()}`);
+    };
+
+    await writeSheet('Leads!A1', csvToRows(leadsCsv));
+    await writeSheet('Activity Log!A1', csvToRows(activityCsv));
+
+    console.log(`Backup complete for sheet ${sheetId}`);
+    res.json({ ok: true });
   } catch (e) {
+    console.error('BACKUP ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

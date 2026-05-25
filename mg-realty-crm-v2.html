@@ -459,6 +459,32 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 load();renderAll();
+
+// ── Auto morning digest ───────────────────────────────────────
+(async function autoDigest(){
+  const today = new Date().toISOString().split('T')[0];
+  const lastSent = localStorage.getItem('mg_digest_sent');
+  if(lastSent === today) return; // already sent today
+  const hour = new Date().getHours();
+  if(hour < 7 || hour > 11) return; // only auto-send between 7am–11am
+  const overdue = leads.filter(l=>l.temp!=='done'&&du(l.followup)<0);
+  const dueToday = leads.filter(l=>l.temp!=='done'&&du(l.followup)===0);
+  const dueWeek = leads.filter(l=>{const d=du(l.followup);return d>0&&d<=7&&l.temp!=='done';});
+  if(!overdue.length&&!dueToday.length&&!dueWeek.length) return; // nothing to send
+  try{
+    await api('/gmail/digest',{
+      to: DIGEST_EMAIL,
+      subject: `🏡 MG Realty — Daily Lead Digest ${new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`,
+      overdue, dueToday, dueWeek,
+      appointments: appts.filter(a=>new Date(a.date)>=new Date(new Date().toISOString().split('T')[0])).slice(0,5),
+      recentActivity: [...acts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5)
+    });
+    localStorage.setItem('mg_digest_sent', today);
+    toast('📬 Morning digest sent to '+DIGEST_EMAIL,'success');
+  }catch(e){
+    console.error('Auto digest failed:', e);
+  }
+})();
 </script>
 </body>
 </html>
