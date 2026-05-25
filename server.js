@@ -161,6 +161,7 @@ app.post('/sms', async (req, res) => {
   try {
     const inboundMsg = req.body.Body || '';
     const from       = req.body.From || '';
+    console.log(`SMS received from ${from}: ${inboundMsg}`);
 
     const systemPrompt = `You are Matt Golden's real estate AI assistant for MG Realty.
 Matt will text you commands to manage his CRM. Respond concisely (under 160 chars when possible).
@@ -176,7 +177,7 @@ Always confirm what action you took. Be brief and direct.
 If Matt asks something you can't action directly, tell him what to do in the CRM.`;
 
     const result = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 300,
       system: systemPrompt,
       messages: [{ role: 'user', content: inboundMsg }],
