@@ -57,7 +57,7 @@ async function serviceAccountToken() {
   const jwt  = `${hdr}.${body}.${sign.sign(key,'base64url')}`;
   const r    = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({ grant_type: 'urn:ietf:wg:oauth:2.0:jwt-bearer', assertion: jwt })
+    body: `grant_type=${encodeURIComponent('urn:ietf:wg:oauth:2.0:jwt-bearer')}&assertion=${encodeURIComponent(jwt)}`
   });
   const data = await r.json();
   if (!data.access_token) throw new Error('SA token failed: ' + JSON.stringify(data));
