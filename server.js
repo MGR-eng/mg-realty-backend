@@ -635,8 +635,10 @@ app.post('/sequences/cancel', async (req, res) => {
 });
 
 // Process due sequence emails — call this daily (UptimeRobot or cron)
-app.post('/sequences/process', async (req, res) => {
-  if (req.headers['x-api-key'] !== process.env.NUDGE_SECRET) {
+// Accepts GET or POST, key in header OR query param
+app.all('/sequences/process', async (req, res) => {
+  const key = req.headers['x-api-key'] || req.query.key;
+  if (key !== process.env.NUDGE_SECRET) {
     return res.status(401).json({ ok: false, error: 'Unauthorized' });
   }
   try {
