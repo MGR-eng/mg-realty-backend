@@ -1,8 +1,14 @@
-const CACHE = 'mg-realty-v6';
-const SHELL = ['/', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'mg-realty-v7';
+const STATIC = ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', '/icons/mg-logo.jpg', '/manifest.json'];
+
+// Never cache HTML pages — always fetch fresh
+const HTML_PATTERNS = ['/', '/contact', '/privacy', '/terms'];
+
+// Never cache API calls
+const API_PATTERNS = ['/crm/', '/calendar/', '/gmail/', '/drive/', '/email/', '/sms', '/backup', '/sequences/', '/leads/'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
   self.skipWaiting();
 });
 
@@ -15,22 +21,32 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// API calls — always network, never cache
-const API_PATTERNS = ['/crm/', '/calendar/', '/gmail/', '/drive/', '/email/', '/sms', '/backup'];
-
 self.addEventListener('fetch', e => {
   const url = e.request.url;
-  if (API_PATTERNS.some(p => url.includes(p))) return; // pass through
+  const path = new URL(url).pathname;
 
+  // Always pass through API calls
+  if (API_PATTERNS.some(p => url.includes(p))) return;
+
+  // Always fetch HTML fresh — never serve from cache
+  if (e.request.mode === 'navigate' || HTML_PATTERNS.includes(path) || path.endsWith('.html')) {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match('/'))
+    );
+    return;
+  }
+
+  // Static assets: cache-first
   e.respondWith(
-    fetch(e.request)
-      .then(r => {
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(r => {
         if (r.ok) {
           const clone = r.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return r;
-      })
-      .catch(() => caches.match(e.request))
+      });
+    })
   );
 });
