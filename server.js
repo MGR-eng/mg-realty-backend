@@ -131,9 +131,10 @@ app.post('/gmail/digest', async (req, res) => {
 
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto">
-        <div style="background:#1A1914;padding:24px;border-radius:8px 8px 0 0">
-          <h1 style="color:#fff;margin:0">MG Realty — Daily Digest</h1>
-          <p style="color:#aaa;margin:4px 0 0">${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+        <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+          <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:64px;max-width:200px;object-fit:contain;display:block;margin:0 auto 12px">
+          <h1 style="color:#fff;margin:0;font-size:18px">Daily Digest</h1>
+          <p style="color:#aaa;margin:4px 0 0;font-size:13px">${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
         <div style="padding:24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 8px 8px">
           ${section('🔴 Overdue','#c0392b', overdue.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
