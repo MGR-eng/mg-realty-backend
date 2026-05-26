@@ -805,6 +805,143 @@ async function sendLeadEmail(first, last, phone, email, intent, budget, timeline
   });
 }
 
+// ── Twilio Voice screening ────────────────────────────────────
+const twimlVoice = xml => `<?xml version="1.0" encoding="UTF-8"?><Response>${xml}</Response>`;
+const say = (text, voice='Polly.Joanna') => `<Say voice="${voice}">${text}</Say>`;
+
+// Step 1: Incoming call — greet and gather caller info
+app.post('/voice', (req, res) => {
+  res.set('Content-Type', 'text/xml');
+  res.send(twimlVoice(`
+    <Gather input="speech" action="/voice/screen" method="POST" timeout="8" speechTimeout="auto" language="en-US">
+      ${say("Hi, you've reached MG Realty. I'm Matt's assistant — can I get your name and the reason for your call?")}
+    </Gather>
+    ${say("I didn't catch that. Please call back and I'll make sure Matt gets your message.")}
+  `));
+});
+
+// Step 2: Screen the caller with Claude
+app.post('/voice/screen', async (req, res) => {
+  res.set('Content-Type', 'text/xml');
+  const speechResult = (req.body.SpeechResult || '').trim();
+  const callerNumber = req.body.From || 'Unknown';
+  console.log(`Voice call from ${callerNumber}: "${speechResult}"`);
+
+  try {
+    const ownerPhone = process.env.OWNER_PHONE;
+    const twilioFrom = process.env.TWILIO_FROM;
+
+    if (!speechResult) {
+      res.send(twimlVoice(`
+        ${say("I didn't catch that. Please leave a message after the tone and Matt will call you back.")}
+        <Record maxLength="60" action="/voice/message" transcribe="true" transcribeCallback="/voice/transcription"/>
+      `));
+      return;
+    }
+
+    // Claude screens the caller
+    const screening = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{ role: 'user', content: `A caller just called Matt Golden's real estate business (MG Realty, Los Angeles).
+Caller's number: ${callerNumber}
+Caller said: "${speechResult}"
+
+Classify this call and respond with JSON only:
+{"route":"connect|message|decline","callerName":"first name or Unknown","summary":"one sentence reason"}
+
+Route guide:
+- connect: motivated buyer, seller, or professional contact worth Matt's time
+- message: unclear intent, general inquiry, wants callback
+- decline: spam, robocall, solicitation, wrong number` }]
+    });
+
+    let route = 'message', callerName = 'Someone', summary = speechResult;
+    try {
+      const parsed = JSON.parse(screening.content[0].text);
+      route = parsed.route || 'message';
+      callerName = parsed.callerName || 'Someone';
+      summary = parsed.summary || speechResult;
+    } catch(e) { console.error('Voice screen parse error:', e.message); }
+
+    console.log(`Voice screen result: ${route} — ${callerName} — ${summary}`);
+
+    // Notify Matt via SMS regardless of route
+    if (ownerPhone) {
+      const emoji = route === 'connect' ? '📞' : route === 'decline' ? '🚫' : '📋';
+      sendSMS(ownerPhone, `${emoji} Incoming call\n${callerName} (${callerNumber})\n${summary}\nAction: ${route}`)
+        .catch(e => console.error('Voice SMS notify failed:', e.message));
+    }
+
+    if (route === 'decline') {
+      res.send(twimlVoice(
+        say("Thanks for calling MG Realty. We're not able to help with that, but we wish you a great day. Goodbye!")
+      ));
+      return;
+    }
+
+    if (route === 'connect' && ownerPhone) {
+      res.send(twimlVoice(`
+        ${say(`Thanks ${callerName}. One moment while I connect you with Matt.`)}
+        <Play>https://demo.twilio.com/docs/classic.mp3</Play>
+        <Dial callerId="${twilioFrom}" action="/voice/dial-status" timeout="20">
+          <Number>${ownerPhone}</Number>
+        </Dial>
+        ${say("Matt's unavailable right now. Please leave a message after the tone and he'll call you back shortly.")}
+        <Record maxLength="90" action="/voice/message" transcribe="true" transcribeCallback="/voice/transcription"/>
+      `));
+      return;
+    }
+
+    // Default: take a message
+    res.send(twimlVoice(`
+      ${say(`Thanks ${callerName}. Matt's with a client right now. Please leave a message after the tone and he'll get back to you shortly.`)}
+      <Record maxLength="90" action="/voice/message" transcribe="true" transcribeCallback="/voice/transcription"/>
+    `));
+
+  } catch(e) {
+    console.error('VOICE SCREEN ERROR:', e.message);
+    res.send(twimlVoice(`
+      ${say("Thanks for calling MG Realty. Please leave a message after the tone.")}
+      <Record maxLength="90" action="/voice/message" transcribe="true" transcribeCallback="/voice/transcription"/>
+    `));
+  }
+});
+
+// Step 3: After recording — confirm and hang up
+app.post('/voice/message', (req, res) => {
+  res.set('Content-Type', 'text/xml');
+  res.send(twimlVoice(
+    say("Got it — Matt will receive your message and get back to you soon. Have a great day!")
+  ));
+});
+
+// Step 4: Transcription callback — SMS Matt the voicemail text
+app.post('/voice/transcription', async (req, res) => {
+  res.sendStatus(200);
+  const text = req.body.TranscriptionText || '';
+  const from = req.body.From || 'Unknown';
+  const ownerPhone = process.env.OWNER_PHONE;
+  if (text && ownerPhone) {
+    sendSMS(ownerPhone, `🎙 Voicemail from ${from}:\n"${text}"`)
+      .catch(e => console.error('Voicemail SMS failed:', e.message));
+  }
+});
+
+// Dial status — if Matt didn't answer, message already recorded via fallback
+app.post('/voice/dial-status', (req, res) => {
+  res.set('Content-Type', 'text/xml');
+  const status = req.body.DialCallStatus;
+  if (status === 'completed') {
+    res.send(twimlVoice(say("Thank you for calling MG Realty. Have a great day!")));
+  } else {
+    res.send(twimlVoice(`
+      ${say("Matt stepped away. Please leave a message after the tone and he'll call you back shortly.")}
+      <Record maxLength="90" action="/voice/message" transcribe="true" transcribeCallback="/voice/transcription"/>
+    `));
+  }
+});
+
 // ── Twilio SMS webhook ────────────────────────────────────────
 app.post('/sms', async (req, res) => {
   const twiml = msg => {
