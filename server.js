@@ -710,7 +710,7 @@ app.get('/open-house', (req, res) => res.sendFile(path.join(__dirname, 'public',
 // ── Lead capture form ─────────────────────────────────────────
 app.post('/leads/capture', async (req, res) => {
   try {
-    const { first, last, phone, email, intent, budget, timeline, neighborhood, source, notes } = req.body;
+    const { first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notify } = req.body;
     if (!first || !last || !phone) return res.status(400).json({ ok: false, error: 'Missing required fields' });
 
     const today = new Date().toISOString().split('T')[0];
@@ -756,17 +756,26 @@ app.post('/leads/capture', async (req, res) => {
     const twilioReady = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM && ownerPhone;
     const notifyMsg = `🏡 New lead!\n${first} ${last}\n${phone}${email ? '\n' + email : ''}\n${intent || 'inquiry'} | ${budget || 'budget TBD'} | ${timeline || ''}\n${neighborhood || ''}\nSource: ${source || 'unknown'}`;
 
+    // Extra email to notify (e.g. from ?notify= param on open house sign)
+    const notifyEmail = (notify || '').trim() || null;
+
     if (twilioReady) {
       sendSMS(ownerPhone, notifyMsg)
         .then(() => console.log('Lead notification sent via SMS'))
         .catch(e => {
           console.error('SMS failed, trying email:', e.message);
-          sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes)
+          sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notifyEmail)
             .catch(e2 => console.error('Email notification also failed:', e2.message));
         });
     } else {
-      sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes)
+      sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notifyEmail)
         .catch(e => console.error('Lead email notification failed:', e.message));
+    }
+
+    // If notifyEmail set, always send there regardless of SMS path
+    if (notifyEmail) {
+      sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notifyEmail)
+        .catch(e => console.error('Notify email failed:', e.message));
     }
   } catch(e) {
     console.error('LEAD CAPTURE ERROR:', e.message);
@@ -774,11 +783,13 @@ app.post('/leads/capture', async (req, res) => {
   }
 });
 
-async function sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes) {
+async function sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notifyEmail = null) {
   const row = (label, val) => val ? `<tr><td style="padding:6px 0;color:#888;font-size:13px;width:120px">${label}</td><td style="padding:6px 0;font-size:13px;font-weight:500">${val}</td></tr>` : '';
+  const toAddresses = ['goldenmb@gmail.com'];
+  if (notifyEmail && notifyEmail !== 'goldenmb@gmail.com') toAddresses.push(notifyEmail);
   await resend.emails.send({
     from: 'MG Realty <onboarding@resend.dev>',
-    to: 'goldenmb@gmail.com',
+    to: toAddresses,
     subject: `🏡 New Lead: ${first} ${last}`,
     html: `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">

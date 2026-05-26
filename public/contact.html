@@ -206,6 +206,14 @@ function setIntent(btn) {
   const property = params.get('property');
   const event = params.get('event');
 
+  // Stash the notify param so it gets included in the POST
+  const notifyParam = params.get('notify');
+  if (notifyParam) {
+    const h = document.createElement('input');
+    h.type = 'hidden'; h.id = 'param-notify'; h.value = notifyParam;
+    document.getElementById('leadForm').appendChild(h);
+  }
+
   if (source) {
     // Select matching option or set hidden value
     const sel = document.getElementById('source');
@@ -274,7 +282,8 @@ document.getElementById('leadForm').addEventListener('submit', async function(e)
     timeline:     document.getElementById('timeline').value,
     neighborhood: document.getElementById('neighborhood').value.trim(),
     source:       document.getElementById('source').value,
-    notes:        document.getElementById('notes').value.trim() || (document.getElementById('param-notes')?.value || '')
+    notes:        document.getElementById('notes').value.trim() || (document.getElementById('param-notes')?.value || ''),
+    notify:       document.getElementById('param-notify')?.value || ''
   };
 
   try {

@@ -156,6 +156,10 @@ body{font-family:var(--font);background:#f4f2ee;min-height:100vh}
       <input type="text" id="agent-phone" placeholder="(310) 555-0123">
     </div>
     <div class="fg">
+      <label>Business Email (shown on sign + gets lead alerts)</label>
+      <input type="email" id="agent-email" placeholder="matt@mgrealty.com">
+    </div>
+    <div class="fg">
       <label>Website / Domain</label>
       <input type="text" id="agent-domain" value="mg-realty-backend.onrender.com" placeholder="mg-realty-backend.onrender.com">
     </div>
@@ -211,6 +215,7 @@ function generateSign() {
   const headline = document.getElementById('prop-headline').value.trim() || 'Welcome to Our Open House';
   const agentName = document.getElementById('agent-name').value.trim() || 'Matt Golden';
   const agentPhone = document.getElementById('agent-phone').value.trim();
+  const agentEmail = document.getElementById('agent-email').value.trim();
   const domain = document.getElementById('agent-domain').value.trim() || 'mg-realty-backend.onrender.com';
 
   // Build contact form URL with params
@@ -218,6 +223,7 @@ function generateSign() {
   params.set('source', 'Open House');
   if (address) params.set('property', address);
   if (datetime) params.set('event', datetime);
+  if (agentEmail) params.set('notify', agentEmail);
   const formUrl = `https://${domain}/contact?${params.toString()}`;
 
   // Update sign content
@@ -227,7 +233,8 @@ function generateSign() {
   document.getElementById('s-address').textContent = addrParts.join('  ·  ');
 
   document.getElementById('s-agent-name').textContent = agentName;
-  document.getElementById('s-agent-contact').textContent = agentPhone || domain;
+  const contactLine = [agentPhone, agentEmail].filter(Boolean).join('  ·  ');
+  document.getElementById('s-agent-contact').textContent = contactLine || domain;
 
   // Generate QR code via qrserver.com
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(formUrl)}`;
