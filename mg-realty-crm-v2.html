@@ -114,6 +114,24 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .sw{position:relative}.sw input{padding-left:31px}.sw i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
 .dash2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 @media(max-width:700px){.shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative}.nav{display:flex;flex-wrap:wrap;padding:8px}.nav-lbl{display:none}.nav-item span{display:none}.content{padding:14px}.topbar{padding:11px 14px}.dash2{grid-template-columns:1fr}}
+/* ── Lead detail panel ── */
+.detail-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:89;display:none}
+.detail-backdrop.open{display:block}
+.detail-panel{position:fixed;top:0;right:0;height:100vh;width:440px;max-width:100vw;background:var(--surface);border-left:1px solid var(--border);z-index:90;transform:translateX(100%);transition:transform 0.25s ease;overflow-y:auto;display:flex;flex-direction:column}
+.detail-panel.open{transform:translateX(0)}
+.dp-header{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:sticky;top:0;background:var(--surface);z-index:1}
+.dp-name{font-size:18px;font-weight:600;line-height:1.2}
+.dp-close{border:none;background:transparent;cursor:pointer;color:var(--text2);font-size:20px;padding:2px;line-height:1;flex-shrink:0}
+.dp-close:hover{color:var(--text)}
+.dp-section{padding:14px 20px;border-bottom:1px solid var(--border)}
+.dp-section:last-child{border-bottom:none}
+.dp-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px}
+.dp-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:13px}
+.dp-row:last-child{margin-bottom:0}
+.dp-row i{font-size:14px;color:var(--text3);flex-shrink:0;width:16px}
+.dp-actions{padding:14px 20px;display:flex;gap:7px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border)}
+.dp-act-mini{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px}
+.dp-act-mini:last-child{border-bottom:none}
 /* ── Pipeline ── */
 .pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;align-items:start}
 .pipe-col{background:var(--surface2);border-radius:var(--rl);border:1px solid var(--border)}
@@ -187,6 +205,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Recent activity</div><div class="tw" id="dashActs"></div></div>
     </div>
     <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Upcoming appointments</div><div class="tw" id="dashAppts"></div></div>
+    <div class="dash2" style="margin-top:16px">
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div><div class="tw" id="dashSources"></div></div>
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Pipeline stages</div><div class="tw" id="dashStages"></div></div>
+    </div>
   </div>
 </div>
 
@@ -251,6 +273,31 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 </div>
 
 </main>
+</div>
+
+<!-- Lead detail panel -->
+<div class="detail-backdrop" id="detailBackdrop" onclick="closeLeadDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="dp-header">
+    <div>
+      <div class="dp-name" id="dp-name"></div>
+      <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap" id="dp-badges"></div>
+    </div>
+    <button class="dp-close" onclick="closeLeadDetail()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="dp-section" id="dp-contact"></div>
+  <div class="dp-section" id="dp-details"></div>
+  <div class="dp-section" id="dp-agent" style="display:none"></div>
+  <div class="dp-section" id="dp-notes" style="display:none"></div>
+  <div class="dp-section">
+    <div class="dp-label">Activity history</div>
+    <div id="dp-activity"></div>
+  </div>
+  <div class="dp-section">
+    <div class="dp-label">Appointments</div>
+    <div id="dp-appts"></div>
+  </div>
+  <div class="dp-actions" id="dp-actions"></div>
 </div>
 
 <!-- Property Modal -->
@@ -497,6 +544,57 @@ function renderDashAppts(){
   el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Date</th><th>Time</th></tr></thead><tbody>${up.map(a=>`<tr><td class="ns">${a.leadName}</td><td><span class="badge b-showing">${a.type}</span></td><td style="font-size:12px;font-family:var(--mono)">${a.date}</td><td style="font-size:12px;color:var(--text2)">${a.time}</td></tr>`).join('')}</tbody></table>`;
 }
 
+function renderDashSources(){
+  const el=document.getElementById('dashSources');if(!el)return;
+  const active=leads.filter(l=>l.temp!=='done');
+  if(!active.length){el.innerHTML='<div class="empty">No leads yet</div>';return;}
+  const counts={};
+  active.forEach(l=>{const s=l.source||'Unknown';counts[s]=(counts[s]||0)+1;});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const total=active.length;
+  const colors=['#E8681A','#185FA5','#27500A','#3C3489','#633806','#791F1F','#085041'];
+  el.innerHTML=`<div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px">
+    ${sorted.map(([src,cnt],i)=>{
+      const pct=Math.round(cnt/total*100);
+      return`<div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:500">${src}</span>
+          <span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${cnt} · ${pct}%</span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${colors[i%colors.length]};border-radius:3px;transition:width 0.3s"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function renderDashStages(){
+  const el=document.getElementById('dashStages');if(!el)return;
+  const active=leads.filter(l=>l.temp!=='done');
+  if(!active.length){el.innerHTML='<div class="empty">No leads yet</div>';return;}
+  const stageOrder=['new','contacted','showing','offer','closed'];
+  const stageLabels={new:'New',contacted:'Contacted',showing:'Showing',offer:'Offer',closed:'Closed'};
+  const stageColors={new:'#9B9890',contacted:'#185FA5',showing:'#633806',offer:'#3C3489',closed:'#27500A'};
+  const counts={};
+  leads.forEach(l=>{const s=l.stage||'new';counts[s]=(counts[s]||0)+1;});
+  const total=leads.length;
+  el.innerHTML=`<div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px">
+    ${stageOrder.map(stage=>{
+      const cnt=counts[stage]||0;
+      const pct=total?Math.round(cnt/total*100):0;
+      return`<div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:500">${stageLabels[stage]}</span>
+          <span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${cnt} · ${pct}%</span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${stageColors[stage]};border-radius:3px;transition:width 0.3s"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 function renderLeads(){
   const s=document.getElementById('srch').value.toLowerCase(),ft=document.getElementById('ftemp').value,fty=document.getElementById('ftype').value;
   let f=leads.filter(l=>{if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;if(ft&&l.temp!==ft)return false;if(fty&&l.type!==fty)return false;return true;}).sort((a,b)=>(du(a.followup)??9999)-(du(b.followup)??9999));
@@ -504,7 +602,7 @@ function renderLeads(){
   if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">No leads match</div></td></tr>`;return;}
   tbody.innerHTML=f.map(l=>{
     const d=du(l.followup),rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
-    return`<tr class="${rc}"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td><td style="white-space:nowrap"><button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
+    return`<tr class="${rc}" onclick="openLeadDetail('${l.id}')" style="cursor:pointer"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td><td style="white-space:nowrap"><button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
   }).join('');
 }
 
@@ -530,7 +628,7 @@ function renderAppts(){
   el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
 }
 
-function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();updateBadges();}
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashSources();renderDashStages();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();updateBadges();}
 
 async function sendDigest(){
   setSyncStatus('busy','Sending digest…');
@@ -554,13 +652,29 @@ async function sendDigest(){
 async function backupToSheet(){
   setSyncStatus('busy','Backing up…');
   try{
-    const lH=['ID','First','Last','Phone','Email','Property','OH Date','Temp','Type','Follow-up','Method','Last Contact','LC Method','Notes'];
-    const lR=leads.map(l=>[l.id,l.first,l.last,l.phone||'',l.email||'',l.prop||'',l.ohdate||'',l.temp,l.type,l.followup||'',l.method||'',l.lastcontact||'',l.lcmethod||'',l.notes||'']);
+    const csv=rows=>[...rows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const lH=['ID','First','Last','Phone','Email','Property','OH Date','Temp','Type','Follow-up','Method','Last Contact','LC Method','Stage','Source','Agent Name','Agent Contacts','Notes'];
+    const lR=leads.map(l=>[l.id,l.first,l.last,l.phone||'',l.email||'',l.prop||'',l.ohdate||'',l.temp,l.type,l.followup||'',l.method||'',l.lastcontact||'',l.lcmethod||'',l.stage||'',l.source||'',l.agentName||'',(l.agentContacts||[]).map(c=>c.type+': '+c.value).join(' | '),l.notes||'']);
     const aH=['ID','Lead','Date','Time','Type','Direction','Outcome','Notes','Follow-up'];
     const aR=acts.map(a=>[a.id,a.leadName,a.date,a.time,a.type,a.direction,a.outcome,a.notes||'',a.fuDate?(a.fuDate+(a.fuMethod?' via '+a.fuMethod:'')):'']);
-    const csv=rows=>[...rows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-    const res=await api('/drive/backup',{sheetId:SHEET_ID,leadsCsv:csv([lH,...lR]),activityCsv:csv([aH,...aR])});
-    if(res.ok){setSyncStatus('ok','Backed up');toast('Backed up to Google Sheets');}
+    const tH=['ID','Title','Due','Priority','Done','Lead','Notes'];
+    const tR=tasks.map(t=>[t.id,t.title,t.due||'',t.priority,t.done?'Yes':'No',(leads.find(l=>l.id===t.leadId)||{first:'',last:''}).first+' '+(leads.find(l=>l.id===t.leadId)||{first:'',last:''}).last,t.notes||'']);
+    const pH=['ID','Address','Price','Status','Beds','Baths','Sqft','Type','Linked Lead','Notes'];
+    const pR=props.map(p=>[p.id,p.address,p.price||'',p.status,p.beds||'',p.baths||'',p.sqft||'',p.type,(leads.find(l=>l.id===p.leadId)||{first:'',last:''}).first+' '+(leads.find(l=>l.id===p.leadId)||{first:'',last:''}).last,p.notes||'']);
+    const dH=['ID','Lead','Address','Sale Price','Commission %','GCI','Close Date','Side','Notes'];
+    const dR=deals.map(d=>{const gci=((parseFloat(d.salePrice)||0)*(parseFloat(d.commissionPct)||2.5)/100).toFixed(0);return[d.id,(leads.find(l=>l.id===d.leadId)||{first:'',last:''}).first+' '+(leads.find(l=>l.id===d.leadId)||{first:'',last:''}).last,d.address,d.salePrice||'',d.commissionPct||'2.5',gci,d.closeDate||'',d.side||'',d.notes||''];});
+    const agH=['ID','First','Last','Brokerage','Type','Phone','Email','License','Rating','Notes'];
+    const agR=agents.map(a=>[a.id,a.first,a.last,a.brokerage||'',a.agentType||'',a.phone||'',a.email||'',a.license||'',a.rating||'',a.notes||'']);
+    const res=await api('/drive/backup',{
+      sheetId:SHEET_ID,
+      leadsCsv:csv([lH,...lR]),
+      activityCsv:csv([aH,...aR]),
+      tasksCsv:csv([tH,...tR]),
+      propsCsv:csv([pH,...pR]),
+      dealsCsv:csv([dH,...dR]),
+      agentsCsv:csv([agH,...agR])
+    });
+    if(res.ok){setSyncStatus('ok','Backed up');toast('Backed up 6 sheets to Google Sheets ✓');}
     else throw new Error(res.error||'failed');
   }catch(e){setSyncStatus('err','Backup failed');toast('Backup failed: '+e.message,'err');}
 }
@@ -628,6 +742,97 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 load();renderAll();
+
+// ── Lead detail panel ─────────────────────────────────────────
+function openLeadDetail(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  const stageLabels={new:'New',contacted:'Contacted',showing:'Showing',offer:'Offer',closed:'Closed'};
+  const stageCols={new:'b-neutral',contacted:'b-call',showing:'b-showing',offer:'b-offer',closed:'b-done'};
+
+  document.getElementById('dp-name').textContent=l.first+' '+l.last;
+  document.getElementById('dp-badges').innerHTML=
+    tb(l.temp)+
+    `<span class="badge b-neutral" style="text-transform:capitalize">${l.type}</span>`+
+    `<span class="badge ${stageCols[l.stage||'new']}">${stageLabels[l.stage||'new']}</span>`+
+    (l.source?`<span class="badge b-neutral">${l.source}</span>`:'');
+
+  // Contact
+  document.getElementById('dp-contact').innerHTML=`
+    <div class="dp-label">Contact</div>
+    ${l.phone?`<div class="dp-row"><i class="ti ti-phone"></i><a href="tel:${l.phone}" style="color:inherit;text-decoration:none">${l.phone}</a></div>`:''}
+    ${l.email?`<div class="dp-row"><i class="ti ti-mail"></i><a href="mailto:${l.email}" style="color:var(--blue);text-decoration:none">${l.email}</a></div>`:''}
+    ${!l.phone&&!l.email?'<div style="font-size:12px;color:var(--text3)">No contact info on file</div>':''}`;
+
+  // Details
+  const fuD=l.followup?du(l.followup):null;
+  const fuStr=fuD===null?'—':fuD===0?'Today':fuD<0?Math.abs(fuD)+'d overdue':fuD===1?'Tomorrow':'In '+fuD+'d';
+  const fuCls=fuD!==null&&fuD<=0?'color:var(--red)':fuD!==null&&fuD<=2?'color:var(--amber)':'';
+  document.getElementById('dp-details').innerHTML=`
+    <div class="dp-label">Details</div>
+    ${l.prop?`<div class="dp-row"><i class="ti ti-home"></i><span>${l.prop}</span></div>`:''}
+    ${l.ohdate?`<div class="dp-row"><i class="ti ti-door-enter"></i><span>Open house: ${l.ohdate}</span></div>`:''}
+    <div class="dp-row"><i class="ti ti-calendar-due"></i><span style="${fuCls}">Follow-up: ${fuStr}${l.method?' via '+l.method:''}</span></div>
+    ${l.lastcontact?`<div class="dp-row"><i class="ti ti-clock"></i><span>Last contact: ${rel(l.lastcontact)}${l.lcmethod?' via '+l.lcmethod:''}</span></div>`:''}`;
+
+  // Agent
+  const agSec=document.getElementById('dp-agent');
+  if(l.agentName||(l.agentContacts&&l.agentContacts.length)){
+    agSec.style.display='';
+    agSec.innerHTML=`<div class="dp-label">Agent</div>
+      ${l.agentName?`<div class="dp-row"><i class="ti ti-id-badge"></i><span style="font-weight:600">${l.agentName}</span></div>`:''}
+      ${(l.agentContacts||[]).map(c=>`<div class="dp-row"><i class="ti ti-${c.type==='cell'?'phone':c.type==='email'?'mail':'dots-circle-horizontal'}"></i><span>${c.value} <span style="font-size:10px;color:var(--text3)">${c.type}</span></span></div>`).join('')}`;
+  } else { agSec.style.display='none'; }
+
+  // Notes
+  const notesSec=document.getElementById('dp-notes');
+  if(l.notes){
+    notesSec.style.display='';
+    notesSec.innerHTML=`<div class="dp-label">Notes</div><div style="font-size:13px;line-height:1.6;color:var(--text2);white-space:pre-wrap">${l.notes}</div>`;
+  } else { notesSec.style.display='none'; }
+
+  // Activity
+  const myActs=[...acts].filter(a=>a.leadId===id).reverse().slice(0,8);
+  const icM={call:'ti-phone',text:'ti-message',email:'ti-mail',showing:'ti-key','open house':'ti-home',offer:'ti-file-text'};
+  document.getElementById('dp-activity').innerHTML=myActs.length
+    ?myActs.map(a=>`<div class="dp-act-mini">
+        <i class="ti ${icM[a.type]||'ti-activity'}" style="font-size:13px;color:var(--text3);margin-top:1px;flex-shrink:0"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:500">${a.type} · ${a.outcome}</div>
+          <div style="color:var(--text3);font-size:11px;margin-top:1px">${a.date}${a.notes?' · '+a.notes.substring(0,60):''}</div>
+        </div>
+      </div>`).join('')
+    :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No activity logged yet</div>';
+
+  // Appointments
+  const myAppts=appts.filter(a=>a.leadId===id).sort((a,b)=>a.date>b.date?1:-1).slice(0,5);
+  document.getElementById('dp-appts').innerHTML=myAppts.length
+    ?myAppts.map(a=>{
+        const d=du(a.date);
+        const lbl=d===0?'Today':d===1?'Tomorrow':d<0?Math.abs(d)+'d ago':'In '+d+'d';
+        return`<div class="dp-act-mini">
+          <i class="ti ti-calendar" style="font-size:13px;color:var(--text3);margin-top:1px;flex-shrink:0"></i>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:500">${a.type} · <span style="color:${d<0?'var(--text3)':d<=1?'var(--red)':'var(--text)'}">${lbl}</span></div>
+            <div style="color:var(--text3);font-size:11px;margin-top:1px">${a.date} ${a.time}${a.address?' · '+a.address:''}</div>
+          </div>
+        </div>`;
+      }).join('')
+    :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No appointments scheduled</div>';
+
+  // Actions
+  document.getElementById('dp-actions').innerHTML=`
+    <button class="btn btn-blue" onclick="closeLeadDetail();openAct('${id}')"><i class="ti ti-activity"></i> Log activity</button>
+    <button class="btn btn-gold" onclick="closeLeadDetail();openEmailTemplate('${id}')"><i class="ti ti-mail"></i> Send email</button>
+    <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
+    <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
+
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('detailBackdrop').classList.add('open');
+}
+function closeLeadDetail(){
+  document.getElementById('detailPanel').classList.remove('open');
+  document.getElementById('detailBackdrop').classList.remove('open');
+}
 
 // ── Agents ────────────────────────────────────────────────────
 function addAgentContactRow(type='cell', value=''){
