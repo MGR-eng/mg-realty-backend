@@ -451,7 +451,30 @@ function load(){
   try{deals=JSON.parse(localStorage.getItem(SD)||'null')||[];}catch(e){deals=[];}
   try{agents=JSON.parse(localStorage.getItem(SAGT)||'null')||[];}catch(e){agents=[];}
 }
-function persist(){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));}catch(e){}}
+function persist(){
+  try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));}catch(e){}
+  pushToBackend();
+}
+function pushToBackend(){
+  fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads,activities:acts,appointments:appts,tasks,properties:props,deals,agents})}).catch(()=>{});
+}
+async function syncFromBackend(){
+  try{
+    const r=await fetch(BACKEND+'/crm/pull');
+    if(!r.ok)return;
+    const {ok,data}=await r.json();
+    if(!ok||!data)return;
+    let changed=false;
+    if(data.leads?.length){leads=data.leads;changed=true;}
+    if(data.activities?.length){acts=data.activities;changed=true;}
+    if(data.appointments?.length){appts=data.appointments;changed=true;}
+    if(data.tasks?.length){tasks=data.tasks;changed=true;}
+    if(data.properties?.length){props=data.properties;changed=true;}
+    if(data.deals?.length){deals=data.deals;changed=true;}
+    if(data.agents?.length){agents=data.agents;changed=true;}
+    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));}catch(e){}renderAll();}
+  }catch(e){console.warn('Backend sync failed:',e.message);}
+}
 function seed(){
   const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().split('T')[0];};
   return[
@@ -741,7 +764,7 @@ function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-load();renderAll();
+load();renderAll();syncFromBackend();
 
 // ── Lead detail panel ─────────────────────────────────────────
 function openLeadDetail(id){

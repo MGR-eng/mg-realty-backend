@@ -13,6 +13,41 @@ app.use(express.urlencoded({ extended: true }));
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// ── Supabase helpers ──────────────────────────────────────────
+const SB_URL = process.env.SUPABASE_URL;
+const SB_KEY = process.env.SUPABASE_SECRET_KEY;
+
+async function readCRM() {
+  const r = await fetch(`${SB_URL}/rest/v1/crm_state?id=eq.main&select=*`, {
+    headers: { 'Authorization': `Bearer ${SB_KEY}`, 'apikey': SB_KEY }
+  });
+  const rows = await r.json();
+  const row = rows[0] || {};
+  return {
+    leads:        row.leads        || [],
+    activities:   row.activities   || [],
+    appointments: row.appointments || [],
+    tasks:        row.tasks        || [],
+    properties:   row.properties   || [],
+    deals:        row.deals        || [],
+    agents:       row.agents       || []
+  };
+}
+
+async function writeCRM(data) {
+  const r = await fetch(`${SB_URL}/rest/v1/crm_state`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SB_KEY}`,
+      'apikey': SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates'
+    },
+    body: JSON.stringify({ id: 'main', ...data, updated_at: new Date().toISOString() })
+  });
+  if (!r.ok) throw new Error(`Supabase write failed: ${r.status} ${await r.text()}`);
+}
+
 // Google OAuth — auto-refresh using refresh token
 let cachedToken = null;
 let tokenExpiry = 0;
@@ -71,6 +106,28 @@ async function callClaude(prompt, mcpServers = []) {
 
 // ── Health check ─────────────────────────────────────────────
 app.get('/', (req, res) => res.json({ ok: true, service: 'MG Realty CRM Backend' }));
+
+// ── CRM sync ──────────────────────────────────────────────────
+app.get('/crm/pull', async (req, res) => {
+  try {
+    const data = await readCRM();
+    res.json({ ok: true, data });
+  } catch(e) {
+    console.error('CRM PULL ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/crm/push', async (req, res) => {
+  try {
+    const { leads, activities, appointments, tasks, properties, deals, agents } = req.body;
+    await writeCRM({ leads, activities, appointments, tasks, properties, deals, agents });
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('CRM PUSH ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 // ── Privacy Policy ────────────────────────────────────────────
 app.get('/privacy', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty Privacy Policy</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px">
@@ -231,41 +288,129 @@ app.post('/drive/backup', async (req, res) => {
   }
 });
 
+// ── SMS action executor ───────────────────────────────────────
+function findLead(crm, name) {
+  if (!name) return null;
+  const parts = name.toLowerCase().split(' ').filter(Boolean);
+  return crm.leads.find(l =>
+    parts.every(p => (l.first + ' ' + l.last).toLowerCase().includes(p))
+  ) || crm.leads.find(l =>
+    parts.some(p => l.first.toLowerCase().includes(p) || l.last.toLowerCase().includes(p))
+  );
+}
+
+async function executeSmsAction(action, crm) {
+  let modified = false;
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  if (action.action === 'log_activity') {
+    const lead = findLead(crm, action.lead);
+    if (lead) {
+      const act = {
+        id: 'a' + Date.now(),
+        leadId: lead.id,
+        leadName: `${lead.first} ${lead.last}`,
+        date: today,
+        time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        type: action.type || 'call',
+        direction: 'outbound',
+        outcome: action.outcome || 'connected',
+        notes: action.notes || '',
+        fuDate: action.followupDate || '',
+        fuMethod: action.followupMethod || ''
+      };
+      crm.activities.push(act);
+      crm.leads = crm.leads.map(l => l.id !== lead.id ? l : {
+        ...l,
+        lastcontact: today,
+        lcmethod: act.type,
+        ...(act.fuDate ? { followup: act.fuDate, method: act.fuMethod || l.method } : {})
+      });
+      modified = true;
+    }
+  } else if (action.action === 'update_stage') {
+    const lead = findLead(crm, action.lead);
+    if (lead && action.stage) {
+      crm.leads = crm.leads.map(l => l.id === lead.id ? { ...l, stage: action.stage } : l);
+      modified = true;
+    }
+  } else if (action.action === 'update_temp') {
+    const lead = findLead(crm, action.lead);
+    if (lead && action.temp) {
+      crm.leads = crm.leads.map(l => l.id === lead.id ? { ...l, temp: action.temp } : l);
+      modified = true;
+    }
+  } else if (action.action === 'update_followup') {
+    const lead = findLead(crm, action.lead);
+    if (lead && action.date) {
+      crm.leads = crm.leads.map(l => l.id === lead.id ? {
+        ...l, followup: action.date,
+        ...(action.method ? { method: action.method } : {})
+      } : l);
+      modified = true;
+    }
+  } else if (action.action === 'add_note') {
+    const lead = findLead(crm, action.lead);
+    if (lead && action.note) {
+      crm.leads = crm.leads.map(l => l.id === lead.id ? {
+        ...l, notes: (l.notes ? l.notes + '\n' : '') + action.note
+      } : l);
+      modified = true;
+    }
+  }
+
+  if (modified) await writeCRM(crm);
+  return modified;
+}
+
 // ── Twilio SMS webhook ────────────────────────────────────────
 app.post('/sms', async (req, res) => {
+  const twiml = msg => {
+    const safe = msg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${safe}</Message></Response>`;
+  };
   try {
     const inboundMsg = (req.body.Body || '').trim();
-    const from       = req.body.From || '';
+    const from = req.body.From || '';
     console.log(`SMS from ${from}: ${inboundMsg}`);
 
-    const systemPrompt = `You are Matt Golden's real estate AI assistant for MG Realty (Los Angeles).
-Matt texts you commands to manage his CRM. Reply under 160 chars when possible. Be direct and confirm what you did.
+    // Load live CRM data
+    const crm = await readCRM();
+    const leadSummary = crm.leads.map(l => ({
+      id: l.id, name: `${l.first} ${l.last}`, temp: l.temp, stage: l.stage||'new',
+      followup: l.followup, method: l.method, prop: l.prop||'', phone: l.phone||''
+    }));
 
-COMMAND FORMATS Matt uses:
-• "log call [name] [outcome]" — e.g. "log call Sarah Chen no answer"
-• "log text [name] [outcome]" — e.g. "log text Marcus Webb interested, follow up Friday"
-• "log showing [name] [address]" — e.g. "log showing Linda Torres 123 Main St"
-• "log offer [name] [outcome]" — e.g. "log offer Kevin Park accepted"
-• "followup [name] [date] [method]" — e.g. "followup Sarah Chen tomorrow call"
-• "stage [name] [stage]" — e.g. "stage Marcus Webb offer" (stages: new/contacted/showing/offer/closed)
-• "temp [name] [temp]" — e.g. "temp Linda Torres hot"
-• "note [name] [text]" — e.g. "note Kevin Park pre-approval came through 480k"
-• "digest" — send the daily digest email
-• "status [name]" — get a quick summary of a lead
-• "overdue" — list overdue follow-ups
-• "today" — list leads due today
-• "help" — list commands
+    const systemPrompt = `You are Matt Golden's real estate AI assistant for MG Realty, Los Angeles.
+Matt texts commands to manage his CRM. Be brief (under 160 chars when possible). Always confirm what you did.
 
-When Matt logs an activity or asks for lead info, respond with a JSON action block AND a human confirmation.
-Format: {"action":"log_activity","lead":"Sarah Chen","type":"call","outcome":"no answer","followup":"2026-05-28","method":"call"}
-Or: {"action":"update_stage","lead":"Marcus Webb","stage":"offer"}
-Or: {"action":"update_temp","lead":"Linda Torres","temp":"hot"}
-Or: {"action":"add_note","lead":"Kevin Park","note":"pre-approval 480k"}
-Or: {"action":"send_digest"}
-Or: {"action":"none"} for info-only replies.
+CURRENT LEADS:
+${JSON.stringify(leadSummary, null, 0)}
 
-Always include the JSON block first on its own line, then your human reply on the next line.
-If you can't find a lead by name, say so and ask Matt to check the spelling.`;
+COMMANDS:
+log call/text/email/showing/offer [name] [outcome] [notes?]
+followup [name] [date] [method?]
+stage [name] new|contacted|showing|offer|closed
+temp [name] hot|warm|cold|done
+note [name] [text]
+status [name]
+overdue — list overdue follow-ups
+today — leads due today
+digest — send daily digest
+help — list commands
+
+RESPONSE FORMAT — always two lines:
+Line 1: JSON action (required): {"action":"log_activity","lead":"Sarah Chen","type":"call","outcome":"no answer","followupDate":"2026-05-28","followupMethod":"call"}
+  or {"action":"update_stage","lead":"Marcus Webb","stage":"offer"}
+  or {"action":"update_temp","lead":"Linda Torres","temp":"hot"}
+  or {"action":"update_followup","lead":"Kevin Park","date":"2026-05-30","method":"call"}
+  or {"action":"add_note","lead":"Sarah Chen","note":"pre-approved 800k"}
+  or {"action":"send_digest"}
+  or {"action":"none"}
+Line 2: Human reply to send back to Matt (concise).
+
+If lead not found, use {"action":"none"} and say so.`;
 
     const result = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
@@ -275,31 +420,47 @@ If you can't find a lead by name, say so and ask Matt to check the spelling.`;
     });
 
     const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
 
-    // Parse action JSON if present
     let reply = raw;
     try {
-      const jsonMatch = raw.match(/^\{.*\}/m);
-      if (jsonMatch) {
-        const action = JSON.parse(jsonMatch[0]);
-        reply = raw.replace(jsonMatch[0], '').trim();
-        // Fire action to CRM via a side-channel URL if configured
-        // (CRM is localStorage-based so actions are advisory — logged for future webhook)
+      const jsonLine = lines.find(l => l.startsWith('{'));
+      if (jsonLine) {
+        const action = JSON.parse(jsonLine);
         console.log('SMS action:', JSON.stringify(action));
+        reply = lines.filter(l => !l.startsWith('{')).join(' ').trim() || raw;
+
+        if (action.action === 'send_digest') {
+          // Trigger digest
+          const overdue = crm.leads.filter(l => l.temp !== 'done' && l.followup && new Date(l.followup) < new Date(new Date().toISOString().split('T')[0]));
+          const dueToday = crm.leads.filter(l => l.temp !== 'done' && l.followup === new Date().toISOString().split('T')[0]);
+          if (overdue.length || dueToday.length) {
+            await resend.emails.send({
+              from: 'MG Realty <onboarding@resend.dev>',
+              to: 'goldenmb@gmail.com',
+              subject: `🏡 MG Realty Digest — ${new Date().toLocaleDateString()}`,
+              html: `<p>Overdue: ${overdue.map(l=>l.first+' '+l.last).join(', ')||'none'}</p><p>Due today: ${dueToday.map(l=>l.first+' '+l.last).join(', ')||'none'}</p>`
+            });
+            reply = `Digest sent — ${overdue.length} overdue, ${dueToday.length} due today.`;
+          } else {
+            reply = 'No overdue leads — digest skipped.';
+          }
+        } else if (action.action !== 'none') {
+          const ok = await executeSmsAction(action, crm);
+          if (!ok && action.lead) reply = `Couldn't find lead "${action.lead}" — check spelling.`;
+        }
       }
-    } catch(e) { /* no action block, plain reply */ }
+    } catch(e) {
+      console.error('SMS action parse error:', e.message);
+    }
 
-    reply = reply || raw;
     if (reply.length > 320) reply = reply.substring(0, 317) + '…';
-
     res.set('Content-Type', 'text/xml');
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Message>${reply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</Message>
-</Response>`);
+    res.send(twiml(reply));
   } catch (e) {
+    console.error('SMS ERROR:', e.message);
     res.set('Content-Type', 'text/xml');
-    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>Error: ${e.message}</Message></Response>`);
+    res.send(twiml('Error: ' + e.message));
   }
 });
 
