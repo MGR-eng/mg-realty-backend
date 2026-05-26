@@ -114,6 +114,37 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .sw{position:relative}.sw input{padding-left:31px}.sw i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
 .dash2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 @media(max-width:700px){.shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative}.nav{display:flex;flex-wrap:wrap;padding:8px}.nav-lbl{display:none}.nav-item span{display:none}.content{padding:14px}.topbar{padding:11px 14px}.dash2{grid-template-columns:1fr}}
+/* ── Pipeline ── */
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;align-items:start}
+.pipe-col{background:var(--surface2);border-radius:var(--rl);border:1px solid var(--border)}
+.pipe-col-hd{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.pipe-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em}
+.pipe-col-body{padding:9px;display:flex;flex-direction:column;gap:7px;min-height:80px}
+.pipe-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 11px;cursor:default}
+.pipe-card-name{font-weight:600;font-size:13px}
+.pipe-card-prop{font-size:11px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.pipe-card-footer{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap;align-items:center}
+.pipe-count{font-size:11px;font-weight:600;color:var(--text2);background:var(--surface);border:1px solid var(--border);padding:1px 7px;border-radius:20px}
+/* ── Tasks ── */
+.task-item{display:flex;gap:10px;padding:12px 15px;border-bottom:1px solid var(--border);align-items:flex-start}
+.task-item:last-child{border-bottom:none}
+.task-done .task-title{text-decoration:line-through;color:var(--text3)}
+.task-title{font-weight:500;font-size:13px}
+.task-meta{font-size:11px;color:var(--text2);margin-top:2px}
+/* ── Properties ── */
+.prop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:13px}
+.prop-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px}
+.prop-addr{font-weight:600;font-size:13px;margin-bottom:4px}
+.prop-price{font-size:18px;font-weight:300;color:var(--green);margin-bottom:8px}
+.prop-meta{font-size:11px;color:var(--text2);display:flex;gap:10px;flex-wrap:wrap}
+/* ── Commission ── */
+.deal-row{display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border);align-items:center}
+.deal-row:last-child{border-bottom:none}
+.deal-commission{font-size:16px;font-weight:600;color:var(--green)}
+.commission-total{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:var(--rl);padding:16px 20px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap}
+.ct-stat{display:flex;flex-direction:column;gap:2px}
+.ct-label{font-size:11px;color:var(--green);font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+.ct-val{font-size:22px;font-weight:300;color:var(--green)}
 </style>
 </head>
 <body>
@@ -131,6 +162,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('leads',this)"><i class="ti ti-users"></i><span>Leads</span><span class="nb" id="nb-leads">0</span></button>
     <button class="nav-item" onclick="showPane('activity',this)"><i class="ti ti-activity"></i><span>Activity log</span></button>
     <button class="nav-item" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span><span class="nb" id="nb-appts">0</span></button>
+    <button class="nav-item" onclick="showPane('pipeline',this)"><i class="ti ti-layout-kanban"></i><span>Pipeline</span></button>
+    <button class="nav-item" onclick="showPane('properties',this)"><i class="ti ti-building"></i><span>Properties</span></button>
+    <button class="nav-item" onclick="showPane('tasks',this)"><i class="ti ti-checkbox"></i><span>Tasks</span><span class="nb" id="nb-tasks">0</span></button>
+    <button class="nav-item" onclick="showPane('commission',this)"><i class="ti ti-coin"></i><span>Commission</span></button>
     <div class="nav-lbl">Automate</div>
     <button class="nav-item" onclick="sendDigest()"><i class="ti ti-mail"></i><span>Send digest</span></button>
     <button class="nav-item" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
@@ -177,8 +212,77 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="content"><div class="tw"><div id="apptList"></div></div></div>
 </div>
 
+<!-- Pipeline pane -->
+<div id="pane-pipeline" class="pane">
+  <div class="topbar"><div class="page-title">Pipeline</div></div>
+  <div class="content"><div class="pipeline" id="pipelineBoard"></div></div>
+</div>
+
+<!-- Properties pane -->
+<div id="pane-properties" class="pane">
+  <div class="topbar"><div class="page-title">Properties</div><div class="tba"><button class="btn btn-gold" onclick="openAddProp()"><i class="ti ti-plus"></i> Add property</button></div></div>
+  <div class="content"><div class="prop-grid" id="propGrid"></div></div>
+</div>
+
+<!-- Tasks pane -->
+<div id="pane-tasks" class="pane">
+  <div class="topbar"><div class="page-title">Tasks</div><div class="tba"><select id="ftask" onchange="renderTasks()" style="width:auto"><option value="">All tasks</option><option value="open">Open</option><option value="done">Done</option></select><button class="btn btn-gold" onclick="openAddTask()"><i class="ti ti-plus"></i> Add task</button></div></div>
+  <div class="content"><div class="tw"><div id="taskList"></div></div></div>
+</div>
+
+<!-- Commission pane -->
+<div id="pane-commission" class="pane">
+  <div class="topbar"><div class="page-title">Commission Tracker</div><div class="tba"><button class="btn btn-green" onclick="openAddDeal()"><i class="ti ti-plus"></i> Log deal</button></div></div>
+  <div class="content"><div id="commissionStats"></div><div class="tw"><div id="dealList"></div></div></div>
+</div>
+
 </main>
 </div>
+
+<!-- Property Modal -->
+<div class="modal-overlay" id="mProp"><div class="modal">
+  <div class="modal-title" id="propMT">Add property</div>
+  <div class="fg">
+    <div class="fgg full"><label>Address</label><input id="pf1" placeholder="123 Main St, Los Angeles, CA 90001"></div>
+    <div class="fgg"><label>List price</label><input id="pf2" placeholder="$750,000" type="text"></div>
+    <div class="fgg"><label>Status</label><select id="pf3"><option value="Active">Active</option><option value="Pending">Pending</option><option value="Sold">Sold</option><option value="Off Market">Off Market</option></select></div>
+    <div class="fgg"><label>Beds</label><input id="pf4" placeholder="3" type="number"></div>
+    <div class="fgg"><label>Baths</label><input id="pf5" placeholder="2" type="number"></div>
+    <div class="fgg"><label>Sq ft</label><input id="pf6" placeholder="1,200"></div>
+    <div class="fgg"><label>Type</label><select id="pf7"><option value="Single Family">Single Family</option><option value="Condo">Condo</option><option value="Multi-Family">Multi-Family</option><option value="Townhouse">Townhouse</option><option value="Land">Land</option></select></div>
+    <div class="fgg"><label>Linked lead</label><select id="pf8"><option value="">— none —</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="pf9" placeholder="HOA, parking, access code…" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mProp')">Cancel</button><button class="btn btn-gold" onclick="saveProp()">Save property</button></div>
+</div></div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="mTask"><div class="modal">
+  <div class="modal-title" id="taskMT">Add task</div>
+  <div class="fg">
+    <div class="fgg full"><label>Task</label><input id="tf1" placeholder="Call Sarah about Silver Lake showing"></div>
+    <div class="fgg"><label>Due date</label><input id="tf2" type="date"></div>
+    <div class="fgg"><label>Priority</label><select id="tf3"><option value="high">High</option><option value="normal">Normal</option><option value="low">Low</option></select></div>
+    <div class="fgg full"><label>Linked lead</label><select id="tf4"><option value="">— none —</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="tf5" placeholder="Details…" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mTask')">Cancel</button><button class="btn btn-gold" onclick="saveTask()">Save task</button></div>
+</div></div>
+
+<!-- Deal Modal -->
+<div class="modal-overlay" id="mDeal"><div class="modal">
+  <div class="modal-title">Log closed deal</div>
+  <div class="fg">
+    <div class="fgg full"><label>Lead / Client</label><select id="df1"><option value="">— select lead —</option></select></div>
+    <div class="fgg full"><label>Property address</label><input id="df2" placeholder="123 Main St, Los Angeles"></div>
+    <div class="fgg"><label>Sale price</label><input id="df3" placeholder="750000" type="number"></div>
+    <div class="fgg"><label>Commission %</label><input id="df4" placeholder="2.5" type="number" step="0.1" value="2.5"></div>
+    <div class="fgg"><label>Close date</label><input id="df5" type="date"></div>
+    <div class="fgg"><label>Side</label><select id="df6"><option value="Buyer">Buyer side</option><option value="Seller">Seller side</option><option value="Both">Both sides</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="df7" placeholder="Referral source, split details…" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mDeal')">Cancel</button><button class="btn btn-green" onclick="saveDeal()"><i class="ti ti-coin"></i> Save deal</button></div>
+</div></div>
 
 <!-- Lead Modal -->
 <div class="modal-overlay" id="mLead"><div class="modal">
@@ -194,6 +298,8 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="fgg"><label>Temp</label><select id="lf8"><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select></div>
     <div class="fgg"><label>Follow-up date</label><input id="lf9" type="date"></div>
     <div class="fgg"><label>Follow-up method</label><select id="lf10"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
+    <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select></div>
+    <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Other">Other</option></select></div>
     <div class="fgg full"><label>Notes</label><textarea id="lf11" placeholder="Pre-approval, motivation, timeline…"></textarea></div>
   </div>
   <div class="mfoot"><button class="btn" onclick="closeModal('mLead')">Cancel</button><button class="btn btn-gold" onclick="saveLead()">Save lead</button></div>
@@ -248,22 +354,25 @@ const BACKEND = 'https://mg-realty-backend.onrender.com';
 const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
 const DIGEST_EMAIL = 'goldenmb@gmail.com';
 
-const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2';
-let leads=[],acts=[],appts=[],actLeadId=null,editLeadId=null;
+const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1';
+let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null;
 
 function load(){
   try{leads=JSON.parse(localStorage.getItem(SL)||'null')||seed();}catch(e){leads=seed();}
   try{acts=JSON.parse(localStorage.getItem(SA)||'null')||[];}catch(e){acts=[];}
   try{appts=JSON.parse(localStorage.getItem(SAP)||'null')||[];}catch(e){appts=[];}
+  try{tasks=JSON.parse(localStorage.getItem(ST)||'null')||[];}catch(e){tasks=[];}
+  try{props=JSON.parse(localStorage.getItem(SPR)||'null')||[];}catch(e){props=[];}
+  try{deals=JSON.parse(localStorage.getItem(SD)||'null')||[];}catch(e){deals=[];}
 }
-function persist(){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));}catch(e){}}
+function persist(){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));}catch(e){}}
 function seed(){
   const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().split('T')[0];};
   return[
-    {id:'1',first:'Sarah',last:'Chen',phone:'(310) 555-0193',email:'schen@gmail.com',prop:'2BR Silver Lake ~$750k',ohdate:d(-3),temp:'hot',type:'buyer',followup:d(0),method:'call',lastcontact:d(-3),lcmethod:'call',notes:'Pre-approved $800k. Loved kitchen. School district matters.'},
-    {id:'2',first:'Marcus',last:'Webb',phone:'(323) 555-0144',email:'mwebb@yahoo.com',prop:'4-unit income property',ohdate:d(-7),temp:'warm',type:'buyer',followup:d(2),method:'email',lastcontact:d(-5),lcmethod:'email',notes:'Investor, cash. Wants 5%+ cap rate.'},
-    {id:'3',first:'Linda',last:'Torres',phone:'(818) 555-0177',email:'ltorres@me.com',prop:'Selling Los Feliz home',ohdate:d(-1),temp:'hot',type:'seller',followup:d(1),method:'text',lastcontact:d(-1),lcmethod:'text',notes:'Needs to sell by March. Divorce — be sensitive.'},
-    {id:'4',first:'Kevin',last:'Park',phone:'(310) 555-0122',email:'kpark@gmail.com',prop:'Condo under $500k',ohdate:d(-14),temp:'cold',type:'buyer',followup:d(5),method:'call',lastcontact:d(-14),lcmethod:'',notes:'First-time buyer. Still browsing.'},
+    {id:'1',first:'Sarah',last:'Chen',phone:'(310) 555-0193',email:'schen@gmail.com',prop:'2BR Silver Lake ~$750k',ohdate:d(-3),temp:'hot',type:'buyer',followup:d(0),method:'call',lastcontact:d(-3),lcmethod:'call',notes:'Pre-approved $800k. Loved kitchen. School district matters.',stage:'showing',source:'Open House'},
+    {id:'2',first:'Marcus',last:'Webb',phone:'(323) 555-0144',email:'mwebb@yahoo.com',prop:'4-unit income property',ohdate:d(-7),temp:'warm',type:'buyer',followup:d(2),method:'email',lastcontact:d(-5),lcmethod:'email',notes:'Investor, cash. Wants 5%+ cap rate.',stage:'contacted',source:'Referral'},
+    {id:'3',first:'Linda',last:'Torres',phone:'(818) 555-0177',email:'ltorres@me.com',prop:'Selling Los Feliz home',ohdate:d(-1),temp:'hot',type:'seller',followup:d(1),method:'text',lastcontact:d(-1),lcmethod:'text',notes:'Needs to sell by March. Divorce — be sensitive.',stage:'offer',source:'Zillow'},
+    {id:'4',first:'Kevin',last:'Park',phone:'(310) 555-0122',email:'kpark@gmail.com',prop:'Condo under $500k',ohdate:d(-14),temp:'cold',type:'buyer',followup:d(5),method:'call',lastcontact:d(-14),lcmethod:'',notes:'First-time buyer. Still browsing.',stage:'new',source:'Instagram'},
   ];
 }
 
@@ -312,6 +421,9 @@ function updateBadges(){
   document.getElementById('nb-leads').textContent=ov||leads.length;
   document.getElementById('nb-leads').className='nb'+(ov?' red':'');
   document.getElementById('nb-appts').textContent=appts.filter(a=>du(a.date)>=0).length;
+  const openTasks=tasks.filter(t=>!t.done).length;
+  document.getElementById('nb-tasks').textContent=openTasks;
+  document.getElementById('nb-tasks').className='nb'+(openTasks?' red':'');
 }
 
 function renderStats(){
@@ -379,7 +491,7 @@ function renderAppts(){
   el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
 }
 
-function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderLeads();renderActs();renderAppts();updateBadges();}
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();updateBadges();}
 
 async function sendDigest(){
   setSyncStatus('busy','Sending digest…');
@@ -414,7 +526,7 @@ async function backupToSheet(){
   }catch(e){setSyncStatus('err','Backup failed');toast('Backup failed: '+e.message,'err');}
 }
 
-function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';openModal('mLead');}
+function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';document.getElementById('lf12').value='new';document.getElementById('lf13').value='Open House';openModal('mLead');}
 function openEdit(id){
   editLeadId=id;const l=leads.find(x=>x.id===id);
   document.getElementById('leadMT').textContent='Edit lead';
@@ -424,13 +536,15 @@ function openEdit(id){
   document.getElementById('lf7').value=l.type||'buyer';document.getElementById('lf8').value=l.temp||'warm';
   document.getElementById('lf9').value=l.followup||'';document.getElementById('lf10').value=l.method||'call';
   document.getElementById('lf11').value=l.notes||'';
+  document.getElementById('lf12').value=l.stage||'new';
+  document.getElementById('lf13').value=l.source||'Open House';
   openModal('mLead');
 }
 function saveLead(){
   const g=id=>document.getElementById(id).value.trim();
   if(!g('lf1')){alert('First name required');return;}
   const ex=editLeadId?leads.find(l=>l.id===editLeadId):{};
-  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
+  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
   if(editLeadId){leads=leads.map(l=>l.id===editLeadId?lead:l);}else{leads.push(lead);}
   editLeadId=null;persist();closeModal('mLead');renderAll();toast(editLeadId?'Lead updated':'Lead added');
 }
@@ -520,6 +634,195 @@ async function sendEmailTemplate() {
     setSyncStatus('ok', 'Ready');
   }
 }
+
+// ── Pipeline ──────────────────────────────────────────────────
+function renderPipeline(){
+  const board=document.getElementById('pipelineBoard');if(!board)return;
+  const stages=['new','contacted','showing','offer','closed'];
+  const labels={new:'New',contacted:'Contacted',showing:'Showing',offer:'Offer',closed:'Closed'};
+  const colors={new:'var(--text2)',contacted:'var(--blue)',showing:'var(--amber)',offer:'var(--purple)',closed:'var(--green)'};
+  board.innerHTML=stages.map(stage=>{
+    const group=leads.filter(l=>l.stage===stage);
+    const cards=group.length===0
+      ?'<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">No leads</div>'
+      :group.map(l=>`<div class="pipe-card">
+        <div class="pipe-card-name">${l.first} ${l.last}</div>
+        <div class="pipe-card-prop">${l.prop||'—'}</div>
+        <div class="pipe-card-footer">${tb(l.temp)}<button class="btn btn-sm" style="margin-left:auto" onclick="openEdit('${l.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button></div>
+      </div>`).join('');
+    return`<div class="pipe-col">
+      <div class="pipe-col-hd"><span class="pipe-col-title" style="color:${colors[stage]}">${labels[stage]}</span><span class="pipe-count">${group.length}</span></div>
+      <div class="pipe-col-body">${cards}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Properties ────────────────────────────────────────────────
+function renderProperties(){
+  const grid=document.getElementById('propGrid');if(!grid)return;
+  if(!props.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">No properties yet. Click "Add property" to start tracking listings and inventory.</div>';return;}
+  const statBadge=s=>s==='Active'?'b-hot':s==='Pending'?'b-offer':s==='Sold'?'b-done':'b-neutral';
+  grid.innerHTML=props.map(p=>{
+    const linked=p.leadId?leads.find(l=>l.id===p.leadId):null;
+    const price=p.price?'$'+Number(p.price).toLocaleString():'';
+    return`<div class="prop-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <span class="badge ${statBadge(p.status)}">${p.status}</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm" onclick="openEditProp('${p.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+          <button class="btn btn-red btn-sm" onclick="delProp('${p.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+        </div>
+      </div>
+      <div class="prop-addr">${p.address}</div>
+      ${price?`<div class="prop-price">${price}</div>`:''}
+      <div class="prop-meta">
+        ${p.beds?`<span><i class="ti ti-bed" style="font-size:11px;margin-right:2px"></i>${p.beds} bd</span>`:''}
+        ${p.baths?`<span><i class="ti ti-bath" style="font-size:11px;margin-right:2px"></i>${p.baths} ba</span>`:''}
+        ${p.sqft?`<span>${p.sqft} sqft</span>`:''}
+        ${p.type?`<span>${p.type}</span>`:''}
+      </div>
+      ${linked?`<div style="font-size:11px;color:var(--blue);margin-top:8px;display:flex;align-items:center;gap:4px"><i class="ti ti-user" style="font-size:11px"></i>${linked.first} ${linked.last}</div>`:''}
+      ${p.notes?`<div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.4">${p.notes}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function openAddProp(){
+  editPropId=null;
+  document.getElementById('propMT').textContent='Add property';
+  ['pf1','pf2','pf4','pf5','pf6','pf9'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pf3').value='Active';document.getElementById('pf7').value='Single Family';
+  document.getElementById('pf8').innerHTML='<option value="">— none —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  document.getElementById('pf8').value='';openModal('mProp');
+}
+function openEditProp(id){
+  editPropId=id;const p=props.find(x=>x.id===id);
+  document.getElementById('propMT').textContent='Edit property';
+  document.getElementById('pf1').value=p.address||'';document.getElementById('pf2').value=p.price||'';
+  document.getElementById('pf3').value=p.status||'Active';document.getElementById('pf4').value=p.beds||'';
+  document.getElementById('pf5').value=p.baths||'';document.getElementById('pf6').value=p.sqft||'';
+  document.getElementById('pf7').value=p.type||'Single Family';
+  document.getElementById('pf8').innerHTML='<option value="">— none —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  document.getElementById('pf8').value=p.leadId||'';document.getElementById('pf9').value=p.notes||'';
+  openModal('mProp');
+}
+function saveProp(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('pf1')){alert('Address required');return;}
+  const prop={id:editPropId||'p'+Date.now(),address:g('pf1'),price:g('pf2').replace(/[$,]/g,''),status:document.getElementById('pf3').value,beds:g('pf4'),baths:g('pf5'),sqft:g('pf6'),type:document.getElementById('pf7').value,leadId:document.getElementById('pf8').value,notes:g('pf9')};
+  if(editPropId){props=props.map(p=>p.id===editPropId?prop:p);}else{props.push(prop);}
+  editPropId=null;persist();closeModal('mProp');renderProperties();toast(prop.id&&editPropId?'Property updated':'Property added');
+}
+function delProp(id){if(confirm('Delete this property?')){props=props.filter(p=>p.id!==id);persist();renderProperties();}}
+
+// ── Tasks ─────────────────────────────────────────────────────
+function renderTasks(){
+  const el=document.getElementById('taskList');if(!el)return;
+  const fv=document.getElementById('ftask').value;
+  let f=[...tasks];
+  if(fv==='open')f=f.filter(t=>!t.done);else if(fv==='done')f=f.filter(t=>t.done);
+  f.sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(!a.due&&!b.due)return 0;if(!a.due)return 1;if(!b.due)return -1;return a.due>b.due?1:-1;});
+  if(!f.length){el.innerHTML='<div class="empty">No tasks. Click "Add task" to create one.</div>';return;}
+  const priBadge=p=>p==='high'?'b-hot':p==='low'?'b-done':'b-neutral';
+  el.innerHTML=f.map(t=>{
+    const linked=t.leadId?leads.find(l=>l.id===t.leadId):null;
+    const d=t.due?du(t.due):null;
+    const dueCls=d===null||t.done?'due-ok':d<0?'due-today':d===0?'due-today':d<=2?'due-soon':'due-ok';
+    const dueStr=t.due?(d===0?'Due today':d<0?Math.abs(d)+'d overdue':d===1?'Due tomorrow':'Due in '+d+'d'):'No due date';
+    return`<div class="task-item${t.done?' task-done':''}">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')" style="margin-top:2px;width:15px;height:15px;flex-shrink:0;cursor:pointer">
+      <div style="flex:1;min-width:0">
+        <div class="task-title">${t.title}</div>
+        <div class="task-meta">
+          ${t.due?`<span class="${dueCls}">${dueStr}</span> · `:''}
+          <span class="badge ${priBadge(t.priority)}" style="font-size:10px;padding:1px 5px">${t.priority}</span>
+          ${linked?` · <span style="color:var(--blue)">${linked.first} ${linked.last}</span>`:''}
+          ${t.notes?` · <span>${t.notes.substring(0,60)}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn btn-sm" onclick="openEditTask('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+        <button class="btn btn-red btn-sm" onclick="delTask('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openAddTask(){
+  editTaskId=null;document.getElementById('taskMT').textContent='Add task';
+  ['tf1','tf5'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tf2').value='';document.getElementById('tf3').value='normal';
+  document.getElementById('tf4').innerHTML='<option value="">— none —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  document.getElementById('tf4').value='';openModal('mTask');
+}
+function openEditTask(id){
+  editTaskId=id;const t=tasks.find(x=>x.id===id);
+  document.getElementById('taskMT').textContent='Edit task';
+  document.getElementById('tf1').value=t.title||'';document.getElementById('tf2').value=t.due||'';
+  document.getElementById('tf3').value=t.priority||'normal';
+  document.getElementById('tf4').innerHTML='<option value="">— none —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  document.getElementById('tf4').value=t.leadId||'';document.getElementById('tf5').value=t.notes||'';
+  openModal('mTask');
+}
+function saveTask(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('tf1')){alert('Task title required');return;}
+  const isDone=editTaskId?(tasks.find(t=>t.id===editTaskId)||{}).done||false:false;
+  const task={id:editTaskId||'t'+Date.now(),title:g('tf1'),due:document.getElementById('tf2').value,priority:document.getElementById('tf3').value,leadId:document.getElementById('tf4').value,notes:g('tf5'),done:isDone};
+  if(editTaskId){tasks=tasks.map(t=>t.id===editTaskId?task:t);}else{tasks.push(task);}
+  editTaskId=null;persist();closeModal('mTask');renderTasks();updateBadges();toast('Task saved');
+}
+function delTask(id){if(confirm('Delete this task?')){tasks=tasks.filter(t=>t.id!==id);persist();renderTasks();updateBadges();}}
+function toggleTask(id){tasks=tasks.map(t=>t.id===id?{...t,done:!t.done}:t);persist();renderTasks();updateBadges();}
+
+// ── Commission ────────────────────────────────────────────────
+function renderCommission(){
+  const el=document.getElementById('dealList'),stats=document.getElementById('commissionStats');
+  if(!el)return;
+  const totalGCI=deals.reduce((s,d)=>s+(parseFloat(d.salePrice)||0)*(parseFloat(d.commissionPct)||2.5)/100,0);
+  const yr=new Date().getFullYear()+'';
+  const ytd=deals.filter(d=>d.closeDate&&d.closeDate.startsWith(yr)).reduce((s,d)=>s+(parseFloat(d.salePrice)||0)*(parseFloat(d.commissionPct)||2.5)/100,0);
+  const fmt=n=>'$'+n.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});
+  stats.innerHTML=`<div class="commission-total">
+    <div class="ct-stat"><div class="ct-label">Total GCI</div><div class="ct-val">${fmt(totalGCI)}</div></div>
+    <div class="ct-stat"><div class="ct-label">YTD GCI</div><div class="ct-val">${fmt(ytd)}</div></div>
+    <div class="ct-stat"><div class="ct-label">Total deals</div><div class="ct-val">${deals.length}</div></div>
+  </div>`;
+  if(!deals.length){el.innerHTML='<div class="empty">No closed deals yet. Click "Log deal" after a transaction closes.</div>';return;}
+  const sorted=[...deals].sort((a,b)=>(b.closeDate||'')>(a.closeDate||'')?1:-1);
+  el.innerHTML=sorted.map(d=>{
+    const commission=(parseFloat(d.salePrice)||0)*(parseFloat(d.commissionPct)||2.5)/100;
+    const linked=d.leadId?leads.find(l=>l.id===d.leadId):null;
+    return`<div class="deal-row">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${d.address||'Unlisted property'}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">
+          ${linked?linked.first+' '+linked.last+' · ':''}<span class="badge b-neutral" style="font-size:10px">${d.side||'Buyer'} side</span>${d.closeDate?' · '+d.closeDate:''} · ${d.commissionPct||2.5}%
+        </div>
+        ${d.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px">${d.notes}</div>`:''}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="deal-commission">${fmt(commission)}</div>
+        <div style="font-size:11px;color:var(--text2)">on ${fmt(parseFloat(d.salePrice)||0)}</div>
+      </div>
+      <button class="btn btn-red btn-sm" style="margin-left:8px" onclick="delDeal('${d.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+    </div>`;
+  }).join('');
+}
+function openAddDeal(){
+  document.getElementById('df1').innerHTML='<option value="">— select lead —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  ['df2','df7'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('df3').value='';document.getElementById('df4').value='2.5';
+  document.getElementById('df5').value=new Date().toISOString().split('T')[0];
+  document.getElementById('df6').value='Buyer';openModal('mDeal');
+}
+function saveDeal(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('df3')){alert('Sale price required');return;}
+  const deal={id:'d'+Date.now(),leadId:document.getElementById('df1').value,address:g('df2'),salePrice:g('df3'),commissionPct:g('df4')||'2.5',closeDate:document.getElementById('df5').value,side:document.getElementById('df6').value,notes:g('df7')};
+  deals.push(deal);
+  if(deal.leadId){leads=leads.map(l=>l.id===deal.leadId?{...l,temp:'done',stage:'closed'}:l);}
+  persist();closeModal('mDeal');renderCommission();renderLeads();renderPipeline();toast('Deal logged — commission tracked!');
+}
+function delDeal(id){if(confirm('Delete this deal?')){deals=deals.filter(d=>d.id!==id);persist();renderCommission();}}
 
 // ── Auto morning digest ───────────────────────────────────────
 (async function autoDigest(){
