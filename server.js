@@ -3,12 +3,17 @@ import cors from 'cors';
 import Anthropic from '@anthropic-ai/sdk';
 import { Resend } from 'resend';
 import { GoogleAuth } from 'google-auth-library';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(cors({ origin: '*' }));
 app.options('*', cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -105,7 +110,7 @@ async function callClaude(prompt, mcpServers = []) {
 }
 
 // ── Health check ─────────────────────────────────────────────
-app.get('/', (req, res) => res.json({ ok: true, service: 'MG Realty CRM Backend' }));
+app.get('/health', (req, res) => res.json({ ok: true, service: 'MG Realty CRM Backend' }));
 
 // ── CRM sync ──────────────────────────────────────────────────
 app.get('/crm/pull', async (req, res) => {

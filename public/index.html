@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MG Realty CRM</title>
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1A1914">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MG Realty">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#F7F6F2;--surface:#FFFFFF;--surface2:#F0EEE9;--border:#E4E1D9;
+  --text:#1A1A1A;--text2:#6B6860;--text3:#9B9890;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-bd:#B5D4F4;
+  --green:#27500A;--green-bg:#EAF3DE;--green-bd:#C0DD97;
+  --amber:#633806;--amber-bg:#FAEEDA;--amber-bd:#FAC775;
+  --red:#791F1F;--red-bg:#FCEBEB;--red-bd:#F7C1C1;
+  --purple:#3C3489;--purple-bg:#EEEDFE;--purple-bd:#CECBF6;
+  --hot-bg:#FAECE7;--hot-txt:#993C1D;--warm-bg:#FAEEDA;--warm-txt:#854F0B;
+  --cold-bg:#E6F1FB;--cold-txt:#185FA5;--done-bg:#EAF3DE;--done-txt:#3B6D11;
+  --r:8px;--rl:12px;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:#1A1914;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;background:#E8681A;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:600;color:#fff;flex-shrink:0;font-size:13px}
+.logo-text{font-size:14px;font-weight:600;color:#fff}.logo-sub{font-size:10px;color:rgba(255,255,255,0.35);font-family:var(--mono)}
+.nav{padding:14px 10px;flex:1}
+.nav-lbl{font-size:10px;font-weight:600;color:rgba(255,255,255,0.28);letter-spacing:0.1em;text-transform:uppercase;padding:0 8px;margin:12px 0 5px}
+.nav-lbl:first-child{margin-top:0}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r);color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;transition:all 0.15s;margin-bottom:2px;border:none;background:transparent;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.85)}
+.nav-item.active{background:rgba(232,104,26,0.18);color:#E8681A}
+.nav-item i{font-size:16px;flex-shrink:0}
+.nb{margin-left:auto;background:rgba(232,104,26,0.2);color:#E8681A;font-size:10px;font-weight:600;padding:1px 6px;border-radius:20px;font-family:var(--mono)}
+.nb.red{background:rgba(226,75,74,0.2);color:#F09595}
+.sidebar-foot{padding:14px;border-top:1px solid rgba(255,255,255,0.07)}
+.sync-row{display:flex;align-items:center;gap:7px;font-size:11px;color:rgba(255,255,255,0.3);font-family:var(--mono)}
+.sdot{width:6px;height:6px;border-radius:50%;background:#639922;flex-shrink:0}
+.sdot.busy{background:#EF9F27;animation:pulse 1s infinite}
+.sdot.err{background:#E24B4A}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.main{overflow-y:auto;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 26px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.page-title{font-size:15px;font-weight:600}
+.tba{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.content{padding:22px 26px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:11px;margin-bottom:22px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:15px 17px}
+.sc-lbl{font-size:11px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px}
+.sc-val{font-size:26px;font-weight:300;line-height:1}
+.sc-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.sc.alert .sc-val{color:var(--red)}.sc.warn .sc-val{color:var(--amber)}
+.pane{display:none}.pane.active{display:block}
+.tw{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+thead th{text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:9px 13px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;cursor:pointer}
+tbody tr:hover{background:var(--bg)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:10px 13px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-row{background:#FFF5F5!important}.ov-row td{color:var(--red)!important}
+.td-row{background:#FFFBF0!important}.td-row td{color:var(--amber)!important}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.b-hot{background:var(--hot-bg);color:var(--hot-txt)}.b-warm{background:var(--warm-bg);color:var(--warm-txt)}
+.b-cold{background:var(--cold-bg);color:var(--cold-txt)}.b-done{background:var(--done-bg);color:var(--done-txt)}
+.b-call{background:var(--blue-bg);color:var(--blue)}.b-text{background:var(--green-bg);color:var(--green)}
+.b-email{background:var(--amber-bg);color:var(--amber)}.b-showing{background:var(--purple-bg);color:var(--purple)}
+.b-open{background:var(--hot-bg);color:var(--hot-txt)}.b-offer{background:#E1F5EE;color:#085041}
+.b-neutral{background:var(--surface2);color:var(--text2)}
+.btn{font-size:12px;padding:7px 13px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:var(--font);font-weight:500;transition:all 0.15s;white-space:nowrap;line-height:1}
+.btn:hover{background:var(--surface2)}.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-primary{background:#1A1914;color:#fff;border-color:#1A1914}.btn-primary:hover{background:#2d2c24}
+.btn-gold{background:#E8681A;color:#fff;border-color:#E8681A;font-weight:600}.btn-gold:hover{background:#cf5914}
+.btn-blue{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)}.btn-blue:hover{background:var(--blue-bd)}
+.btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-bd)}.btn-green:hover{background:var(--green-bd)}
+.btn-amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)}.btn-amber:hover{background:var(--amber-bd)}
+.btn-red{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}.btn-red:hover{background:var(--red-bd)}
+.btn-purple{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-bd)}.btn-purple:hover{background:var(--purple-bd)}
+.btn-sm{padding:4px 8px;font-size:11px}
+input,select,textarea{font-family:var(--font);font-size:13px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;width:100%;transition:border-color 0.15s}
+input:focus,select:focus,textarea:focus{border-color:#888}
+textarea{resize:vertical;min-height:65px}
+label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--rl);border:1px solid var(--border);padding:22px;width:min(560px,100%);max-height:calc(100vh - 80px);overflow-y:auto}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:16px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.fgg{display:flex;flex-direction:column}
+.fgg.full{grid-column:1/-1}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.act-feed{display:flex;flex-direction:column}
+.ai{display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border)}
+.ai:last-child{border-bottom:none}
+.aic{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+.appt-item{display:flex;gap:13px;padding:13px 15px;border-bottom:1px solid var(--border);align-items:flex-start}
+.appt-item:last-child{border-bottom:none}
+.appt-date-box{min-width:42px;text-align:center;background:var(--surface2);border-radius:var(--r);padding:5px 4px}
+.appt-day{font-size:20px;font-weight:300;line-height:1}
+.appt-mo{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+.lead-card-sm{background:var(--surface2);border-radius:var(--r);padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex-shrink:0}
+.toast{position:fixed;bottom:22px;right:22px;padding:10px 16px;border-radius:var(--r);font-size:13px;font-weight:500;z-index:200;transform:translateY(80px);opacity:0;transition:all 0.25s;pointer-events:none;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{background:#1A1914;color:#fff}.toast.err{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}.toast.info{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.empty{text-align:center;padding:36px 20px;color:var(--text2);font-size:13px}
+.sec-hd{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em;padding:9px 15px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.due-today{color:var(--hot-txt);font-weight:600}.due-soon{color:var(--warm-txt)}.due-ok{color:var(--text2)}
+.ns{font-weight:600;font-size:13px}.nsb{font-size:11px;color:var(--text2);margin-top:1px}
+.ibox{background:var(--purple-bg);border-radius:var(--r);padding:9px 12px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:7px;margin-top:10px}
+.sw{position:relative}.sw input{padding-left:31px}.sw i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
+.dash2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:700px){.shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative}.nav{display:flex;flex-wrap:wrap;padding:8px}.nav-lbl{display:none}.nav-item span{display:none}.content{padding:14px}.topbar{padding:11px 14px}.dash2{grid-template-columns:1fr}}
+/* ── Lead detail panel ── */
+.detail-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:89;display:none}
+.detail-backdrop.open{display:block}
+.detail-panel{position:fixed;top:0;right:0;height:100vh;width:440px;max-width:100vw;background:var(--surface);border-left:1px solid var(--border);z-index:90;transform:translateX(100%);transition:transform 0.25s ease;overflow-y:auto;display:flex;flex-direction:column}
+.detail-panel.open{transform:translateX(0)}
+.dp-header{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:sticky;top:0;background:var(--surface);z-index:1}
+.dp-name{font-size:18px;font-weight:600;line-height:1.2}
+.dp-close{border:none;background:transparent;cursor:pointer;color:var(--text2);font-size:20px;padding:2px;line-height:1;flex-shrink:0}
+.dp-close:hover{color:var(--text)}
+.dp-section{padding:14px 20px;border-bottom:1px solid var(--border)}
+.dp-section:last-child{border-bottom:none}
+.dp-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px}
+.dp-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:13px}
+.dp-row:last-child{margin-bottom:0}
+.dp-row i{font-size:14px;color:var(--text3);flex-shrink:0;width:16px}
+.dp-actions{padding:14px 20px;display:flex;gap:7px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border)}
+.dp-act-mini{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px}
+.dp-act-mini:last-child{border-bottom:none}
+/* ── Pipeline ── */
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;align-items:start}
+.pipe-col{background:var(--surface2);border-radius:var(--rl);border:1px solid var(--border)}
+.pipe-col-hd{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.pipe-col-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em}
+.pipe-col-body{padding:9px;display:flex;flex-direction:column;gap:7px;min-height:80px}
+.pipe-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 11px;cursor:default}
+.pipe-card-name{font-weight:600;font-size:13px}
+.pipe-card-prop{font-size:11px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.pipe-card-footer{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap;align-items:center}
+.pipe-count{font-size:11px;font-weight:600;color:var(--text2);background:var(--surface);border:1px solid var(--border);padding:1px 7px;border-radius:20px}
+/* ── Tasks ── */
+.task-item{display:flex;gap:10px;padding:12px 15px;border-bottom:1px solid var(--border);align-items:flex-start}
+.task-item:last-child{border-bottom:none}
+.task-done .task-title{text-decoration:line-through;color:var(--text3)}
+.task-title{font-weight:500;font-size:13px}
+.task-meta{font-size:11px;color:var(--text2);margin-top:2px}
+/* ── Properties ── */
+.prop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:13px}
+.prop-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px}
+.prop-addr{font-weight:600;font-size:13px;margin-bottom:4px}
+.prop-price{font-size:18px;font-weight:300;color:var(--green);margin-bottom:8px}
+.prop-meta{font-size:11px;color:var(--text2);display:flex;gap:10px;flex-wrap:wrap}
+/* ── Commission ── */
+.deal-row{display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border);align-items:center}
+.deal-row:last-child{border-bottom:none}
+.deal-commission{font-size:16px;font-weight:600;color:var(--green)}
+.commission-total{background:var(--green-bg);border:1px solid var(--green-bd);border-radius:var(--rl);padding:16px 20px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap}
+.ct-stat{display:flex;flex-direction:column;gap:2px}
+.ct-label{font-size:11px;color:var(--green);font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+.ct-val{font-size:22px;font-weight:300;color:var(--green)}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+<div class="shell">
+
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">MG</div>
+    <div><div class="logo-text">MG Realty</div><div class="logo-sub">CRM v2.0</div></div>
+  </div>
+  <nav class="nav">
+    <div class="nav-lbl">Main</div>
+    <button class="nav-item active" onclick="showPane('dashboard',this)"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></button>
+    <button class="nav-item" onclick="showPane('leads',this)"><i class="ti ti-users"></i><span>Leads</span><span class="nb" id="nb-leads">0</span></button>
+    <button class="nav-item" onclick="showPane('activity',this)"><i class="ti ti-activity"></i><span>Activity log</span></button>
+    <button class="nav-item" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span><span class="nb" id="nb-appts">0</span></button>
+    <button class="nav-item" onclick="showPane('pipeline',this)"><i class="ti ti-layout-kanban"></i><span>Pipeline</span></button>
+    <button class="nav-item" onclick="showPane('properties',this)"><i class="ti ti-building"></i><span>Properties</span></button>
+    <button class="nav-item" onclick="showPane('tasks',this)"><i class="ti ti-checkbox"></i><span>Tasks</span><span class="nb" id="nb-tasks">0</span></button>
+    <button class="nav-item" onclick="showPane('commission',this)"><i class="ti ti-coin"></i><span>Commission</span></button>
+    <button class="nav-item" onclick="showPane('agents',this)"><i class="ti ti-id-badge"></i><span>Agents</span></button>
+    <div class="nav-lbl">Automate</div>
+    <button class="nav-item" onclick="sendDigest()"><i class="ti ti-mail"></i><span>Send digest</span></button>
+    <button class="nav-item" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="sync-row"><div class="sdot" id="sdot"></div><span id="slbl">Ready</span></div>
+  </div>
+</aside>
+
+<main class="main">
+
+<div id="pane-dashboard" class="pane active">
+  <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
+  <div class="content">
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="dash2">
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Overdue + due today</div><div class="tw" id="dashDue"></div></div>
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Recent activity</div><div class="tw" id="dashActs"></div></div>
+    </div>
+    <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Upcoming appointments</div><div class="tw" id="dashAppts"></div></div>
+    <div class="dash2" style="margin-top:16px">
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div><div class="tw" id="dashSources"></div></div>
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Pipeline stages</div><div class="tw" id="dashStages"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="pane-leads" class="pane">
+  <div class="topbar">
+    <div class="page-title">Leads</div>
+    <div class="tba">
+      <div class="sw"><i class="ti ti-search"></i><input type="text" id="srch" placeholder="Search…" style="width:150px" oninput="renderLeads()"></div>
+      <select id="ftemp" onchange="renderLeads()" style="width:auto"><option value="">All temps</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select>
+      <select id="ftype" onchange="renderLeads()" style="width:auto"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
+      <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
+    </div>
+  </div>
+  <div class="content"><div class="tw"><table><thead><tr><th style="width:135px">Name</th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:103px">Follow-up</th><th style="width:103px">Last contact</th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
+</div>
+
+<div id="pane-activity" class="pane">
+  <div class="topbar"><div class="page-title">Activity log</div><div class="tba"><select id="fact" onchange="renderActs()" style="width:auto"><option value="">All types</option><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option><option value="showing">Showing</option><option value="open house">Open house</option><option value="offer">Offer</option></select></div></div>
+  <div class="content"><div class="tw"><div id="actList"></div></div></div>
+</div>
+
+<div id="pane-appointments" class="pane">
+  <div class="topbar"><div class="page-title">Appointments</div><div class="tba"><button class="btn btn-purple" onclick="openApptModal()"><i class="ti ti-calendar-plus"></i> New appointment</button></div></div>
+  <div class="content"><div class="tw"><div id="apptList"></div></div></div>
+</div>
+
+<!-- Pipeline pane -->
+<div id="pane-pipeline" class="pane">
+  <div class="topbar"><div class="page-title">Pipeline</div></div>
+  <div class="content"><div class="pipeline" id="pipelineBoard"></div></div>
+</div>
+
+<!-- Properties pane -->
+<div id="pane-properties" class="pane">
+  <div class="topbar"><div class="page-title">Properties</div><div class="tba"><button class="btn btn-gold" onclick="openAddProp()"><i class="ti ti-plus"></i> Add property</button></div></div>
+  <div class="content"><div class="prop-grid" id="propGrid"></div></div>
+</div>
+
+<!-- Tasks pane -->
+<div id="pane-tasks" class="pane">
+  <div class="topbar"><div class="page-title">Tasks</div><div class="tba"><select id="ftask" onchange="renderTasks()" style="width:auto"><option value="">All tasks</option><option value="open">Open</option><option value="done">Done</option></select><button class="btn btn-gold" onclick="openAddTask()"><i class="ti ti-plus"></i> Add task</button></div></div>
+  <div class="content"><div class="tw"><div id="taskList"></div></div></div>
+</div>
+
+<!-- Commission pane -->
+<div id="pane-commission" class="pane">
+  <div class="topbar"><div class="page-title">Commission Tracker</div><div class="tba"><button class="btn btn-green" onclick="openAddDeal()"><i class="ti ti-plus"></i> Log deal</button></div></div>
+  <div class="content"><div id="commissionStats"></div><div class="tw"><div id="dealList"></div></div></div>
+</div>
+
+<!-- Agents pane -->
+<div id="pane-agents" class="pane">
+  <div class="topbar">
+    <div class="page-title">Agents</div>
+    <div class="tba">
+      <div class="sw"><i class="ti ti-search"></i><input type="text" id="agentSrch" placeholder="Search…" style="width:150px" oninput="renderAgents()"></div>
+      <select id="fagentType" onchange="renderAgents()" style="width:auto"><option value="">All types</option><option value="Buyer's Agent">Buyer's Agent</option><option value="Listing Agent">Listing Agent</option><option value="Both">Both</option></select>
+      <button class="btn btn-primary" onclick="openAddAgent()"><i class="ti ti-plus"></i> Add agent</button>
+    </div>
+  </div>
+  <div class="content"><div class="tw"><table><thead><tr><th style="width:150px">Name</th><th style="width:160px">Brokerage</th><th style="width:120px">Phone</th><th style="width:150px">Email</th><th style="width:80px">Type</th><th style="width:110px">License #</th><th style="width:80px"></th></tr></thead><tbody id="agentTbody"></tbody></table></div></div>
+</div>
+
+</main>
+</div>
+
+<!-- Lead detail panel -->
+<div class="detail-backdrop" id="detailBackdrop" onclick="closeLeadDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="dp-header">
+    <div>
+      <div class="dp-name" id="dp-name"></div>
+      <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap" id="dp-badges"></div>
+    </div>
+    <button class="dp-close" onclick="closeLeadDetail()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="dp-section" id="dp-contact"></div>
+  <div class="dp-section" id="dp-details"></div>
+  <div class="dp-section" id="dp-agent" style="display:none"></div>
+  <div class="dp-section" id="dp-notes" style="display:none"></div>
+  <div class="dp-section">
+    <div class="dp-label">Activity history</div>
+    <div id="dp-activity"></div>
+  </div>
+  <div class="dp-section">
+    <div class="dp-label">Appointments</div>
+    <div id="dp-appts"></div>
+  </div>
+  <div class="dp-actions" id="dp-actions"></div>
+</div>
+
+<!-- Property Modal -->
+<div class="modal-overlay" id="mProp"><div class="modal">
+  <div class="modal-title" id="propMT">Add property</div>
+  <div class="fg">
+    <div class="fgg full"><label>Address</label><input id="pf1" placeholder="123 Main St, Los Angeles, CA 90001"></div>
+    <div class="fgg"><label>List price</label><input id="pf2" placeholder="$750,000" type="text"></div>
+    <div class="fgg"><label>Status</label><select id="pf3"><option value="Active">Active</option><option value="Pending">Pending</option><option value="Sold">Sold</option><option value="Off Market">Off Market</option></select></div>
+    <div class="fgg"><label>Beds</label><input id="pf4" placeholder="3" type="number"></div>
+    <div class="fgg"><label>Baths</label><input id="pf5" placeholder="2" type="number"></div>
+    <div class="fgg"><label>Sq ft</label><input id="pf6" placeholder="1,200"></div>
+    <div class="fgg"><label>Type</label><select id="pf7"><option value="Single Family">Single Family</option><option value="Condo">Condo</option><option value="Multi-Family">Multi-Family</option><option value="Townhouse">Townhouse</option><option value="Land">Land</option></select></div>
+    <div class="fgg"><label>Linked lead</label><select id="pf8"><option value="">— none —</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="pf9" placeholder="HOA, parking, access code…" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mProp')">Cancel</button><button class="btn btn-gold" onclick="saveProp()">Save property</button></div>
+</div></div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="mTask"><div class="modal">
+  <div class="modal-title" id="taskMT">Add task</div>
+  <div class="fg">
+    <div class="fgg full"><label>Task</label><input id="tf1" placeholder="Call Sarah about Silver Lake showing"></div>
+    <div class="fgg"><label>Due date</label><input id="tf2" type="date"></div>
+    <div class="fgg"><label>Priority</label><select id="tf3"><option value="high">High</option><option value="normal">Normal</option><option value="low">Low</option></select></div>
+    <div class="fgg full"><label>Linked lead</label><select id="tf4"><option value="">— none —</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="tf5" placeholder="Details…" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mTask')">Cancel</button><button class="btn btn-gold" onclick="saveTask()">Save task</button></div>
+</div></div>
+
+<!-- Deal Modal -->
+<div class="modal-overlay" id="mDeal"><div class="modal">
+  <div class="modal-title">Log closed deal</div>
+  <div class="fg">
+    <div class="fgg full"><label>Lead / Client</label><select id="df1"><option value="">— select lead —</option></select></div>
+    <div class="fgg full"><label>Property address</label><input id="df2" placeholder="123 Main St, Los Angeles"></div>
+    <div class="fgg"><label>Sale price</label><input id="df3" placeholder="750000" type="number"></div>
+    <div class="fgg"><label>Commission %</label><input id="df4" placeholder="2.5" type="number" step="0.1" value="2.5"></div>
+    <div class="fgg"><label>Close date</label><input id="df5" type="date"></div>
+    <div class="fgg"><label>Side</label><select id="df6"><option value="Buyer">Buyer side</option><option value="Seller">Seller side</option><option value="Both">Both sides</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="df7" placeholder="Referral source, split details…" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mDeal')">Cancel</button><button class="btn btn-green" onclick="saveDeal()"><i class="ti ti-coin"></i> Save deal</button></div>
+</div></div>
+
+<!-- Agent Modal -->
+<div class="modal-overlay" id="mAgent"><div class="modal">
+  <div class="modal-title" id="agentMT">Add agent</div>
+  <div class="fg">
+    <div class="fgg"><label>First name</label><input id="agf1" placeholder="Jane"></div>
+    <div class="fgg"><label>Last name</label><input id="agf2" placeholder="Smith"></div>
+    <div class="fgg"><label>Brokerage</label><input id="agf3" placeholder="Compass, Keller Williams…"></div>
+    <div class="fgg"><label>Type</label><select id="agf4"><option value="Buyer's Agent">Buyer's Agent</option><option value="Listing Agent">Listing Agent</option><option value="Both">Both</option></select></div>
+    <div class="fgg"><label>Phone</label><input id="agf5" placeholder="(310) 555-0100"></div>
+    <div class="fgg"><label>Email</label><input id="agf6" placeholder="agent@brokerage.com"></div>
+    <div class="fgg"><label>License #</label><input id="agf7" placeholder="CA DRE #"></div>
+    <div class="fgg"><label>Rating</label><select id="agf8"><option value="">— none —</option><option value="⭐⭐⭐ Preferred">⭐⭐⭐ Preferred</option><option value="⭐⭐ Good">⭐⭐ Good</option><option value="⭐ Neutral">⭐ Neutral</option><option value="⚠️ Avoid">⚠️ Avoid</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="agf9" placeholder="Communication style, specialties, past deals…" style="min-height:60px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mAgent')">Cancel</button><button class="btn btn-primary" onclick="saveAgent()">Save agent</button></div>
+</div></div>
+
+<!-- Lead Modal -->
+<div class="modal-overlay" id="mLead"><div class="modal">
+  <div class="modal-title" id="leadMT">Add lead</div>
+  <div class="fg">
+    <div class="fgg"><label>First name</label><input id="lf1" placeholder="Jane"></div>
+    <div class="fgg"><label>Last name</label><input id="lf2" placeholder="Smith"></div>
+    <div class="fgg"><label>Phone</label><input id="lf3" placeholder="(310) 555-0100"></div>
+    <div class="fgg"><label>Email</label><input id="lf4" placeholder="jane@email.com"></div>
+    <div class="fgg"><label>Property interest</label><input id="lf5" placeholder="Address or budget range"></div>
+    <div class="fgg"><label>Open house date</label><input id="lf6" type="date"></div>
+    <div class="fgg"><label>Type</label><select id="lf7"><option value="buyer">Buyer</option><option value="seller">Seller</option></select></div>
+    <div class="fgg"><label>Temp</label><select id="lf8"><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select></div>
+    <div class="fgg"><label>Follow-up date</label><input id="lf9" type="date"></div>
+    <div class="fgg"><label>Follow-up method</label><select id="lf10"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
+    <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select></div>
+    <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Other">Other</option></select></div>
+    <div class="fgg full"><label>Agent name</label><input id="lf14" placeholder="First and last name"></div>
+    <div class="fgg full">
+      <label>Agent contact</label>
+      <div id="agentContactRows" style="display:flex;flex-direction:column;gap:6px"></div>
+      <button type="button" class="btn btn-sm" style="margin-top:7px" onclick="addAgentContactRow()"><i class="ti ti-plus" style="font-size:11px"></i> Add contact line</button>
+    </div>
+    <div class="fgg full"><label>Notes</label><textarea id="lf11" placeholder="Pre-approval, motivation, timeline…"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mLead')">Cancel</button><button class="btn btn-gold" onclick="saveLead()">Save lead</button></div>
+</div></div>
+
+<!-- Email Template Modal -->
+<div class="modal-overlay" id="mEmail"><div class="modal">
+  <div class="modal-title">✉️ Send Email</div>
+  <div id="emailLeadCard" class="lead-card-sm"></div>
+  <div class="fg">
+    <div class="fgg full"><label>Template</label><select id="ef0" onchange="applyEmailTemplate()"><option value="openhouse">Open House Thank-You</option><option value="followup">Follow-Up Check-In</option><option value="showing">Showing Follow-Up</option><option value="pricedrop">Price Reduction Alert</option><option value="listing">Listing Presentation Request</option><option value="custom">— Custom / Blank —</option></select></div>
+    <div class="fgg full"><label>To</label><input id="ef1" placeholder="recipient@email.com"></div>
+    <div class="fgg full"><label>Subject</label><input id="ef2"></div>
+    <div class="fgg full"><label>Message</label><textarea id="ef3" style="min-height:200px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mEmail')">Cancel</button><button class="btn btn-gold" onclick="sendEmailTemplate()"><i class="ti ti-send"></i> Send</button></div>
+</div></div>
+
+<!-- Activity Modal -->
+<div class="modal-overlay" id="mAct"><div class="modal">
+  <div class="modal-title">Log activity</div>
+  <div id="actLeadCard" class="lead-card-sm"></div>
+  <div class="fg">
+    <div class="fgg"><label>Type</label><select id="af1"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option><option value="showing">Showing</option><option value="open house">Open house</option><option value="offer">Offer</option></select></div>
+    <div class="fgg"><label>Direction</label><select id="af2"><option value="outbound">Outbound (I reached out)</option><option value="inbound">Inbound (they reached out)</option><option value="n/a">N/A</option></select></div>
+    <div class="fgg full"><label>Outcome</label><select id="af3"><option value="connected">Connected / Spoke</option><option value="no answer">No answer</option><option value="left voicemail">Left voicemail</option><option value="interested">Interested</option><option value="not interested">Not interested</option><option value="needs more time">Needs more time</option><option value="offer accepted">Offer accepted</option><option value="offer rejected">Offer rejected</option><option value="showing completed">Showing completed</option><option value="appointment set">Appointment set</option><option value="other">Other</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="af4" placeholder="What happened? Key details…"></textarea></div>
+    <div class="fgg"><label>Schedule follow-up</label><input id="af5" type="date"></div>
+    <div class="fgg"><label>Follow-up method</label><select id="af6"><option value="">— none —</option><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mAct')">Cancel</button><button class="btn btn-blue" onclick="saveAct()">Save activity</button></div>
+</div></div>
+
+<!-- Appointment Modal -->
+<div class="modal-overlay" id="mAppt"><div class="modal">
+  <div class="modal-title">New appointment</div>
+  <div class="fg">
+    <div class="fgg full"><label>Lead</label><select id="apf1"></select></div>
+    <div class="fgg full"><label>Type</label><select id="apf2"><option value="Showing">Showing</option><option value="Open house">Open house</option><option value="Listing appointment">Listing appointment</option><option value="Buyer consultation">Buyer consultation</option><option value="Offer review">Offer review</option><option value="Other">Other</option></select></div>
+    <div class="fgg full"><label>Property / address</label><input id="apf3" placeholder="123 Main St, Los Angeles"></div>
+    <div class="fgg"><label>Date</label><input id="apf4" type="date"></div>
+    <div class="fgg"><label>Time</label><input id="apf5" type="time"></div>
+    <div class="fgg full"><label>Duration</label><select id="apf6"><option value="30">30 min</option><option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option></select></div>
+    <div class="fgg full"><label>Notes</label><textarea id="apf7" placeholder="Access code, directions, what to bring…" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="ibox"><i class="ti ti-calendar-check" style="font-size:14px;flex-shrink:0"></i>Creates a Google Calendar event with 30-min popup + 60-min email reminder automatically.</div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mAppt')">Cancel</button><button class="btn btn-purple" id="apptSaveBtn" onclick="saveAppt()"><i class="ti ti-calendar-plus"></i> Create appointment</button></div>
+</div></div>
+
+<script>
+// ── CONFIG — paste your Render URL here after deploying ───────
+const BACKEND = 'https://mg-realty-backend.onrender.com';
+const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
+const DIGEST_EMAIL = 'goldenmb@gmail.com';
+
+const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1';
+let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null;
+
+function load(){
+  try{leads=JSON.parse(localStorage.getItem(SL)||'null')||seed();}catch(e){leads=seed();}
+  try{acts=JSON.parse(localStorage.getItem(SA)||'null')||[];}catch(e){acts=[];}
+  try{appts=JSON.parse(localStorage.getItem(SAP)||'null')||[];}catch(e){appts=[];}
+  try{tasks=JSON.parse(localStorage.getItem(ST)||'null')||[];}catch(e){tasks=[];}
+  try{props=JSON.parse(localStorage.getItem(SPR)||'null')||[];}catch(e){props=[];}
+  try{deals=JSON.parse(localStorage.getItem(SD)||'null')||[];}catch(e){deals=[];}
+  try{agents=JSON.parse(localStorage.getItem(SAGT)||'null')||[];}catch(e){agents=[];}
+}
+function persist(){
+  try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));}catch(e){}
+  pushToBackend();
+}
+function pushToBackend(){
+  fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads,activities:acts,appointments:appts,tasks,properties:props,deals,agents})}).catch(()=>{});
+}
+async function syncFromBackend(){
+  try{
+    const r=await fetch(BACKEND+'/crm/pull');
+    if(!r.ok)return;
+    const {ok,data}=await r.json();
+    if(!ok||!data)return;
+    let changed=false;
+    if(data.leads?.length){leads=data.leads;changed=true;}
+    if(data.activities?.length){acts=data.activities;changed=true;}
+    if(data.appointments?.length){appts=data.appointments;changed=true;}
+    if(data.tasks?.length){tasks=data.tasks;changed=true;}
+    if(data.properties?.length){props=data.properties;changed=true;}
+    if(data.deals?.length){deals=data.deals;changed=true;}
+    if(data.agents?.length){agents=data.agents;changed=true;}
+    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));}catch(e){}renderAll();}
+  }catch(e){console.warn('Backend sync failed:',e.message);}
+}
+function seed(){
+  const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().split('T')[0];};
+  return[
+    {id:'1',first:'Sarah',last:'Chen',phone:'(310) 555-0193',email:'schen@gmail.com',prop:'2BR Silver Lake ~$750k',ohdate:d(-3),temp:'hot',type:'buyer',followup:d(0),method:'call',lastcontact:d(-3),lcmethod:'call',notes:'Pre-approved $800k. Loved kitchen. School district matters.',stage:'showing',source:'Open House'},
+    {id:'2',first:'Marcus',last:'Webb',phone:'(323) 555-0144',email:'mwebb@yahoo.com',prop:'4-unit income property',ohdate:d(-7),temp:'warm',type:'buyer',followup:d(2),method:'email',lastcontact:d(-5),lcmethod:'email',notes:'Investor, cash. Wants 5%+ cap rate.',stage:'contacted',source:'Referral'},
+    {id:'3',first:'Linda',last:'Torres',phone:'(818) 555-0177',email:'ltorres@me.com',prop:'Selling Los Feliz home',ohdate:d(-1),temp:'hot',type:'seller',followup:d(1),method:'text',lastcontact:d(-1),lcmethod:'text',notes:'Needs to sell by March. Divorce — be sensitive.',stage:'offer',source:'Zillow'},
+    {id:'4',first:'Kevin',last:'Park',phone:'(310) 555-0122',email:'kpark@gmail.com',prop:'Condo under $500k',ohdate:d(-14),temp:'cold',type:'buyer',followup:d(5),method:'call',lastcontact:d(-14),lcmethod:'',notes:'First-time buyer. Still browsing.',stage:'new',source:'Instagram'},
+  ];
+}
+
+function setSyncStatus(state,msg){
+  const dot=document.getElementById('sdot'),lbl=document.getElementById('slbl');
+  dot.className='sdot'+(state==='busy'?' busy':state==='err'?' err':'');
+  lbl.textContent=msg;
+}
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');el.textContent=msg;el.className=`toast show ${type}`;
+  clearTimeout(el._t);el._t=setTimeout(()=>el.className='toast',3500);
+}
+
+async function api(path,body){
+  const r=await fetch(BACKEND+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return r.json();
+}
+
+function du(s){if(!s)return null;const t=new Date();t.setHours(0,0,0,0);const d=new Date(s);d.setHours(0,0,0,0);return Math.round((d-t)/86400000);}
+function rel(s){if(!s)return'—';const d=du(s);if(d===0)return'Today';if(d===-1)return'Yesterday';if(d<0)return Math.abs(d)+'d ago';if(d===1)return'Tomorrow';return'In '+d+'d';}
+function ffu(s,m){
+  if(!s)return'<span class="due-ok">—</span>';
+  const d=du(s),ic=m==='call'?'ti-phone':m==='text'?'ti-message':'ti-mail';
+  const lbl=d===0?'Today':d<0?Math.abs(d)+'d overdue':d===1?'Tomorrow':'In '+d+'d';
+  const cls=d<=0?'due-today':d<=2?'due-soon':'due-ok';
+  return`<span class="${cls}"><i class="ti ${ic}" style="font-size:11px;margin-right:2px"></i>${lbl}</span>`;
+}
+function tb(t){const m={hot:'b-hot',warm:'b-warm',cold:'b-cold',done:'b-done'};return`<span class="badge ${m[t]||'b-cold'}">${t}</span>`;}
+function tyb(t){
+  const k=t.toLowerCase().replace(/\s/g,'');
+  const m={call:'b-call',text:'b-text',email:'b-email',showing:'b-showing',openhouse:'b-open',offer:'b-offer'};
+  const ic={call:'ti-phone',text:'ti-message',email:'ti-mail',showing:'ti-key',openhouse:'ti-home',offer:'ti-file-text'};
+  return`<span class="badge ${m[k]||'b-call'}"><i class="ti ${ic[k]||'ti-activity'}" style="font-size:10px;margin-right:2px"></i>${t}</span>`;
+}
+
+function showPane(id,el){
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+  renderAll();
+}
+
+function updateBadges(){
+  const ov=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0).length;
+  document.getElementById('nb-leads').textContent=ov||leads.length;
+  document.getElementById('nb-leads').className='nb'+(ov?' red':'');
+  document.getElementById('nb-appts').textContent=appts.filter(a=>du(a.date)>=0).length;
+  const openTasks=tasks.filter(t=>!t.done).length;
+  document.getElementById('nb-tasks').textContent=openTasks;
+  document.getElementById('nb-tasks').className='nb'+(openTasks?' red':'');
+}
+
+function renderStats(){
+  const ov=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0).length;
+  const td=leads.filter(l=>l.temp!=='done'&&du(l.followup)===0).length;
+  const wk=leads.filter(l=>{const d=du(l.followup);return d>0&&d<=7&&l.temp!=='done';}).length;
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="sc${ov?' alert':''}"><div class="sc-lbl">Overdue</div><div class="sc-val">${ov}</div><div class="sc-sub">follow-ups past due</div></div>
+    <div class="sc${td?' warn':''}"><div class="sc-lbl">Due today</div><div class="sc-val">${td}</div><div class="sc-sub">need attention now</div></div>
+    <div class="sc"><div class="sc-lbl">This week</div><div class="sc-val">${wk}</div><div class="sc-sub">follow-ups upcoming</div></div>
+    <div class="sc"><div class="sc-lbl">Hot leads</div><div class="sc-val">${leads.filter(l=>l.temp==='hot').length}</div><div class="sc-sub">of ${leads.length} total</div></div>
+    <div class="sc"><div class="sc-lbl">Activities</div><div class="sc-val">${acts.length}</div><div class="sc-sub">all time</div></div>
+    <div class="sc"><div class="sc-lbl">Upcoming appts</div><div class="sc-val">${appts.filter(a=>du(a.date)>=0).length}</div><div class="sc-sub">on the calendar</div></div>`;
+}
+
+function renderDashDue(){
+  const urgent=leads.filter(l=>l.temp!=='done'&&du(l.followup)!==null&&du(l.followup)<=0).sort((a,b)=>(du(a.followup)||0)-(du(b.followup)||0));
+  const el=document.getElementById('dashDue');
+  if(!urgent.length){el.innerHTML='<div class="empty">Nothing overdue — nice work!</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Name</th><th>Temp</th><th>Follow-up</th></tr></thead><tbody>${urgent.slice(0,6).map(l=>`<tr class="${du(l.followup)<0?'ov-row':'td-row'}" onclick="openAct('${l.id}')"><td><div class="ns">${l.first} ${l.last}</div></td><td>${tb(l.temp)}</td><td>${ffu(l.followup,l.method)}</td></tr>`).join('')}</tbody></table>`;
+}
+function renderDashActs(){
+  const el=document.getElementById('dashActs');
+  const recent=[...acts].slice(-5).reverse();
+  if(!recent.length){el.innerHTML='<div class="empty">No activity logged yet</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Outcome</th></tr></thead><tbody>${recent.map(a=>`<tr><td><div class="ns">${a.leadName}</div><div class="nsb" style="font-family:var(--mono)">${a.date}</div></td><td>${tyb(a.type)}</td><td style="font-size:12px;color:var(--text2)">${a.outcome}</td></tr>`).join('')}</tbody></table>`;
+}
+function renderDashAppts(){
+  const el=document.getElementById('dashAppts');
+  const up=appts.filter(a=>du(a.date)>=0&&du(a.date)<=14).sort((a,b)=>a.date>b.date?1:-1).slice(0,5);
+  if(!up.length){el.innerHTML='<div class="empty">No upcoming appointments</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Date</th><th>Time</th></tr></thead><tbody>${up.map(a=>`<tr><td class="ns">${a.leadName}</td><td><span class="badge b-showing">${a.type}</span></td><td style="font-size:12px;font-family:var(--mono)">${a.date}</td><td style="font-size:12px;color:var(--text2)">${a.time}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderDashSources(){
+  const el=document.getElementById('dashSources');if(!el)return;
+  const active=leads.filter(l=>l.temp!=='done');
+  if(!active.length){el.innerHTML='<div class="empty">No leads yet</div>';return;}
+  const counts={};
+  active.forEach(l=>{const s=l.source||'Unknown';counts[s]=(counts[s]||0)+1;});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const total=active.length;
+  const colors=['#E8681A','#185FA5','#27500A','#3C3489','#633806','#791F1F','#085041'];
+  el.innerHTML=`<div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px">
+    ${sorted.map(([src,cnt],i)=>{
+      const pct=Math.round(cnt/total*100);
+      return`<div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:500">${src}</span>
+          <span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${cnt} · ${pct}%</span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${colors[i%colors.length]};border-radius:3px;transition:width 0.3s"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function renderDashStages(){
+  const el=document.getElementById('dashStages');if(!el)return;
+  const active=leads.filter(l=>l.temp!=='done');
+  if(!active.length){el.innerHTML='<div class="empty">No leads yet</div>';return;}
+  const stageOrder=['new','contacted','showing','offer','closed'];
+  const stageLabels={new:'New',contacted:'Contacted',showing:'Showing',offer:'Offer',closed:'Closed'};
+  const stageColors={new:'#9B9890',contacted:'#185FA5',showing:'#633806',offer:'#3C3489',closed:'#27500A'};
+  const counts={};
+  leads.forEach(l=>{const s=l.stage||'new';counts[s]=(counts[s]||0)+1;});
+  const total=leads.length;
+  el.innerHTML=`<div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px">
+    ${stageOrder.map(stage=>{
+      const cnt=counts[stage]||0;
+      const pct=total?Math.round(cnt/total*100):0;
+      return`<div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:500">${stageLabels[stage]}</span>
+          <span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${cnt} · ${pct}%</span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${stageColors[stage]};border-radius:3px;transition:width 0.3s"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderLeads(){
+  const s=document.getElementById('srch').value.toLowerCase(),ft=document.getElementById('ftemp').value,fty=document.getElementById('ftype').value;
+  let f=leads.filter(l=>{if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;if(ft&&l.temp!==ft)return false;if(fty&&l.type!==fty)return false;return true;}).sort((a,b)=>(du(a.followup)??9999)-(du(b.followup)??9999));
+  const tbody=document.getElementById('ltbody');
+  if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">No leads match</div></td></tr>`;return;}
+  tbody.innerHTML=f.map(l=>{
+    const d=du(l.followup),rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
+    return`<tr class="${rc}" onclick="openLeadDetail('${l.id}')" style="cursor:pointer"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td><td style="white-space:nowrap"><button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
+  }).join('');
+}
+
+function renderActs(){
+  const ft=document.getElementById('fact').value,f=[...acts].filter(a=>!ft||a.type===ft).reverse();
+  const el=document.getElementById('actList');
+  if(!f.length){el.innerHTML='<div class="empty">No activity yet. Tap the activity icon on a lead to log an interaction.</div>';return;}
+  const icM={call:'ti-phone',text:'ti-message',email:'ti-mail',showing:'ti-key','open house':'ti-home',offer:'ti-file-text'};
+  const bgM={call:'#E6F1FB',text:'#EAF3DE',email:'#FAEEDA',showing:'#EEEDFE','open house':'#FAECE7',offer:'#E1F5EE'};
+  const fgM={call:'#185FA5',text:'#3B6D11',email:'#854F0B',showing:'#3C3489','open house':'#993C1D',offer:'#085041'};
+  el.innerHTML=`<div class="act-feed">${f.map(a=>`<div class="ai"><div class="aic" style="background:${bgM[a.type]||'#E6F1FB'};color:${fgM[a.type]||'#185FA5'}"><i class="ti ${icM[a.type]||'ti-activity'}"></i></div><div style="flex:1;min-width:0"><div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center"><span style="font-weight:600">${a.leadName}</span>${tyb(a.type)}<span class="badge b-neutral">${a.direction}</span><span class="badge b-neutral">${a.outcome}</span></div>${a.notes?`<div style="font-size:12px;color:var(--text2);margin-top:3px">${a.notes}</div>`:''} ${a.fuDate?`<div style="font-size:11px;color:var(--warm-txt);margin-top:3px"><i class="ti ti-calendar" style="font-size:11px;margin-right:2px"></i>Follow-up: ${a.fuDate}${a.fuMethod?' via '+a.fuMethod:''}</div>`:''}<div style="font-size:11px;color:var(--text3);margin-top:3px;font-family:var(--mono)">${a.date} · ${a.time}</div></div></div>`).join('')}</div>`;
+}
+
+function renderAppts(){
+  const el=document.getElementById('apptList');
+  const sorted=[...appts].sort((a,b)=>a.date>b.date?1:-1);
+  if(!sorted.length){el.innerHTML='<div class="empty">No appointments yet. Click "New appointment" — syncs to Google Calendar automatically.</div>';return;}
+  const up=sorted.filter(a=>du(a.date)>=0),past=sorted.filter(a=>du(a.date)<0);
+  function card(a){
+    const d=du(a.date),lbl=d===0?'Today':d===1?'Tomorrow':d<0?Math.abs(d)+'d ago':'In '+d+'d';
+    return`<div class="appt-item"><div class="appt-date-box"><div class="appt-day">${new Date(a.date+'T12:00').getDate()}</div><div class="appt-mo">${new Date(a.date+'T12:00').toLocaleString('default',{month:'short'})}</div></div><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-weight:600">${a.leadName}</span><span class="badge b-showing">${a.type}</span><span class="badge ${d>=0&&d<=1?'b-hot':'b-neutral'}">${lbl}</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px">${a.address||''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${a.time} · ${a.duration} min${a.notes?' · '+a.notes:''}</div><div style="font-size:11px;color:var(--purple);margin-top:3px"><i class="ti ti-calendar-check" style="font-size:11px;margin-right:2px"></i>Google Calendar event created</div></div><button class="btn btn-red btn-sm" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button></div>`;
+  }
+  el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
+}
+
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashSources();renderDashStages();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();updateBadges();}
+
+async function sendDigest(){
+  setSyncStatus('busy','Sending digest…');
+  try{
+    const overdue=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0);
+    const dueToday=leads.filter(l=>l.temp!=='done'&&du(l.followup)===0);
+    const dueWeek=leads.filter(l=>{const d=du(l.followup);return d>0&&d<=7&&l.temp!=='done';});
+    if(!overdue.length&&!dueToday.length&&!dueWeek.length){toast('No follow-ups due — digest skipped','info');setSyncStatus('ok','Ready');return;}
+    const res=await api('/gmail/digest',{
+      to:DIGEST_EMAIL,
+      subject:`🏡 MG Realty — Daily Lead Digest ${new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`,
+      overdue,dueToday,dueWeek,
+      appointments:appts.filter(a=>du(a.date)>=0&&du(a.date)<=7),
+      recentActivity:[...acts].slice(-5).reverse()
+    });
+    if(res.ok){setSyncStatus('ok','Digest sent');toast('Digest sent to '+DIGEST_EMAIL);}
+    else throw new Error(res.error||'failed');
+  }catch(e){setSyncStatus('err','Digest failed');toast('Digest failed: '+e.message,'err');}
+}
+
+async function backupToSheet(){
+  setSyncStatus('busy','Backing up…');
+  try{
+    const csv=rows=>[...rows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const lH=['ID','First','Last','Phone','Email','Property','OH Date','Temp','Type','Follow-up','Method','Last Contact','LC Method','Stage','Source','Agent Name','Agent Contacts','Notes'];
+    const lR=leads.map(l=>[l.id,l.first,l.last,l.phone||'',l.email||'',l.prop||'',l.ohdate||'',l.temp,l.type,l.followup||'',l.method||'',l.lastcontact||'',l.lcmethod||'',l.stage||'',l.source||'',l.agentName||'',(l.agentContacts||[]).map(c=>c.type+': '+c.value).join(' | '),l.notes||'']);
+    const aH=['ID','Lead','Date','Time','Type','Direction','Outcome','Notes','Follow-up'];
+    const aR=acts.map(a=>[a.id,a.leadName,a.date,a.time,a.type,a.direction,a.outcome,a.notes||'',a.fuDate?(a.fuDate+(a.fuMethod?' via '+a.fuMethod:'')):'']);
+    const tH=['ID','Title','Due','Priority','Done','Lead','Notes'];
+    const tR=tasks.map(t=>[t.id,t.title,t.due||'',t.priority,t.done?'Yes':'No',(leads.find(l=>l.id===t.leadId)||{first:'',last:''}).first+' '+(leads.find(l=>l.id===t.leadId)||{first:'',last:''}).last,t.notes||'']);
+    const pH=['ID','Address','Price','Status','Beds','Baths','Sqft','Type','Linked Lead','Notes'];
+    const pR=props.map(p=>[p.id,p.address,p.price||'',p.status,p.beds||'',p.baths||'',p.sqft||'',p.type,(leads.find(l=>l.id===p.leadId)||{first:'',last:''}).first+' '+(leads.find(l=>l.id===p.leadId)||{first:'',last:''}).last,p.notes||'']);
+    const dH=['ID','Lead','Address','Sale Price','Commission %','GCI','Close Date','Side','Notes'];
+    const dR=deals.map(d=>{const gci=((parseFloat(d.salePrice)||0)*(parseFloat(d.commissionPct)||2.5)/100).toFixed(0);return[d.id,(leads.find(l=>l.id===d.leadId)||{first:'',last:''}).first+' '+(leads.find(l=>l.id===d.leadId)||{first:'',last:''}).last,d.address,d.salePrice||'',d.commissionPct||'2.5',gci,d.closeDate||'',d.side||'',d.notes||''];});
+    const agH=['ID','First','Last','Brokerage','Type','Phone','Email','License','Rating','Notes'];
+    const agR=agents.map(a=>[a.id,a.first,a.last,a.brokerage||'',a.agentType||'',a.phone||'',a.email||'',a.license||'',a.rating||'',a.notes||'']);
+    const res=await api('/drive/backup',{
+      sheetId:SHEET_ID,
+      leadsCsv:csv([lH,...lR]),
+      activityCsv:csv([aH,...aR]),
+      tasksCsv:csv([tH,...tR]),
+      propsCsv:csv([pH,...pR]),
+      dealsCsv:csv([dH,...dR]),
+      agentsCsv:csv([agH,...agR])
+    });
+    if(res.ok){setSyncStatus('ok','Backed up');toast('Backed up 6 sheets to Google Sheets ✓');}
+    else throw new Error(res.error||'failed');
+  }catch(e){setSyncStatus('err','Backup failed');toast('Backup failed: '+e.message,'err');}
+}
+
+function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';document.getElementById('lf12').value='new';document.getElementById('lf13').value='Open House';document.getElementById('lf14').value='';document.getElementById('agentContactRows').innerHTML='';addAgentContactRow();openModal('mLead');}
+function openEdit(id){
+  editLeadId=id;const l=leads.find(x=>x.id===id);
+  document.getElementById('leadMT').textContent='Edit lead';
+  document.getElementById('lf1').value=l.first||'';document.getElementById('lf2').value=l.last||'';
+  document.getElementById('lf3').value=l.phone||'';document.getElementById('lf4').value=l.email||'';
+  document.getElementById('lf5').value=l.prop||'';document.getElementById('lf6').value=l.ohdate||'';
+  document.getElementById('lf7').value=l.type||'buyer';document.getElementById('lf8').value=l.temp||'warm';
+  document.getElementById('lf9').value=l.followup||'';document.getElementById('lf10').value=l.method||'call';
+  document.getElementById('lf11').value=l.notes||'';
+  document.getElementById('lf12').value=l.stage||'new';
+  document.getElementById('lf13').value=l.source||'Open House';
+  document.getElementById('lf14').value=l.agentName||'';
+  document.getElementById('agentContactRows').innerHTML='';
+  const agContacts=l.agentContacts||[];
+  if(agContacts.length){agContacts.forEach(c=>addAgentContactRow(c.type,c.value));}else{addAgentContactRow();}
+  openModal('mLead');
+}
+function saveLead(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('lf1')){alert('First name required');return;}
+  const ex=editLeadId?leads.find(l=>l.id===editLeadId):{};
+  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,agentName:g('lf14'),agentContacts:getAgentContacts(),lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
+  if(editLeadId){leads=leads.map(l=>l.id===editLeadId?lead:l);}else{leads.push(lead);}
+  editLeadId=null;persist();closeModal('mLead');renderAll();toast(editLeadId?'Lead updated':'Lead added');
+}
+function delLead(id){if(confirm('Delete this lead and all activity?')){leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();renderAll();}}
+
+function openAct(id){
+  actLeadId=id;const l=leads.find(x=>x.id===id);
+  document.getElementById('actLeadCard').innerHTML=`<div class="avatar">${l.first[0]}${l.last[0]}</div><div><div style="font-weight:600;font-size:13px">${l.first} ${l.last}</div><div style="font-size:11px;color:var(--text2)">${l.phone||''} · ${l.prop||''}</div></div>`;
+  document.getElementById('af4').value='';document.getElementById('af5').value='';document.getElementById('af6').value='';
+  openModal('mAct');
+}
+function saveAct(){
+  const l=leads.find(x=>x.id===actLeadId);const now=new Date();
+  const act={id:'a'+Date.now(),leadId:actLeadId,leadName:`${l.first} ${l.last}`,date:now.toISOString().split('T')[0],time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),type:document.getElementById('af1').value,direction:document.getElementById('af2').value,outcome:document.getElementById('af3').value,notes:document.getElementById('af4').value.trim(),fuDate:document.getElementById('af5').value,fuMethod:document.getElementById('af6').value};
+  acts.push(act);
+  leads=leads.map(ld=>{if(ld.id!==actLeadId)return ld;const u={...ld,lastcontact:act.date,lcmethod:act.type};if(act.fuDate){u.followup=act.fuDate;if(act.fuMethod)u.method=act.fuMethod;}return u;});
+  persist();closeModal('mAct');renderAll();toast('Activity logged');
+}
+
+function openApptModal(){document.getElementById('apf1').innerHTML=leads.map(l=>`<option value="${l.id}">${l.first} ${l.last} — ${l.prop||l.type}</option>`).join('');openModal('mAppt');}
+async function saveAppt(){
+  const leadId=document.getElementById('apf1').value,l=leads.find(x=>x.id===leadId);
+  const date=document.getElementById('apf4').value,time=document.getElementById('apf5').value;
+  if(!date||!time){alert('Date and time required');return;}
+  const appt={id:'ap'+Date.now(),leadId,leadName:`${l.first} ${l.last}`,type:document.getElementById('apf2').value,address:document.getElementById('apf3').value.trim(),date,time,duration:document.getElementById('apf6').value,notes:document.getElementById('apf7').value.trim()};
+  appts.push(appt);persist();closeModal('mAppt');renderAll();
+  setSyncStatus('busy','Creating calendar event…');document.getElementById('apptSaveBtn').disabled=true;
+  try{
+    const endDt=new Date(`${date}T${time}:00`);endDt.setMinutes(endDt.getMinutes()+parseInt(appt.duration));
+    const res=await api('/calendar/create',{title:`🏡 ${appt.type} — ${l.first} ${l.last}`,start:`${date}T${time}:00`,end:endDt.toISOString().slice(0,19),location:appt.address||'TBD',description:`Lead: ${l.first} ${l.last} | Phone: ${l.phone||'N/A'} | Email: ${l.email||'N/A'} | Property: ${l.prop||'N/A'}${appt.notes?'\nNotes: '+appt.notes:''}`});
+    if(res.ok){setSyncStatus('ok','Calendar event created');toast('Appointment saved + calendar event created');}
+    else throw new Error(res.error||'failed');
+  }catch(e){setSyncStatus('err','Calendar sync failed');toast('Appointment saved — calendar sync failed','err');}
+  document.getElementById('apptSaveBtn').disabled=false;
+}
+function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(a=>a.id!==id);persist();renderAll();}}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+load();renderAll();syncFromBackend();
+
+// ── Lead detail panel ─────────────────────────────────────────
+function openLeadDetail(id){
+  const l=leads.find(x=>x.id===id);if(!l)return;
+  const stageLabels={new:'New',contacted:'Contacted',showing:'Showing',offer:'Offer',closed:'Closed'};
+  const stageCols={new:'b-neutral',contacted:'b-call',showing:'b-showing',offer:'b-offer',closed:'b-done'};
+
+  document.getElementById('dp-name').textContent=l.first+' '+l.last;
+  document.getElementById('dp-badges').innerHTML=
+    tb(l.temp)+
+    `<span class="badge b-neutral" style="text-transform:capitalize">${l.type}</span>`+
+    `<span class="badge ${stageCols[l.stage||'new']}">${stageLabels[l.stage||'new']}</span>`+
+    (l.source?`<span class="badge b-neutral">${l.source}</span>`:'');
+
+  // Contact
+  document.getElementById('dp-contact').innerHTML=`
+    <div class="dp-label">Contact</div>
+    ${l.phone?`<div class="dp-row"><i class="ti ti-phone"></i><a href="tel:${l.phone}" style="color:inherit;text-decoration:none">${l.phone}</a></div>`:''}
+    ${l.email?`<div class="dp-row"><i class="ti ti-mail"></i><a href="mailto:${l.email}" style="color:var(--blue);text-decoration:none">${l.email}</a></div>`:''}
+    ${!l.phone&&!l.email?'<div style="font-size:12px;color:var(--text3)">No contact info on file</div>':''}`;
+
+  // Details
+  const fuD=l.followup?du(l.followup):null;
+  const fuStr=fuD===null?'—':fuD===0?'Today':fuD<0?Math.abs(fuD)+'d overdue':fuD===1?'Tomorrow':'In '+fuD+'d';
+  const fuCls=fuD!==null&&fuD<=0?'color:var(--red)':fuD!==null&&fuD<=2?'color:var(--amber)':'';
+  document.getElementById('dp-details').innerHTML=`
+    <div class="dp-label">Details</div>
+    ${l.prop?`<div class="dp-row"><i class="ti ti-home"></i><span>${l.prop}</span></div>`:''}
+    ${l.ohdate?`<div class="dp-row"><i class="ti ti-door-enter"></i><span>Open house: ${l.ohdate}</span></div>`:''}
+    <div class="dp-row"><i class="ti ti-calendar-due"></i><span style="${fuCls}">Follow-up: ${fuStr}${l.method?' via '+l.method:''}</span></div>
+    ${l.lastcontact?`<div class="dp-row"><i class="ti ti-clock"></i><span>Last contact: ${rel(l.lastcontact)}${l.lcmethod?' via '+l.lcmethod:''}</span></div>`:''}`;
+
+  // Agent
+  const agSec=document.getElementById('dp-agent');
+  if(l.agentName||(l.agentContacts&&l.agentContacts.length)){
+    agSec.style.display='';
+    agSec.innerHTML=`<div class="dp-label">Agent</div>
+      ${l.agentName?`<div class="dp-row"><i class="ti ti-id-badge"></i><span style="font-weight:600">${l.agentName}</span></div>`:''}
+      ${(l.agentContacts||[]).map(c=>`<div class="dp-row"><i class="ti ti-${c.type==='cell'?'phone':c.type==='email'?'mail':'dots-circle-horizontal'}"></i><span>${c.value} <span style="font-size:10px;color:var(--text3)">${c.type}</span></span></div>`).join('')}`;
+  } else { agSec.style.display='none'; }
+
+  // Notes
+  const notesSec=document.getElementById('dp-notes');
+  if(l.notes){
+    notesSec.style.display='';
+    notesSec.innerHTML=`<div class="dp-label">Notes</div><div style="font-size:13px;line-height:1.6;color:var(--text2);white-space:pre-wrap">${l.notes}</div>`;
+  } else { notesSec.style.display='none'; }
+
+  // Activity
+  const myActs=[...acts].filter(a=>a.leadId===id).reverse().slice(0,8);
+  const icM={call:'ti-phone',text:'ti-message',email:'ti-mail',showing:'ti-key','open house':'ti-home',offer:'ti-file-text'};
+  document.getElementById('dp-activity').innerHTML=myActs.length
+    ?myActs.map(a=>`<div class="dp-act-mini">
+        <i class="ti ${icM[a.type]||'ti-activity'}" style="font-size:13px;color:var(--text3);margin-top:1px;flex-shrink:0"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:500">${a.type} · ${a.outcome}</div>
+          <div style="color:var(--text3);font-size:11px;margin-top:1px">${a.date}${a.notes?' · '+a.notes.substring(0,60):''}</div>
+        </div>
+      </div>`).join('')
+    :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No activity logged yet</div>';
+
+  // Appointments
+  const myAppts=appts.filter(a=>a.leadId===id).sort((a,b)=>a.date>b.date?1:-1).slice(0,5);
+  document.getElementById('dp-appts').innerHTML=myAppts.length
+    ?myAppts.map(a=>{
+        const d=du(a.date);
+        const lbl=d===0?'Today':d===1?'Tomorrow':d<0?Math.abs(d)+'d ago':'In '+d+'d';
+        return`<div class="dp-act-mini">
+          <i class="ti ti-calendar" style="font-size:13px;color:var(--text3);margin-top:1px;flex-shrink:0"></i>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:500">${a.type} · <span style="color:${d<0?'var(--text3)':d<=1?'var(--red)':'var(--text)'}">${lbl}</span></div>
+            <div style="color:var(--text3);font-size:11px;margin-top:1px">${a.date} ${a.time}${a.address?' · '+a.address:''}</div>
+          </div>
+        </div>`;
+      }).join('')
+    :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No appointments scheduled</div>';
+
+  // Actions
+  document.getElementById('dp-actions').innerHTML=`
+    <button class="btn btn-blue" onclick="closeLeadDetail();openAct('${id}')"><i class="ti ti-activity"></i> Log activity</button>
+    <button class="btn btn-gold" onclick="closeLeadDetail();openEmailTemplate('${id}')"><i class="ti ti-mail"></i> Send email</button>
+    <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
+    <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
+
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('detailBackdrop').classList.add('open');
+}
+function closeLeadDetail(){
+  document.getElementById('detailPanel').classList.remove('open');
+  document.getElementById('detailBackdrop').classList.remove('open');
+}
+
+// ── Agents ────────────────────────────────────────────────────
+function addAgentContactRow(type='cell', value=''){
+  const container=document.getElementById('agentContactRows');if(!container)return;
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;gap:6px;align-items:center';
+  row.innerHTML=`<input placeholder="Contact info" value="${value.replace(/"/g,'&quot;')}" style="flex:1;font-family:var(--font);font-size:13px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none" class="agent-contact-val"><select class="agent-contact-type" style="width:auto;font-family:var(--font);font-size:13px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none"><option value="cell"${type==='cell'?' selected':''}>Cell</option><option value="email"${type==='email'?' selected':''}>Email</option><option value="other"${type==='other'?' selected':''}>Other</option></select><button type="button" onclick="this.parentElement.remove()" style="padding:6px 8px;border-radius:var(--r);border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-size:12px;display:inline-flex;align-items:center"><i class="ti ti-x" style="font-size:11px"></i></button>`;
+  container.appendChild(row);
+}
+function getAgentContacts(){
+  return Array.from(document.querySelectorAll('#agentContactRows > div')).map(row=>({value:row.querySelector('.agent-contact-val').value.trim(),type:row.querySelector('.agent-contact-type').value})).filter(c=>c.value);
+}
+function renderAgents(){
+  const tbody=document.getElementById('agentTbody');if(!tbody)return;
+  const s=(document.getElementById('agentSrch')||{}).value?.toLowerCase()||'';
+  const ft=(document.getElementById('fagentType')||{}).value||'';
+  let f=agents.filter(a=>{
+    if(s&&!(a.first+' '+a.last+' '+(a.brokerage||'')).toLowerCase().includes(s))return false;
+    if(ft&&a.agentType!==ft)return false;
+    return true;
+  }).sort((a,b)=>(a.last||'').localeCompare(b.last||''));
+  if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">${agents.length?'No agents match':'No agents yet. Click "Add agent" to build your network.'}</div></td></tr>`;return;}
+  const ratingColor={['⭐⭐⭐ Preferred']:'var(--green)',['⭐⭐ Good']:'var(--blue)',['⭐ Neutral']:'var(--text2)',['⚠️ Avoid']:'var(--red)'};
+  tbody.innerHTML=f.map(a=>`<tr>
+    <td><div class="ns">${a.first} ${a.last}</div>${a.rating?`<div class="nsb" style="color:${ratingColor[a.rating]||'var(--text2)'}">${a.rating}</div>`:''}</td>
+    <td style="font-size:12px;color:var(--text2)">${a.brokerage||'—'}</td>
+    <td style="font-size:12px">${a.phone||'—'}</td>
+    <td style="font-size:12px;color:var(--blue)">${a.email?`<a href="mailto:${a.email}" style="color:inherit;text-decoration:none">${a.email}</a>`:'—'}</td>
+    <td><span class="badge b-neutral" style="font-size:10px">${a.agentType||'—'}</span></td>
+    <td style="font-size:11px;color:var(--text2);font-family:var(--mono)">${a.license||'—'}</td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-sm" onclick="openEditAgent('${a.id}')"><i class="ti ti-edit"></i></button>
+      <button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delAgent('${a.id}')"><i class="ti ti-trash"></i></button>
+    </td>
+  </tr>`).join('');
+}
+function openAddAgent(){
+  editAgentId=null;document.getElementById('agentMT').textContent='Add agent';
+  ['agf1','agf2','agf3','agf5','agf6','agf7','agf9'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('agf4').value="Buyer's Agent";document.getElementById('agf8').value='';
+  openModal('mAgent');
+}
+function openEditAgent(id){
+  editAgentId=id;const a=agents.find(x=>x.id===id);
+  document.getElementById('agentMT').textContent='Edit agent';
+  document.getElementById('agf1').value=a.first||'';document.getElementById('agf2').value=a.last||'';
+  document.getElementById('agf3').value=a.brokerage||'';document.getElementById('agf4').value=a.agentType||"Buyer's Agent";
+  document.getElementById('agf5').value=a.phone||'';document.getElementById('agf6').value=a.email||'';
+  document.getElementById('agf7').value=a.license||'';document.getElementById('agf8').value=a.rating||'';
+  document.getElementById('agf9').value=a.notes||'';
+  openModal('mAgent');
+}
+function saveAgent(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('agf1')&&!g('agf2')){alert('Name required');return;}
+  const agent={id:editAgentId||'ag'+Date.now(),first:g('agf1'),last:g('agf2'),brokerage:g('agf3'),agentType:document.getElementById('agf4').value,phone:g('agf5'),email:g('agf6'),license:g('agf7'),rating:document.getElementById('agf8').value,notes:g('agf9')};
+  if(editAgentId){agents=agents.map(a=>a.id===editAgentId?agent:a);}else{agents.push(agent);}
+  editAgentId=null;persist();closeModal('mAgent');renderAgents();toast(editAgentId?'Agent updated':'Agent added');
+}
+function delAgent(id){if(confirm('Remove this agent?')){agents=agents.filter(a=>a.id!==id);persist();renderAgents();}}
+
+// ── Email templates ───────────────────────────────────────────
+let emailLeadId = null;
+
+const EMAIL_TEMPLATES = {
+  openhouse: l => ({
+    subject: `Thank you for visiting the open house!`,
+    body:
+`Hi ${l.first},
+
+Thank you so much for stopping by the open house${l.prop ? ' for ' + l.prop : ''}! It was great meeting you.
+
+${l.notes ? 'Based on what you shared — ' + l.notes.substring(0, 100) + (l.notes.length > 100 ? '…' : '') + '\n\n' : ''}I'd love to help you find the perfect property. Feel free to reach out anytime with questions or to schedule a private showing.
+
+Looking forward to working with you!
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  followup: l => ({
+    subject: `Checking in — ${l.prop || 'your home search'}`,
+    body:
+`Hi ${l.first},
+
+Just wanted to check in and see how things are going on your end${l.prop ? ' with ' + l.prop : ''}.
+
+The market has been moving quickly, and I want to make sure you're getting the right opportunities before they're gone.
+
+Do you have 10 minutes this week for a quick call? I have a few ideas I think would be a great fit for you.
+
+Talk soon,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  showing: l => ({
+    subject: `How did you feel about the showing?`,
+    body:
+`Hi ${l.first},
+
+Thanks for taking the time to tour${l.prop ? ' ' + l.prop : ' the property'} — I hope it gave you a good feel for what's possible!
+
+I'd love to hear your honest thoughts. Did it check the boxes, or should we keep looking? Even a quick reply helps me zero in on exactly what's right for you.
+
+Happy to set up more showings this week if you're ready to keep moving.
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  pricedrop: l => ({
+    subject: `Price reduction on a property you might love`,
+    body:
+`Hi ${l.first},
+
+Good news — a property that matches what you're looking for just had a price reduction.
+
+${l.prop ? 'Property: ' + l.prop + '\n\n' : ''}This kind of move usually signals the seller is motivated and ready to deal. It's worth a look before other buyers jump on it.
+
+Want me to book a showing this week? Reply here or give me a call.
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  listing: l => ({
+    subject: `Let's talk about getting your home sold`,
+    body:
+`Hi ${l.first},
+
+I wanted to reach out personally — if you're thinking about selling${l.prop ? ' ' + l.prop : ' your home'}, now is a great time to have a conversation.
+
+I've been working the ${l.prop ? l.prop.split(',').pop()?.trim() || 'LA' : 'LA'} market closely and I have a clear picture of what buyers are looking for right now and how to get you top dollar.
+
+I'd love to put together a no-pressure market analysis for you. Would you be open to a 20-minute call or meeting this week?
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  custom: () => ({ subject: '', body: '' })
+};
+
+function openEmailTemplate(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  emailLeadId = id;
+  document.getElementById('emailLeadCard').innerHTML = `<div class="avatar">${l.first[0]}${l.last[0]}</div><div><div style="font-weight:600;font-size:13px">${l.first} ${l.last}</div><div style="font-size:11px;color:var(--text2)">${l.email||'No email on file'} · ${l.prop||''}</div></div>`;
+  document.getElementById('ef1').value = l.email || '';
+  // Default template based on lead type
+  const defaultTpl = l.type === 'seller' ? 'listing' : 'openhouse';
+  document.getElementById('ef0').value = defaultTpl;
+  applyEmailTemplate();
+  openModal('mEmail');
+}
+
+function applyEmailTemplate() {
+  const l = leads.find(x => x.id === emailLeadId);
+  if (!l) return;
+  const key = document.getElementById('ef0').value;
+  const tpl = EMAIL_TEMPLATES[key] ? EMAIL_TEMPLATES[key](l) : { subject: '', body: '' };
+  document.getElementById('ef2').value = tpl.subject;
+  document.getElementById('ef3').value = tpl.body;
+}
+
+async function sendEmailTemplate() {
+  const to      = document.getElementById('ef1').value.trim();
+  const subject = document.getElementById('ef2').value.trim();
+  const text    = document.getElementById('ef3').value.trim();
+  if (!to) { toast('Please enter a recipient email', 'error'); return; }
+  if (!to.includes('@')) { toast('Invalid email address', 'error'); return; }
+  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+    <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+      <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:60px;max-width:180px;object-fit:contain;display:block;margin:0 auto">
+    </div>
+    <div style="padding:28px 24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 8px 8px;white-space:pre-line;font-size:14px;line-height:1.7;color:#333">
+      ${text.replace(/\n/g,'<br>')}
+    </div>
+    <div style="padding:14px 24px;background:#F7F6F2;border:1px solid #eee;border-top:none;border-radius:0 0 8px 8px;font-size:11px;color:#999;text-align:center">
+      MG Realty · Los Angeles, CA · (323) 688-3855
+    </div>
+  </div>`;
+  setSyncStatus('busy', 'Sending email…');
+  try {
+    await api('/email/send', { to, subject, html });
+    closeModal('mEmail');
+    toast(`✉️ Email sent to ${to}`, 'success');
+    setSyncStatus('ok', 'Ready');
+  } catch(e) {
+    toast('Email failed — check logs', 'error');
+    setSyncStatus('ok', 'Ready');
+  }
+}
+
+// ── Pipeline ──────────────────────────────────────────────────
+function renderPipeline(){
+  const board=document.getElementById('pipelineBoard');if(!board)return;
+  const stages=['new','contacted','showing','offer','closed'];
+  const labels={new:'New',contacted:'Contacted',showing:'Showing',offer:'Offer',closed:'Closed'};
+  const colors={new:'var(--text2)',contacted:'var(--blue)',showing:'var(--amber)',offer:'var(--purple)',closed:'var(--green)'};
+  board.innerHTML=stages.map(stage=>{
+    const group=leads.filter(l=>l.stage===stage).sort((a,b)=>(du(a.followup)??9999)-(du(b.followup)??9999));
+    const cards=group.length===0
+      ?'<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">No leads</div>'
+      :group.map(l=>{
+        const d=l.followup?du(l.followup):null;
+        const fuCls=d===null?'color:var(--text3)':d<0?'color:var(--red);font-weight:600':d===0?'color:var(--red)':d<=2?'color:var(--amber)':'color:var(--text3)';
+        const fuStr=d===null?'No follow-up':d===0?'Due today':d<0?Math.abs(d)+'d overdue':d===1?'Tomorrow':'In '+d+'d';
+        const icMethod={call:'ti-phone',text:'ti-message',email:'ti-mail'};
+        return`<div class="pipe-card" onclick="openLeadDetail('${l.id}')" style="cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:4px">
+            <div class="pipe-card-name">${l.first} ${l.last}</div>
+            ${tb(l.temp)}
+          </div>
+          ${l.prop?`<div class="pipe-card-prop"><i class="ti ti-home" style="font-size:10px;margin-right:3px"></i>${l.prop}</div>`:''}
+          <div style="font-size:11px;margin-top:6px;display:flex;align-items:center;gap:4px;${fuCls}">
+            <i class="ti ${l.method?icMethod[l.method]||'ti-calendar':'ti-calendar'}" style="font-size:10px"></i>${fuStr}
+          </div>
+          ${l.notes?`<div style="font-size:11px;color:var(--text3);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${l.notes.substring(0,55)}${l.notes.length>55?'…':''}</div>`:''}
+          <div class="pipe-card-footer" style="margin-top:8px">
+            ${l.source?`<span style="font-size:10px;color:var(--text3)">${l.source}</span>`:''}
+            <div style="margin-left:auto;display:flex;gap:3px">
+              <button class="btn btn-sm" title="Log activity" onclick="event.stopPropagation();openAct('${l.id}')"><i class="ti ti-activity" style="font-size:11px"></i></button>
+              <button class="btn btn-sm" title="Edit" onclick="event.stopPropagation();openEdit('${l.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    return`<div class="pipe-col">
+      <div class="pipe-col-hd"><span class="pipe-col-title" style="color:${colors[stage]}">${labels[stage]}</span><span class="pipe-count">${group.length}</span></div>
+      <div class="pipe-col-body">${cards}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Properties ────────────────────────────────────────────────
+function renderProperties(){
+  const grid=document.getElementById('propGrid');if(!grid)return;
+  if(!props.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">No properties yet. Click "Add property" to start tracking listings and inventory.</div>';return;}
+  const statBadge=s=>s==='Active'?'b-hot':s==='Pending'?'b-offer':s==='Sold'?'b-done':'b-neutral';
+  grid.innerHTML=props.map(p=>{
+    const linked=p.leadId?leads.find(l=>l.id===p.leadId):null;
+    const price=p.price?'$'+Number(p.price).toLocaleString():'';
+    return`<div class="prop-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <span class="badge ${statBadge(p.status)}">${p.status}</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm" onclick="openEditProp('${p.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+          <button class="btn btn-red btn-sm" onclick="delProp('${p.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+        </div>
+      </div>
+      <div class="prop-addr">${p.address}</div>
+      ${price?`<div class="prop-price">${price}</div>`:''}
+      <div class="prop-meta">
+        ${p.beds?`<span><i class="ti ti-bed" style="font-size:11px;margin-right:2px"></i>${p.beds} bd</span>`:''}
+        ${p.baths?`<span><i class="ti ti-bath" style="font-size:11px;margin-right:2px"></i>${p.baths} ba</span>`:''}
+        ${p.sqft?`<span>${p.sqft} sqft</span>`:''}
+        ${p.type?`<span>${p.type}</span>`:''}
+      </div>
+      ${linked?`<div style="font-size:11px;color:var(--blue);margin-top:8px;display:flex;align-items:center;gap:4px"><i class="ti ti-user" style="font-size:11px"></i>${linked.first} ${linked.last}</div>`:''}
+      ${p.notes?`<div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.4">${p.notes}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function openAddProp(){
+  editPropId=null;
+  document.getElementById('propMT').textContent='Add property';
+  ['pf1','pf2','pf4','pf5','pf6','pf9'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pf3').value='Active';document.getElementById('pf7').value='Single Family';
+  document.getElementById('pf8').innerHTML='<option value="">— none —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  document.getElementById('pf8').value='';openModal('mProp');
+}
+function openEditProp(id){
+  editPropId=id;const p=props.find(x=>x.id===id);
+  document.getElementById('propMT').textContent='Edit property';
+  document.getElementById('pf1').value=p.address||'';document.getElementById('pf2').value=p.price||'';
+  document.getElementById('pf3').value=p.status||'Active';document.getElementById('pf4').value=p.beds||'';
+  document.getElementById('pf5').value=p.baths||'';document.getElementById('pf6').value=p.sqft||'';
+  document.getElementById('pf7').value=p.type||'Single Family';
+  document.getElementById('pf8').innerHTML='<option value="">— none —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  document.getElementById('pf8').value=p.leadId||'';document.getElementById('pf9').value=p.notes||'';
+  openModal('mProp');
+}
+function saveProp(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('pf1')){alert('Address required');return;}
+  const prop={id:editPropId||'p'+Date.now(),address:g('pf1'),price:g('pf2').replace(/[$,]/g,''),status:document.getElementById('pf3').value,beds:g('pf4'),baths:g('pf5'),sqft:g('pf6'),type:document.getElementById('pf7').value,leadId:document.getElementById('pf8').value,notes:g('pf9')};
+  if(editPropId){props=props.map(p=>p.id===editPropId?prop:p);}else{props.push(prop);}
+  editPropId=null;persist();closeModal('mProp');renderProperties();toast(prop.id&&editPropId?'Property updated':'Property added');
+}
+function delProp(id){if(confirm('Delete this property?')){props=props.filter(p=>p.id!==id);persist();renderProperties();}}
+
+// ── Tasks ─────────────────────────────────────────────────────
+function renderTasks(){
+  const el=document.getElementById('taskList');if(!el)return;
+  const fv=document.getElementById('ftask').value;
+  let f=[...tasks];
+  if(fv==='open')f=f.filter(t=>!t.done);else if(fv==='done')f=f.filter(t=>t.done);
+  f.sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(!a.due&&!b.due)return 0;if(!a.due)return 1;if(!b.due)return -1;return a.due>b.due?1:-1;});
+  if(!f.length){el.innerHTML='<div class="empty">No tasks. Click "Add task" to create one.</div>';return;}
+  const priBadge=p=>p==='high'?'b-hot':p==='low'?'b-done':'b-neutral';
+  el.innerHTML=f.map(t=>{
+    const linked=t.leadId?leads.find(l=>l.id===t.leadId):null;
+    const d=t.due?du(t.due):null;
+    const dueCls=d===null||t.done?'due-ok':d<0?'due-today':d===0?'due-today':d<=2?'due-soon':'due-ok';
+    const dueStr=t.due?(d===0?'Due today':d<0?Math.abs(d)+'d overdue':d===1?'Due tomorrow':'Due in '+d+'d'):'No due date';
+    return`<div class="task-item${t.done?' task-done':''}">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')" style="margin-top:2px;width:15px;height:15px;flex-shrink:0;cursor:pointer">
+      <div style="flex:1;min-width:0">
+        <div class="task-title">${t.title}</div>
+        <div class="task-meta">
+          ${t.due?`<span class="${dueCls}">${dueStr}</span> · `:''}
+          <span class="badge ${priBadge(t.priority)}" style="font-size:10px;padding:1px 5px">${t.priority}</span>
+          ${linked?` · <span style="color:var(--blue)">${linked.first} ${linked.last}</span>`:''}
+          ${t.notes?` · <span>${t.notes.substring(0,60)}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn btn-sm" onclick="openEditTask('${t.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+        <button class="btn btn-red btn-sm" onclick="delTask('${t.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openAddTask(){
+  editTaskId=null;document.getElementById('taskMT').textContent='Add task';
+  ['tf1','tf5'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tf2').value='';document.getElementById('tf3').value='normal';
+  document.getElementById('tf4').innerHTML='<option value="">— none —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  document.getElementById('tf4').value='';openModal('mTask');
+}
+function openEditTask(id){
+  editTaskId=id;const t=tasks.find(x=>x.id===id);
+  document.getElementById('taskMT').textContent='Edit task';
+  document.getElementById('tf1').value=t.title||'';document.getElementById('tf2').value=t.due||'';
+  document.getElementById('tf3').value=t.priority||'normal';
+  document.getElementById('tf4').innerHTML='<option value="">— none —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  document.getElementById('tf4').value=t.leadId||'';document.getElementById('tf5').value=t.notes||'';
+  openModal('mTask');
+}
+function saveTask(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('tf1')){alert('Task title required');return;}
+  const isDone=editTaskId?(tasks.find(t=>t.id===editTaskId)||{}).done||false:false;
+  const task={id:editTaskId||'t'+Date.now(),title:g('tf1'),due:document.getElementById('tf2').value,priority:document.getElementById('tf3').value,leadId:document.getElementById('tf4').value,notes:g('tf5'),done:isDone};
+  if(editTaskId){tasks=tasks.map(t=>t.id===editTaskId?task:t);}else{tasks.push(task);}
+  editTaskId=null;persist();closeModal('mTask');renderTasks();updateBadges();toast('Task saved');
+}
+function delTask(id){if(confirm('Delete this task?')){tasks=tasks.filter(t=>t.id!==id);persist();renderTasks();updateBadges();}}
+function toggleTask(id){tasks=tasks.map(t=>t.id===id?{...t,done:!t.done}:t);persist();renderTasks();updateBadges();}
+
+// ── Commission ────────────────────────────────────────────────
+function renderCommission(){
+  const el=document.getElementById('dealList'),stats=document.getElementById('commissionStats');
+  if(!el)return;
+  const totalGCI=deals.reduce((s,d)=>s+(parseFloat(d.salePrice)||0)*(parseFloat(d.commissionPct)||2.5)/100,0);
+  const yr=new Date().getFullYear()+'';
+  const ytd=deals.filter(d=>d.closeDate&&d.closeDate.startsWith(yr)).reduce((s,d)=>s+(parseFloat(d.salePrice)||0)*(parseFloat(d.commissionPct)||2.5)/100,0);
+  const fmt=n=>'$'+n.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});
+  stats.innerHTML=`<div class="commission-total">
+    <div class="ct-stat"><div class="ct-label">Total GCI</div><div class="ct-val">${fmt(totalGCI)}</div></div>
+    <div class="ct-stat"><div class="ct-label">YTD GCI</div><div class="ct-val">${fmt(ytd)}</div></div>
+    <div class="ct-stat"><div class="ct-label">Total deals</div><div class="ct-val">${deals.length}</div></div>
+  </div>`;
+  if(!deals.length){el.innerHTML='<div class="empty">No closed deals yet. Click "Log deal" after a transaction closes.</div>';return;}
+  const sorted=[...deals].sort((a,b)=>(b.closeDate||'')>(a.closeDate||'')?1:-1);
+  el.innerHTML=sorted.map(d=>{
+    const commission=(parseFloat(d.salePrice)||0)*(parseFloat(d.commissionPct)||2.5)/100;
+    const linked=d.leadId?leads.find(l=>l.id===d.leadId):null;
+    return`<div class="deal-row">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${d.address||'Unlisted property'}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">
+          ${linked?linked.first+' '+linked.last+' · ':''}<span class="badge b-neutral" style="font-size:10px">${d.side||'Buyer'} side</span>${d.closeDate?' · '+d.closeDate:''} · ${d.commissionPct||2.5}%
+        </div>
+        ${d.notes?`<div style="font-size:11px;color:var(--text2);margin-top:2px">${d.notes}</div>`:''}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="deal-commission">${fmt(commission)}</div>
+        <div style="font-size:11px;color:var(--text2)">on ${fmt(parseFloat(d.salePrice)||0)}</div>
+      </div>
+      <button class="btn btn-red btn-sm" style="margin-left:8px" onclick="delDeal('${d.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+    </div>`;
+  }).join('');
+}
+function openAddDeal(){
+  document.getElementById('df1').innerHTML='<option value="">— select lead —</option>'+leads.map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  ['df2','df7'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('df3').value='';document.getElementById('df4').value='2.5';
+  document.getElementById('df5').value=new Date().toISOString().split('T')[0];
+  document.getElementById('df6').value='Buyer';openModal('mDeal');
+}
+function saveDeal(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('df3')){alert('Sale price required');return;}
+  const deal={id:'d'+Date.now(),leadId:document.getElementById('df1').value,address:g('df2'),salePrice:g('df3'),commissionPct:g('df4')||'2.5',closeDate:document.getElementById('df5').value,side:document.getElementById('df6').value,notes:g('df7')};
+  deals.push(deal);
+  if(deal.leadId){leads=leads.map(l=>l.id===deal.leadId?{...l,temp:'done',stage:'closed'}:l);}
+  persist();closeModal('mDeal');renderCommission();renderLeads();renderPipeline();toast('Deal logged — commission tracked!');
+}
+function delDeal(id){if(confirm('Delete this deal?')){deals=deals.filter(d=>d.id!==id);persist();renderCommission();}}
+
+// ── Auto morning digest ───────────────────────────────────────
+(async function autoDigest(){
+  const today = new Date().toISOString().split('T')[0];
+  const lastSent = localStorage.getItem('mg_digest_sent');
+  if(lastSent === today) return; // already sent today
+  const hour = new Date().getHours();
+  if(hour < 7 || hour > 11) return; // only auto-send between 7am–11am
+  const overdue = leads.filter(l=>l.temp!=='done'&&du(l.followup)<0);
+  const dueToday = leads.filter(l=>l.temp!=='done'&&du(l.followup)===0);
+  const dueWeek = leads.filter(l=>{const d=du(l.followup);return d>0&&d<=7&&l.temp!=='done';});
+  if(!overdue.length&&!dueToday.length&&!dueWeek.length) return; // nothing to send
+  try{
+    await api('/gmail/digest',{
+      to: DIGEST_EMAIL,
+      subject: `🏡 MG Realty — Daily Lead Digest ${new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`,
+      overdue, dueToday, dueWeek,
+      appointments: appts.filter(a=>new Date(a.date)>=new Date(new Date().toISOString().split('T')[0])).slice(0,5),
+      recentActivity: [...acts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5)
+    });
+    localStorage.setItem('mg_digest_sent', today);
+    toast('📬 Morning digest sent to '+DIGEST_EMAIL,'success');
+  }catch(e){
+    console.error('Auto digest failed:', e);
+  }
+})();
+
+// ── PWA service worker registration ──────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('SW registered'))
+      .catch(e => console.warn('SW failed:', e));
+  });
+}
+</script>
+</body>
+</html>
