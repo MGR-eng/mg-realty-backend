@@ -1121,31 +1121,16 @@ function openLeadDetail(id){
       }).join('')
     :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No appointments scheduled</div>';
 
-  // Sequence status
-  fetch(`${BACKEND}/sequences/status/${id}`)
-    .then(r=>r.json()).then(({active})=>{
-      const seqEl=document.getElementById('dp-sequence');
-      if(!seqEl)return;
-      if(active){
-        const remaining=active.touches.filter(t=>!t.sent).length;
-        const next=active.touches.find(t=>!t.sent);
-        seqEl.style.display='';
-        seqEl.innerHTML=`<div class="dp-label">Follow-up Sequence <span class="badge b-done" style="font-size:10px;margin-left:6px">Active</span></div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${remaining} email${remaining!==1?'s':''} remaining · Next: ${next?next.scheduledDate+' ('+next.key+')':'—'}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${active.touches.map(t=>`<span class="badge ${t.sent?'b-done':'b-neutral'}" style="font-size:10px">${t.sent?'✓':''} Day ${t.day}</span>`).join('')}
-          </div>
-          <button class="btn btn-red btn-sm" style="margin-top:10px" onclick="cancelSequence('${id}')"><i class="ti ti-x"></i> Cancel sequence</button>`;
-      } else {
-        const hasEmail=l.email;
-        seqEl.style.display='';
-        seqEl.innerHTML=`<div class="dp-label">Follow-up Sequence</div>
-          ${hasEmail
-            ?`<p style="font-size:12px;color:var(--text2);margin-bottom:8px">4-touch email sequence: Day 0, 3, 7, 14</p>
-               <button class="btn btn-green btn-sm" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Start sequence</button>`
-            :`<p style="font-size:12px;color:var(--text3)">Add an email address to this lead to enable sequences.</p>`}`;
-      }
-    }).catch(()=>{});
+  // Sequence section — render directly, no network call needed
+  const seqEl=document.getElementById('dp-sequence');
+  if(seqEl){
+    seqEl.style.display='';
+    seqEl.innerHTML=`<div class="dp-label">Follow-up Sequence</div>
+      ${l.email
+        ?`<p style="font-size:12px;color:var(--text2);margin-bottom:10px">4-touch email sequence: Day 0 · Day 3 · Day 7 · Day 14</p>
+           <button class="btn btn-green btn-sm" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Start sequence</button>`
+        :`<p style="font-size:12px;color:var(--text3)">Add an email to this lead to enable sequences.</p>`}`;
+  }
 
   // Actions
   document.getElementById('dp-actions').innerHTML=`
