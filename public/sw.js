@@ -1,4 +1,4 @@
-const CACHE = 'mg-realty-v4';
+const CACHE = 'mg-realty-v5';
 const SHELL = ['/', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', e => {
