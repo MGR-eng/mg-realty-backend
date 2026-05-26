@@ -331,6 +331,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="fgg"><label>Follow-up method</label><select id="lf10"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
     <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select></div>
     <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Other">Other</option></select></div>
+    <div class="fgg full"><label>Agent (buyer's / co-op)</label><select id="lf14"><option value="">— none —</option></select></div>
     <div class="fgg full"><label>Notes</label><textarea id="lf11" placeholder="Pre-approval, motivation, timeline…"></textarea></div>
   </div>
   <div class="mfoot"><button class="btn" onclick="closeModal('mLead')">Cancel</button><button class="btn btn-gold" onclick="saveLead()">Save lead</button></div>
@@ -559,7 +560,7 @@ async function backupToSheet(){
   }catch(e){setSyncStatus('err','Backup failed');toast('Backup failed: '+e.message,'err');}
 }
 
-function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';document.getElementById('lf12').value='new';document.getElementById('lf13').value='Open House';openModal('mLead');}
+function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';document.getElementById('lf12').value='new';document.getElementById('lf13').value='Open House';populateAgentDropdown('lf14','');openModal('mLead');}
 function openEdit(id){
   editLeadId=id;const l=leads.find(x=>x.id===id);
   document.getElementById('leadMT').textContent='Edit lead';
@@ -571,13 +572,14 @@ function openEdit(id){
   document.getElementById('lf11').value=l.notes||'';
   document.getElementById('lf12').value=l.stage||'new';
   document.getElementById('lf13').value=l.source||'Open House';
+  populateAgentDropdown('lf14',l.agentId||'');
   openModal('mLead');
 }
 function saveLead(){
   const g=id=>document.getElementById(id).value.trim();
   if(!g('lf1')){alert('First name required');return;}
   const ex=editLeadId?leads.find(l=>l.id===editLeadId):{};
-  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
+  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,agentId:document.getElementById('lf14').value,lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
   if(editLeadId){leads=leads.map(l=>l.id===editLeadId?lead:l);}else{leads.push(lead);}
   editLeadId=null;persist();closeModal('mLead');renderAll();toast(editLeadId?'Lead updated':'Lead added');
 }
@@ -620,6 +622,11 @@ document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click
 load();renderAll();
 
 // ── Agents ────────────────────────────────────────────────────
+function populateAgentDropdown(selectId, selectedId){
+  const el=document.getElementById(selectId);if(!el)return;
+  el.innerHTML='<option value="">— none —</option>'+agents.map(a=>`<option value="${a.id}">${a.first} ${a.last}${a.brokerage?' — '+a.brokerage:''}</option>`).join('');
+  el.value=selectedId||'';
+}
 function renderAgents(){
   const tbody=document.getElementById('agentTbody');if(!tbody)return;
   const s=(document.getElementById('agentSrch')||{}).value?.toLowerCase()||'';
