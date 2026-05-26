@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import Anthropic from '@anthropic-ai/sdk';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { GoogleAuth } from 'google-auth-library';
 
 const app = express();
@@ -11,6 +11,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Google OAuth — auto-refresh using refresh token
 let cachedToken = null;
@@ -144,22 +145,12 @@ app.post('/gmail/digest', async (req, res) => {
         </div>
       </div>`;
 
-    // Send via Gmail API (HTTPS, works on Render free tier)
-    const token = await googleToken();
-    const raw = Buffer.from(
-      `From: MG Realty <goldenmb@gmail.com>\r\nTo: ${to}\r\nSubject: ${subject}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${html}`
-    ).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-
-    const gmailRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw })
+    // Send via Resend
+    const { error: resendErr } = await resend.emails.send({
+      from: 'MG Realty <onboarding@resend.dev>',
+      to, subject, html
     });
-
-    if (!gmailRes.ok) {
-      const err = await gmailRes.text();
-      throw new Error(`Gmail API: ${gmailRes.status} ${err}`);
-    }
+    if (resendErr) throw new Error('Resend: ' + resendErr.message);
 
     console.log(`Digest sent to ${to}`);
     res.json({ ok: true });
@@ -174,16 +165,11 @@ app.post('/email/send', async (req, res) => {
   try {
     const { to, subject, html } = req.body;
     if (!to) throw new Error('No recipient email address');
-    const token = await googleToken();
-    const raw = Buffer.from(
-      `From: MG Realty <goldenmb@gmail.com>\r\nTo: ${to}\r\nSubject: ${subject}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${html}`
-    ).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    const gmailRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raw })
+    const { error: resendErr } = await resend.emails.send({
+      from: 'MG Realty <onboarding@resend.dev>',
+      to, subject, html
     });
-    if (!gmailRes.ok) throw new Error(`Gmail API: ${gmailRes.status} ${await gmailRes.text()}`);
+    if (resendErr) throw new Error('Resend: ' + resendErr.message);
     console.log(`Email sent to ${to}`);
     res.json({ ok: true });
   } catch (e) {

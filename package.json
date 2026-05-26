@@ -11,6 +11,7 @@
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "nodemailer": "^6.9.9",
-    "google-auth-library": "^9.0.0"
+    "google-auth-library": "^9.0.0",
+    "resend": "^3.0.0"
   }
 }
