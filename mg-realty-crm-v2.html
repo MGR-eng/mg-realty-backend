@@ -310,9 +310,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="modal-title">✉️ Send Email</div>
   <div id="emailLeadCard" class="lead-card-sm"></div>
   <div class="fg">
+    <div class="fgg full"><label>Template</label><select id="ef0" onchange="applyEmailTemplate()"><option value="openhouse">Open House Thank-You</option><option value="followup">Follow-Up Check-In</option><option value="showing">Showing Follow-Up</option><option value="pricedrop">Price Reduction Alert</option><option value="listing">Listing Presentation Request</option><option value="custom">— Custom / Blank —</option></select></div>
     <div class="fgg full"><label>To</label><input id="ef1" placeholder="recipient@email.com"></div>
     <div class="fgg full"><label>Subject</label><input id="ef2"></div>
-    <div class="fgg full"><label>Message</label><textarea id="ef3" style="min-height:180px"></textarea></div>
+    <div class="fgg full"><label>Message</label><textarea id="ef3" style="min-height:200px"></textarea></div>
   </div>
   <div class="mfoot"><button class="btn" onclick="closeModal('mEmail')">Cancel</button><button class="btn btn-gold" onclick="sendEmailTemplate()"><i class="ti ti-send"></i> Send</button></div>
 </div></div>
@@ -587,26 +588,112 @@ document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click
 load();renderAll();
 
 // ── Email templates ───────────────────────────────────────────
-function openEmailTemplate(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-  document.getElementById('emailLeadCard').innerHTML = `<div class="avatar">${l.first[0]}${l.last[0]}</div><div><div style="font-weight:600;font-size:13px">${l.first} ${l.last}</div><div style="font-size:11px;color:var(--text2)">${l.email||'No email on file'} · ${l.prop||''}</div></div>`;
-  document.getElementById('ef1').value = l.email || '';
-  document.getElementById('ef2').value = `Thank you for visiting the open house!`;
-  document.getElementById('ef3').value =
+let emailLeadId = null;
+
+const EMAIL_TEMPLATES = {
+  openhouse: l => ({
+    subject: `Thank you for visiting the open house!`,
+    body:
 `Hi ${l.first},
 
 Thank you so much for stopping by the open house${l.prop ? ' for ' + l.prop : ''}! It was great meeting you.
 
-${l.notes ? 'Based on what you shared, ' + l.notes.substring(0, 100) + (l.notes.length > 100 ? '…' : '') + '\n\n' : ''}I'd love to help you find the perfect property. Feel free to reach out anytime with questions or if you'd like to schedule a private showing.
+${l.notes ? 'Based on what you shared — ' + l.notes.substring(0, 100) + (l.notes.length > 100 ? '…' : '') + '\n\n' : ''}I'd love to help you find the perfect property. Feel free to reach out anytime with questions or to schedule a private showing.
 
 Looking forward to working with you!
 
 Best,
 Matt Golden
 MG Realty
-(323) 688-3855`;
+(323) 688-3855`
+  }),
+  followup: l => ({
+    subject: `Checking in — ${l.prop || 'your home search'}`,
+    body:
+`Hi ${l.first},
+
+Just wanted to check in and see how things are going on your end${l.prop ? ' with ' + l.prop : ''}.
+
+The market has been moving quickly, and I want to make sure you're getting the right opportunities before they're gone.
+
+Do you have 10 minutes this week for a quick call? I have a few ideas I think would be a great fit for you.
+
+Talk soon,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  showing: l => ({
+    subject: `How did you feel about the showing?`,
+    body:
+`Hi ${l.first},
+
+Thanks for taking the time to tour${l.prop ? ' ' + l.prop : ' the property'} — I hope it gave you a good feel for what's possible!
+
+I'd love to hear your honest thoughts. Did it check the boxes, or should we keep looking? Even a quick reply helps me zero in on exactly what's right for you.
+
+Happy to set up more showings this week if you're ready to keep moving.
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  pricedrop: l => ({
+    subject: `Price reduction on a property you might love`,
+    body:
+`Hi ${l.first},
+
+Good news — a property that matches what you're looking for just had a price reduction.
+
+${l.prop ? 'Property: ' + l.prop + '\n\n' : ''}This kind of move usually signals the seller is motivated and ready to deal. It's worth a look before other buyers jump on it.
+
+Want me to book a showing this week? Reply here or give me a call.
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  listing: l => ({
+    subject: `Let's talk about getting your home sold`,
+    body:
+`Hi ${l.first},
+
+I wanted to reach out personally — if you're thinking about selling${l.prop ? ' ' + l.prop : ' your home'}, now is a great time to have a conversation.
+
+I've been working the ${l.prop ? l.prop.split(',').pop()?.trim() || 'LA' : 'LA'} market closely and I have a clear picture of what buyers are looking for right now and how to get you top dollar.
+
+I'd love to put together a no-pressure market analysis for you. Would you be open to a 20-minute call or meeting this week?
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  custom: () => ({ subject: '', body: '' })
+};
+
+function openEmailTemplate(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  emailLeadId = id;
+  document.getElementById('emailLeadCard').innerHTML = `<div class="avatar">${l.first[0]}${l.last[0]}</div><div><div style="font-weight:600;font-size:13px">${l.first} ${l.last}</div><div style="font-size:11px;color:var(--text2)">${l.email||'No email on file'} · ${l.prop||''}</div></div>`;
+  document.getElementById('ef1').value = l.email || '';
+  // Default template based on lead type
+  const defaultTpl = l.type === 'seller' ? 'listing' : 'openhouse';
+  document.getElementById('ef0').value = defaultTpl;
+  applyEmailTemplate();
   openModal('mEmail');
+}
+
+function applyEmailTemplate() {
+  const l = leads.find(x => x.id === emailLeadId);
+  if (!l) return;
+  const key = document.getElementById('ef0').value;
+  const tpl = EMAIL_TEMPLATES[key] ? EMAIL_TEMPLATES[key](l) : { subject: '', body: '' };
+  document.getElementById('ef2').value = tpl.subject;
+  document.getElementById('ef3').value = tpl.body;
 }
 
 async function sendEmailTemplate() {
