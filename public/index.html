@@ -257,6 +257,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div class="sw"><i class="ti ti-search"></i><input type="text" id="srch" placeholder="Search…" style="width:150px" oninput="renderLeads()"></div>
       <select id="ftemp" onchange="renderLeads()" style="width:auto"><option value="">All temps</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select>
       <select id="ftype" onchange="renderLeads()" style="width:auto"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
+      <button class="btn" onclick="openImportCSV()"><i class="ti ti-upload"></i> Import CSV</button>
       <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
   </div>
@@ -365,6 +366,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="dp-section" id="dp-details"></div>
   <div class="dp-section" id="dp-agent" style="display:none"></div>
   <div class="dp-section" id="dp-notes" style="display:none"></div>
+  <div class="dp-section" id="dp-sequence" style="display:none"></div>
   <div class="dp-section">
     <div class="dp-label">Activity history</div>
     <div id="dp-activity"></div>
@@ -463,6 +465,49 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="fgg full"><label>Notes</label><textarea id="lf11" placeholder="Pre-approval, motivation, timeline…"></textarea></div>
   </div>
   <div class="mfoot"><button class="btn" onclick="closeModal('mLead')">Cancel</button><button class="btn btn-gold" onclick="saveLead()">Save lead</button></div>
+</div></div>
+
+<!-- CSV Import Modal -->
+<div class="modal-overlay" id="mImport"><div class="modal" style="width:min(680px,100%)">
+  <div class="modal-title">Import Leads from CSV</div>
+
+  <!-- Step 1: Upload -->
+  <div id="importStep1">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Upload a CSV file with your leads. First row should be column headers.</p>
+    <div id="csvDropZone" onclick="document.getElementById('csvFileInput').click()"
+      style="border:2px dashed var(--border);border-radius:var(--rl);padding:32px;text-align:center;cursor:pointer;transition:border-color 0.15s;background:var(--surface2)">
+      <i class="ti ti-file-upload" style="font-size:32px;color:var(--text3);display:block;margin-bottom:8px"></i>
+      <p style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:4px">Click to choose a CSV file</p>
+      <p style="font-size:12px;color:var(--text3)">or drag and drop here</p>
+    </div>
+    <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none" onchange="handleCSVFile(this.files[0])">
+    <p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Need a template? <a id="csvTemplateLink" href="#" onclick="downloadCSVTemplate();return false" style="color:var(--blue)">Download sample CSV</a></p>
+  </div>
+
+  <!-- Step 2: Map columns -->
+  <div id="importStep2" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <p style="font-size:13px;color:var(--text2)">Map your CSV columns to CRM fields.</p>
+      <span id="importRowCount" style="font-size:12px;font-weight:600;color:var(--text2)"></span>
+    </div>
+    <div id="colMapGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"></div>
+    <div style="background:var(--surface2);border-radius:var(--r);padding:10px 13px;font-size:12px;color:var(--text2)">
+      <strong>Preview</strong> — first 3 rows:
+      <div id="csvPreview" style="margin-top:8px;overflow-x:auto"></div>
+    </div>
+  </div>
+
+  <!-- Step 3: Done -->
+  <div id="importStep3" style="display:none;text-align:center;padding:20px 0">
+    <i class="ti ti-circle-check" style="font-size:40px;color:#27ae60;display:block;margin-bottom:12px"></i>
+    <p style="font-size:16px;font-weight:600;margin-bottom:6px" id="importDoneMsg"></p>
+    <p style="font-size:13px;color:var(--text2)">Your new leads are now in the CRM.</p>
+  </div>
+
+  <div class="mfoot" id="importFooter">
+    <button class="btn" onclick="closeModal('mImport')">Cancel</button>
+    <button class="btn btn-gold" id="importRunBtn" onclick="runCSVImport()" style="display:none"><i class="ti ti-upload"></i> Import leads</button>
+  </div>
 </div></div>
 
 <!-- Email Template Modal -->
@@ -790,6 +835,152 @@ async function backupToSheet(){
   }catch(e){setSyncStatus('err','Backup failed');toast('Backup failed: '+e.message,'err');}
 }
 
+// ── CSV Import ────────────────────────────────────────────────
+let csvRows=[], csvHeaders=[];
+const CSV_FIELDS=[
+  {key:'first',label:'First Name',required:true},
+  {key:'last',label:'Last Name',required:true},
+  {key:'phone',label:'Phone'},
+  {key:'email',label:'Email'},
+  {key:'temp',label:'Temperature (hot/warm/cold)'},
+  {key:'source',label:'Lead Source'},
+  {key:'stage',label:'Pipeline Stage'},
+  {key:'prop',label:'Property Interest'},
+  {key:'notes',label:'Notes'},
+  {key:'followup',label:'Follow-up Date'},
+  {key:'type',label:'Type (buyer/seller)'},
+];
+
+function openImportCSV(){
+  csvRows=[];csvHeaders=[];
+  document.getElementById('importStep1').style.display='';
+  document.getElementById('importStep2').style.display='none';
+  document.getElementById('importStep3').style.display='none';
+  document.getElementById('importRunBtn').style.display='none';
+  document.getElementById('csvFileInput').value='';
+  openModal('mImport');
+}
+
+function downloadCSVTemplate(){
+  const header='First Name,Last Name,Phone,Email,Temperature,Lead Source,Pipeline Stage,Property Interest,Notes,Follow-up Date,Type\n';
+  const example='Jane,Smith,(310) 555-0123,jane@email.com,warm,Instagram,new,Silver Lake 800k,Pre-approved,2026-06-01,buyer\n';
+  const blob=new Blob([header+example],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mg-realty-leads-template.csv';a.click();
+}
+
+function handleCSVFile(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const parsed=parseCSV(text);
+    if(parsed.length<2){alert('CSV appears empty or invalid.');return;}
+    csvHeaders=parsed[0].map(h=>h.trim());
+    csvRows=parsed.slice(1).filter(r=>r.some(c=>c.trim()));
+    document.getElementById('importRowCount').textContent=csvRows.length+' rows found';
+    buildColMapper();
+    buildPreview();
+    document.getElementById('importStep1').style.display='none';
+    document.getElementById('importStep2').style.display='';
+    document.getElementById('importRunBtn').style.display='';
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text){
+  const rows=[];let row=[],cell='',inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"'&&!inQ){inQ=true;}
+    else if(ch==='"'&&inQ&&text[i+1]==='"'){cell+='"';i++;}
+    else if(ch==='"'&&inQ){inQ=false;}
+    else if(ch===','&&!inQ){row.push(cell);cell='';}
+    else if((ch==='\n'||ch==='\r')&&!inQ){
+      if(ch==='\r'&&text[i+1]==='\n')i++;
+      row.push(cell);rows.push(row);row=[];cell='';
+    }else{cell+=ch;}
+  }
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  return rows;
+}
+
+function guessMapping(header){
+  const h=header.toLowerCase().replace(/[^a-z]/g,'');
+  if(h.includes('first'))return'first';
+  if(h.includes('last'))return'last';
+  if(h.includes('phone')||h.includes('mobile')||h.includes('cell'))return'phone';
+  if(h.includes('email'))return'email';
+  if(h.includes('temp')||h.includes('heat')||h.includes('status'))return'temp';
+  if(h.includes('source')||h.includes('referral')||h.includes('channel'))return'source';
+  if(h.includes('stage')||h.includes('pipeline'))return'stage';
+  if(h.includes('prop')||h.includes('address')||h.includes('interest'))return'prop';
+  if(h.includes('note')||h.includes('comment'))return'notes';
+  if(h.includes('followup')||h.includes('follow')||h.includes('date'))return'followup';
+  if(h.includes('type')||h.includes('buyer')||h.includes('seller'))return'type';
+  return'';
+}
+
+function buildColMapper(){
+  const grid=document.getElementById('colMapGrid');
+  grid.innerHTML=csvHeaders.map((h,i)=>`
+    <div class="fgg">
+      <label style="font-size:10px">${h}</label>
+      <select id="cmap_${i}" style="font-size:12px">
+        <option value="">— skip —</option>
+        ${CSV_FIELDS.map(f=>`<option value="${f.key}" ${guessMapping(h)===f.key?'selected':''}>${f.label}</option>`).join('')}
+      </select>
+    </div>`).join('');
+}
+
+function buildPreview(){
+  const preview=document.getElementById('csvPreview');
+  const show=csvRows.slice(0,3);
+  preview.innerHTML=`<table style="border-collapse:collapse;font-size:11px;width:100%">
+    <tr>${csvHeaders.map(h=>`<th style="padding:4px 8px;background:#eee;border:1px solid #ddd;white-space:nowrap">${h}</th>`).join('')}</tr>
+    ${show.map(r=>`<tr>${csvHeaders.map((_,i)=>`<td style="padding:4px 8px;border:1px solid #eee;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r[i]||''}</td>`).join('')}</tr>`).join('')}
+  </table>`;
+}
+
+function runCSVImport(){
+  const mapping={};
+  csvHeaders.forEach((_,i)=>{
+    const val=document.getElementById('cmap_'+i)?.value;
+    if(val)mapping[i]=val;
+  });
+  if(!Object.values(mapping).includes('first')&&!Object.values(mapping).includes('last')){
+    alert('Please map at least First Name or Last Name.');return;
+  }
+  const today=new Date().toISOString().split('T')[0];
+  let imported=0;
+  csvRows.forEach(row=>{
+    const lead={id:'l'+Date.now()+Math.random().toString(36).slice(2),temp:'warm',stage:'new',added:today,method:'call'};
+    Object.entries(mapping).forEach(([i,field])=>{
+      const val=(row[i]||'').trim();
+      if(val)lead[field]=val;
+    });
+    if(!lead.first&&!lead.last)return;
+    lead.first=lead.first||'';
+    lead.last=lead.last||'';
+    leads.push(lead);
+    imported++;
+  });
+  persist();pushToBackend();renderAll();
+  document.getElementById('importStep2').style.display='none';
+  document.getElementById('importRunBtn').style.display='none';
+  document.getElementById('importDoneMsg').textContent=`${imported} lead${imported!==1?'s':''} imported successfully!`;
+  document.getElementById('importStep3').style.display='';
+  document.getElementById('importFooter').innerHTML='<button class="btn btn-gold" onclick="closeModal(\'mImport\')">Done</button>';
+}
+
+// Drop zone drag support
+document.addEventListener('DOMContentLoaded',()=>{
+  const dz=document.getElementById('csvDropZone');
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.borderColor='#E8681A';});
+  dz.addEventListener('dragleave',()=>{dz.style.borderColor='';});
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.style.borderColor='';const f=e.dataTransfer.files[0];if(f)handleCSVFile(f);});
+});
+
 function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';document.getElementById('lf12').value='new';document.getElementById('lf13').value='Open House';document.getElementById('lf14').value='';document.getElementById('agentContactRows').innerHTML='';addAgentContactRow();openModal('mLead');}
 function openEdit(id){
   editLeadId=id;const l=leads.find(x=>x.id===id);
@@ -929,6 +1120,32 @@ function openLeadDetail(id){
         </div>`;
       }).join('')
     :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No appointments scheduled</div>';
+
+  // Sequence status
+  fetch(`${BACKEND}/sequences/status/${id}`)
+    .then(r=>r.json()).then(({active})=>{
+      const seqEl=document.getElementById('dp-sequence');
+      if(!seqEl)return;
+      if(active){
+        const remaining=active.touches.filter(t=>!t.sent).length;
+        const next=active.touches.find(t=>!t.sent);
+        seqEl.style.display='';
+        seqEl.innerHTML=`<div class="dp-label">Follow-up Sequence <span class="badge b-done" style="font-size:10px;margin-left:6px">Active</span></div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${remaining} email${remaining!==1?'s':''} remaining · Next: ${next?next.scheduledDate+' ('+next.key+')':'—'}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${active.touches.map(t=>`<span class="badge ${t.sent?'b-done':'b-neutral'}" style="font-size:10px">${t.sent?'✓':''} Day ${t.day}</span>`).join('')}
+          </div>
+          <button class="btn btn-red btn-sm" style="margin-top:10px" onclick="cancelSequence('${id}')"><i class="ti ti-x"></i> Cancel sequence</button>`;
+      } else {
+        const hasEmail=l.email;
+        seqEl.style.display='';
+        seqEl.innerHTML=`<div class="dp-label">Follow-up Sequence</div>
+          ${hasEmail
+            ?`<p style="font-size:12px;color:var(--text2);margin-bottom:8px">4-touch email sequence: Day 0, 3, 7, 14</p>
+               <button class="btn btn-green btn-sm" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Start sequence</button>`
+            :`<p style="font-size:12px;color:var(--text3)">Add an email address to this lead to enable sequences.</p>`}`;
+      }
+    }).catch(()=>{});
 
   // Actions
   document.getElementById('dp-actions').innerHTML=`
@@ -1376,6 +1593,31 @@ function delDeal(id){if(confirm('Delete this deal?')){deals=deals.filter(d=>d.id
     console.error('Auto digest failed:', e);
   }
 })();
+
+// ── Follow-up sequences ───────────────────────────────────────
+async function startSequence(leadId){
+  const lead=leads.find(l=>l.id===leadId);
+  if(!lead?.email){alert('This lead needs an email address first.');return;}
+  const btn=event.target.closest('button');
+  if(btn){btn.disabled=true;btn.textContent='Starting…';}
+  try{
+    const r=await fetch(BACKEND+'/sequences/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId})});
+    const data=await r.json();
+    if(!data.ok)throw new Error(data.error);
+    openLeadDetail(leadId); // refresh panel
+  }catch(e){
+    alert('Error starting sequence: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='Start sequence';}
+  }
+}
+
+async function cancelSequence(leadId){
+  if(!confirm('Cancel the follow-up sequence for this lead?'))return;
+  try{
+    await fetch(BACKEND+'/sequences/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId})});
+    openLeadDetail(leadId);
+  }catch(e){alert('Error cancelling sequence: '+e.message);}
+}
 
 // ── PWA service worker registration ──────────────────────────
 if ('serviceWorker' in navigator) {

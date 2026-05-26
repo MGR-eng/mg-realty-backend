@@ -35,7 +35,8 @@ async function readCRM() {
     tasks:        row.tasks        || [],
     properties:   row.properties   || [],
     deals:        row.deals        || [],
-    agents:       row.agents       || []
+    agents:       row.agents       || [],
+    sequences:    row.sequences    || []
   };
 }
 
@@ -560,6 +561,145 @@ Return ONLY a JSON array of strings, no other text:
     res.json({ ok: true, sent: sent.length, messages });
   } catch (e) {
     console.error('NUDGE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Follow-up sequences ───────────────────────────────────────
+const SEQUENCE_TOUCHES = [
+  { day: 0,  key: 'intro',    subject: 'Great connecting with you — Matt Golden, MG Realty',
+    body: (name) => `<p>Hi ${name},</p><p>It was great connecting! I'm excited to help you navigate the LA real estate market.</p><p>I'll be reaching out shortly, but feel free to reply here or call/text me anytime with questions.</p><p>Looking forward to working together!</p>` },
+  { day: 3,  key: 'checkin',  subject: 'Checking in — any questions?',
+    body: (name) => `<p>Hi ${name},</p><p>Just checking in to see if you had any questions or if anything has come up since we last spoke.</p><p>The LA market moves fast — I want to make sure you're in the best position possible when the right property comes along.</p><p>Let me know when you're free to chat!</p>` },
+  { day: 7,  key: 'value',    subject: 'A few listings I thought you'd like',
+    body: (name) => `<p>Hi ${name},</p><p>I've been keeping an eye on the market and wanted to share that things are moving. The best opportunities go quickly, so staying ready is key.</p><p>Would love to set up a quick call this week to talk through what's out there and what fits your criteria. Reply or text me anytime!</p>` },
+  { day: 14, key: 'final',    subject: 'Still here when you\'re ready',
+    body: (name) => `<p>Hi ${name},</p><p>I just wanted to touch base one more time. Whether you're ready to move forward now or just planning ahead, I'm here to help whenever the time is right.</p><p>No pressure at all — just want you to know you've got a trusted resource in your corner.</p><p>Talk soon!</p>` },
+];
+
+// Start a sequence for a lead
+app.post('/sequences/start', async (req, res) => {
+  try {
+    const { leadId } = req.body;
+    const crm = await readCRM();
+    const lead = crm.leads.find(l => l.id === leadId);
+    if (!lead) return res.status(404).json({ ok: false, error: 'Lead not found' });
+    if (!lead.email) return res.status(400).json({ ok: false, error: 'Lead has no email address' });
+
+    // Cancel any existing active sequence for this lead
+    crm.sequences = (crm.sequences || []).map(s =>
+      s.leadId === leadId && s.status === 'active' ? { ...s, status: 'cancelled' } : s
+    );
+
+    const startDate = new Date();
+    const seq = {
+      id: 'seq' + Date.now(),
+      leadId,
+      leadName: `${lead.first} ${lead.last}`,
+      leadEmail: lead.email,
+      startedAt: startDate.toISOString().split('T')[0],
+      status: 'active',
+      touches: SEQUENCE_TOUCHES.map(t => {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + t.day);
+        return { day: t.day, key: t.key, subject: t.subject, scheduledDate: d.toISOString().split('T')[0], sent: false };
+      })
+    };
+
+    crm.sequences.push(seq);
+    await writeCRM(crm);
+    console.log(`Sequence started for ${lead.first} ${lead.last}`);
+    res.json({ ok: true, sequenceId: seq.id, touches: seq.touches.length });
+  } catch(e) {
+    console.error('SEQUENCE START ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Cancel a sequence
+app.post('/sequences/cancel', async (req, res) => {
+  try {
+    const { sequenceId, leadId } = req.body;
+    const crm = await readCRM();
+    crm.sequences = (crm.sequences || []).map(s => {
+      if ((sequenceId && s.id === sequenceId) || (leadId && s.leadId === leadId && s.status === 'active')) {
+        return { ...s, status: 'cancelled' };
+      }
+      return s;
+    });
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Process due sequence emails — call this daily (UptimeRobot or cron)
+app.post('/sequences/process', async (req, res) => {
+  if (req.headers['x-api-key'] !== process.env.NUDGE_SECRET) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  try {
+    const crm = await readCRM();
+    const today = new Date().toISOString().split('T')[0];
+    let sent = 0;
+
+    for (const seq of (crm.sequences || [])) {
+      if (seq.status !== 'active') continue;
+      for (const touch of seq.touches) {
+        if (touch.sent || touch.scheduledDate > today) continue;
+        const tpl = SEQUENCE_TOUCHES.find(t => t.key === touch.key);
+        if (!tpl) continue;
+
+        const firstName = seq.leadName.split(' ')[0];
+        const html = `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+            <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+              <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+            </div>
+            <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+              ${tpl.body(firstName)}
+              <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · Los Angeles<br>goldenmb@gmail.com</span></p>
+            </div>
+          </div>`;
+
+        const { error } = await resend.emails.send({
+          from: 'Matt Golden <onboarding@resend.dev>',
+          to: seq.leadEmail,
+          subject: touch.subject,
+          html
+        });
+
+        if (!error) {
+          touch.sent = true;
+          touch.sentAt = today;
+          sent++;
+          console.log(`Sequence email sent: ${touch.key} → ${seq.leadEmail}`);
+        } else {
+          console.error(`Sequence email failed: ${error.message}`);
+        }
+      }
+
+      // Mark complete if all touches sent
+      if (seq.touches.every(t => t.sent)) seq.status = 'completed';
+    }
+
+    await writeCRM(crm);
+    res.json({ ok: true, sent });
+  } catch(e) {
+    console.error('SEQUENCE PROCESS ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Get sequence status for a lead
+app.get('/sequences/status/:leadId', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const seqs = (crm.sequences || []).filter(s => s.leadId === req.params.leadId);
+    const active = seqs.find(s => s.status === 'active');
+    res.json({ ok: true, active: active || null, all: seqs });
+  } catch(e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
