@@ -112,6 +112,9 @@ async function callClaude(prompt, mcpServers = []) {
 // ── Health check ─────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ ok: true, service: 'MG Realty CRM Backend' }));
 
+// ── Lead capture form (clean URL) ────────────────────────────
+app.get('/contact', (req, res) => res.sendFile(path.join(__dirname, 'public', 'contact.html')));
+
 // ── CRM sync ──────────────────────────────────────────────────
 app.get('/crm/pull', async (req, res) => {
   try {
