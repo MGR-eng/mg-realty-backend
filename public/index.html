@@ -1121,21 +1121,11 @@ function openLeadDetail(id){
       }).join('')
     :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No appointments scheduled</div>';
 
-  // Sequence section — render directly, no network call needed
-  const seqEl=document.getElementById('dp-sequence');
-  if(seqEl){
-    seqEl.style.display='';
-    seqEl.innerHTML=`<div class="dp-label">Follow-up Sequence</div>
-      ${l.email
-        ?`<p style="font-size:12px;color:var(--text2);margin-bottom:10px">4-touch email sequence: Day 0 · Day 3 · Day 7 · Day 14</p>
-           <button class="btn btn-green btn-sm" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Start sequence</button>`
-        :`<p style="font-size:12px;color:var(--text3)">Add an email to this lead to enable sequences.</p>`}`;
-  }
-
-  // Actions
+  // Actions (including sequence button)
   document.getElementById('dp-actions').innerHTML=`
     <button class="btn btn-blue" onclick="closeLeadDetail();openAct('${id}')"><i class="ti ti-activity"></i> Log activity</button>
     <button class="btn btn-gold" onclick="closeLeadDetail();openEmailTemplate('${id}')"><i class="ti ti-mail"></i> Send email</button>
+    ${l.email?`<button class="btn btn-green" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Sequence</button>`:''}
     <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
 

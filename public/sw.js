@@ -1,4 +1,4 @@
-const CACHE = 'mg-realty-v7';
+const CACHE = 'mg-realty-v8';
 const STATIC = ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', '/icons/mg-logo.jpg', '/manifest.json'];
 
 // Never cache HTML pages — always fetch fresh
