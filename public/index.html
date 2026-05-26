@@ -120,12 +120,13 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .ibox{background:var(--purple-bg);border-radius:var(--r);padding:9px 12px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:7px;margin-top:10px}
 .sw{position:relative}.sw input{padding-left:31px}.sw i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
 .dash2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-/* ── Mobile bottom tab bar ── */
+/* ── Mobile left icon rail ── */
 .mobile-tabs{display:none}
+.rail-logo{display:none}
 @media(max-width:700px){
   .sidebar{display:none}
   .shell{grid-template-columns:1fr}
-  .main{padding-bottom:68px}
+  .main{margin-left:60px}
   .content{padding:14px}
   .topbar{padding:11px 14px}
   .dash2{grid-template-columns:1fr}
@@ -134,14 +135,16 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   .modal{padding:16px}
   .fg{grid-template-columns:1fr}
   .fgg.full{grid-column:1}
-  .mobile-tabs{display:flex;position:fixed;bottom:0;left:0;right:0;height:60px;background:#1A1914;border-top:1px solid rgba(255,255,255,0.1);z-index:80;padding-bottom:env(safe-area-inset-bottom)}
-  .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;color:rgba(255,255,255,0.45);font-size:9px;font-weight:600;letter-spacing:0.03em;cursor:pointer;font-family:var(--font);padding:6px 2px;text-transform:uppercase;position:relative}
-  .tab-item i{font-size:20px}
-  .tab-item.active{color:#E8681A}
-  .tab-badge{background:#E8681A;color:#fff;font-size:9px;font-weight:700;padding:0 4px;border-radius:8px;min-width:14px;text-align:center;position:absolute;top:4px;right:calc(50% - 18px)}
+  .mobile-tabs{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:60px;background:#1A1914;border-right:1px solid rgba(255,255,255,0.1);z-index:80;align-items:center;padding-top:calc(env(safe-area-inset-top) + 10px);padding-bottom:env(safe-area-inset-bottom);gap:2px;overflow-y:auto}
+  .rail-logo{display:flex;width:36px;height:36px;background:#E8681A;border-radius:8px;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px;font-family:var(--font);margin-bottom:10px;flex-shrink:0}
+  .tab-item{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:rgba(255,255,255,0.4);font-size:0;cursor:pointer;border-radius:10px;position:relative;transition:all 0.15s;flex-shrink:0}
+  .tab-item i{font-size:22px}
+  .tab-item.active{color:#E8681A;background:rgba(232,104,26,0.15)}
+  .tab-item:active{background:rgba(255,255,255,0.08)}
+  .tab-badge{background:#E8681A;color:#fff;font-size:9px;font-weight:700;padding:0 4px;border-radius:8px;min-width:14px;text-align:center;position:absolute;top:6px;right:4px}
   .more-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:81}
   .more-backdrop.open{display:block}
-  .more-sheet{position:fixed;bottom:60px;left:0;right:0;background:#1A1914;border-top:1px solid rgba(255,255,255,0.1);border-radius:16px 16px 0 0;z-index:82;transform:translateY(100%);transition:transform 0.25s ease;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .more-sheet{position:fixed;bottom:0;left:60px;right:0;background:#1A1914;border-top:1px solid rgba(255,255,255,0.1);border-radius:16px 16px 0 0;z-index:82;transform:translateY(100%);transition:transform 0.25s ease;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
   .more-sheet.open{transform:translateY(0)}
   .more-sheet-hd{font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding:0 4px}
   .more-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -310,26 +313,25 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 </main>
 </div>
 
-<!-- Mobile bottom tab bar -->
+<!-- Mobile left icon rail -->
 <nav class="mobile-tabs">
-  <button class="tab-item active" data-pane="dashboard" onclick="showPane('dashboard',this)">
-    <i class="ti ti-layout-dashboard"></i>Dashboard
+  <div class="rail-logo">MG</div>
+  <button class="tab-item active" data-pane="dashboard" onclick="showPane('dashboard',this)" title="Dashboard">
+    <i class="ti ti-layout-dashboard"></i>
   </button>
-  <button class="tab-item" data-pane="leads" onclick="showPane('leads',this)">
+  <button class="tab-item" data-pane="leads" onclick="showPane('leads',this)" title="Leads">
     <i class="ti ti-users"></i>
     <span id="nb-leads-mobile" class="tab-badge" style="display:none"></span>
-    Leads
   </button>
-  <button class="tab-item" data-pane="pipeline" onclick="showPane('pipeline',this)">
-    <i class="ti ti-layout-kanban"></i>Pipeline
+  <button class="tab-item" data-pane="pipeline" onclick="showPane('pipeline',this)" title="Pipeline">
+    <i class="ti ti-layout-kanban"></i>
   </button>
-  <button class="tab-item" data-pane="tasks" onclick="showPane('tasks',this)">
+  <button class="tab-item" data-pane="tasks" onclick="showPane('tasks',this)" title="Tasks">
     <i class="ti ti-checkbox"></i>
     <span id="nb-tasks-mobile" class="tab-badge" style="display:none"></span>
-    Tasks
   </button>
-  <button class="tab-item" onclick="toggleMoreSheet()">
-    <i class="ti ti-dots"></i>More
+  <button class="tab-item" onclick="toggleMoreSheet()" title="More">
+    <i class="ti ti-dots-vertical"></i>
   </button>
 </nav>
 
