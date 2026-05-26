@@ -561,6 +561,104 @@ Return ONLY a JSON array of strings, no other text:
   }
 });
 
+// ── Lead capture form ─────────────────────────────────────────
+app.post('/leads/capture', async (req, res) => {
+  try {
+    const { first, last, phone, email, intent, budget, timeline, neighborhood, source, notes } = req.body;
+    if (!first || !last || !phone) return res.status(400).json({ ok: false, error: 'Missing required fields' });
+
+    const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+    const leadNotes = [
+      intent      ? `Looking to: ${intent}`         : '',
+      budget      ? `Budget: ${budget}`              : '',
+      timeline    ? `Timeline: ${timeline}`          : '',
+      neighborhood? `Area: ${neighborhood}`          : '',
+      notes       ? `Notes: ${notes}`                : ''
+    ].filter(Boolean).join('\n');
+
+    const lead = {
+      id:          'l' + Date.now(),
+      first:       first.trim(),
+      last:        last.trim(),
+      phone:       phone.trim(),
+      email:       (email || '').trim(),
+      temp:        'warm',
+      source:      source || '',
+      stage:       'new',
+      notes:       leadNotes,
+      added:       today,
+      followup:    tomorrow,
+      method:      'call',
+      intent:      intent || '',
+      budget:      budget || '',
+      timeline:    timeline || '',
+      neighborhood: neighborhood || ''
+    };
+
+    const crm = await readCRM();
+    crm.leads.push(lead);
+    await writeCRM(crm);
+    console.log(`New lead captured: ${first} ${last} (${source || 'unknown source'})`);
+
+    // Notify Matt — SMS if Twilio is live, else email
+    const notifyMsg = `🏡 New lead!\n${first} ${last}\n${phone}${email ? '\n' + email : ''}\n${intent || 'inquiry'} | ${budget || 'budget TBD'} | ${timeline || ''}\n${neighborhood || ''}\nSource: ${source || 'unknown'}`;
+
+    const ownerPhone = process.env.OWNER_PHONE;
+    const twilioReady = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM && ownerPhone;
+
+    if (twilioReady) {
+      try {
+        await sendSMS(ownerPhone, notifyMsg);
+        console.log('Lead notification sent via SMS');
+      } catch(smsErr) {
+        console.error('SMS notification failed, falling back to email:', smsErr.message);
+        await sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes);
+      }
+    } else {
+      await sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes);
+    }
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('LEAD CAPTURE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+async function sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes) {
+  const row = (label, val) => val ? `<tr><td style="padding:6px 0;color:#888;font-size:13px;width:120px">${label}</td><td style="padding:6px 0;font-size:13px;font-weight:500">${val}</td></tr>` : '';
+  await resend.emails.send({
+    from: 'MG Realty <onboarding@resend.dev>',
+    to: 'goldenmb@gmail.com',
+    subject: `🏡 New Lead: ${first} ${last}`,
+    html: `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+        <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto 10px">
+        <h2 style="color:#fff;margin:0;font-size:18px">New Lead from Contact Form</h2>
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+        <h3 style="margin:0 0 16px;font-size:20px">${first} ${last}</h3>
+        <table style="width:100%;border-collapse:collapse">
+          ${row('Phone', phone)}
+          ${row('Email', email)}
+          ${row('Looking to', intent)}
+          ${row('Budget', budget)}
+          ${row('Timeline', timeline)}
+          ${row('Area', neighborhood)}
+          ${row('Source', source)}
+          ${row('Notes', notes)}
+        </table>
+        <div style="margin-top:20px;padding:14px;background:#FFF3ED;border-radius:8px;border-left:3px solid #E8681A">
+          <p style="margin:0;font-size:13px;color:#E8681A;font-weight:600">Follow up tomorrow — they're warm!</p>
+        </div>
+      </div>
+    </div>`
+  });
+}
+
 // ── Twilio SMS webhook ────────────────────────────────────────
 app.post('/sms', async (req, res) => {
   const twiml = msg => {

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MG Realty — Let's Talk Real Estate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1A1914;--surface:#FFFFFF;--border:#E4E1D9;
+  --text:#1A1A1A;--text2:#6B6860;--orange:#E8681A;--orange-dark:#cf5914;
+  --font:'DM Sans',sans-serif;--r:10px;
+}
+body{font-family:var(--font);background:var(--bg);min-height:100vh;padding:0 0 60px}
+
+/* Header */
+.hero{text-align:center;padding:40px 24px 32px}
+.logo-wrap{display:inline-flex;align-items:center;gap:10px;margin-bottom:24px}
+.logo-mark{width:44px;height:44px;background:var(--orange);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:16px;flex-shrink:0}
+.logo-name{font-size:18px;font-weight:600;color:#fff;letter-spacing:-0.01em}
+.hero h1{font-size:28px;font-weight:700;color:#fff;line-height:1.2;margin-bottom:10px;letter-spacing:-0.02em}
+.hero p{font-size:15px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:340px;margin:0 auto}
+
+/* Card */
+.card{background:#fff;border-radius:16px 16px 0 0;margin:0 auto;max-width:560px;padding:28px 24px 40px;min-height:calc(100vh - 200px)}
+@media(min-width:600px){.card{border-radius:16px;margin:0 auto;min-height:auto}}
+
+/* Form */
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.row.full{grid-template-columns:1fr}
+@media(max-width:420px){.row{grid-template-columns:1fr}}
+.fg{display:flex;flex-direction:column;gap:5px}
+label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em}
+input,select,textarea{font-family:var(--font);font-size:15px;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r);background:#fff;color:var(--text);outline:none;width:100%;transition:border-color 0.15s;-webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--orange)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B6860' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
+textarea{resize:none;min-height:80px;font-size:14px}
+
+/* Intent buttons */
+.intent-group{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:0}
+.intent-btn{padding:10px 6px;border:1.5px solid var(--border);border-radius:var(--r);background:#fff;font-family:var(--font);font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;text-align:center;transition:all 0.15s}
+.intent-btn.active{border-color:var(--orange);background:#FFF3ED;color:var(--orange);font-weight:600}
+input[type="hidden"]{display:none}
+
+/* Section label */
+.section-lbl{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.section-lbl:first-child{margin-top:0}
+
+/* Submit */
+.submit-btn{width:100%;padding:15px;background:var(--orange);border:none;border-radius:var(--r);font-family:var(--font);font-size:16px;font-weight:600;color:#fff;cursor:pointer;margin-top:24px;transition:background 0.15s;letter-spacing:-0.01em}
+.submit-btn:hover{background:var(--orange-dark)}
+.submit-btn:disabled{opacity:0.6;cursor:not-allowed}
+.submit-note{text-align:center;font-size:12px;color:var(--text2);margin-top:10px}
+
+/* Success state */
+.success{display:none;text-align:center;padding:40px 20px}
+.success-icon{width:64px;height:64px;background:#E8F8EE;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px}
+.success h2{font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px}
+.success p{font-size:15px;color:var(--text2);line-height:1.6}
+
+/* Error */
+.err-msg{font-size:12px;color:#c0392b;margin-top:4px;display:none}
+.field-err input,.field-err select{border-color:#c0392b}
+.field-err .err-msg{display:block}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="logo-wrap">
+    <div class="logo-mark">MG</div>
+    <span class="logo-name">MG Realty</span>
+  </div>
+  <h1>Let's Find Your<br>Next Home</h1>
+  <p>Fill out the form and I'll be in touch within 24 hours to talk through your options.</p>
+</div>
+
+<div class="card">
+  <form id="leadForm">
+    <div class="section-lbl">Your Info</div>
+
+    <div class="row">
+      <div class="fg" id="fg-first">
+        <label>First Name</label>
+        <input type="text" id="first" placeholder="Jane" autocomplete="given-name">
+        <span class="err-msg">Required</span>
+      </div>
+      <div class="fg" id="fg-last">
+        <label>Last Name</label>
+        <input type="text" id="last" placeholder="Smith" autocomplete="family-name">
+        <span class="err-msg">Required</span>
+      </div>
+    </div>
+
+    <div class="row full" style="margin-bottom:14px">
+      <div class="fg" id="fg-phone">
+        <label>Phone Number</label>
+        <input type="tel" id="phone" placeholder="(310) 555-0123" autocomplete="tel">
+        <span class="err-msg">Required</span>
+      </div>
+    </div>
+
+    <div class="row full" style="margin-bottom:14px">
+      <div class="fg">
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="jane@email.com" autocomplete="email">
+      </div>
+    </div>
+
+    <div class="section-lbl">What You're Looking For</div>
+
+    <div class="fg" style="margin-bottom:14px">
+      <label>I'm looking to…</label>
+      <div class="intent-group">
+        <button type="button" class="intent-btn active" data-val="buy" onclick="setIntent(this)">🏠 Buy</button>
+        <button type="button" class="intent-btn" data-val="sell" onclick="setIntent(this)">📋 Sell</button>
+        <button type="button" class="intent-btn" data-val="both" onclick="setIntent(this)">🔄 Both</button>
+      </div>
+      <input type="hidden" id="intent" value="buy">
+    </div>
+
+    <div class="row" style="margin-bottom:14px">
+      <div class="fg">
+        <label>Budget / Price Range</label>
+        <select id="budget">
+          <option value="">Select range</option>
+          <option>Under $500K</option>
+          <option>$500K – $750K</option>
+          <option>$750K – $1M</option>
+          <option>$1M – $1.5M</option>
+          <option>$1.5M – $2M</option>
+          <option>$2M+</option>
+          <option>Not sure yet</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Timeline</label>
+        <select id="timeline">
+          <option value="">Select timeline</option>
+          <option>ASAP (0–30 days)</option>
+          <option>1–3 months</option>
+          <option>3–6 months</option>
+          <option>6–12 months</option>
+          <option>Just exploring</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row full" style="margin-bottom:14px">
+      <div class="fg">
+        <label>Neighborhood / Area of Interest</label>
+        <input type="text" id="neighborhood" placeholder="e.g. Silver Lake, Santa Monica, Pasadena…">
+      </div>
+    </div>
+
+    <div class="section-lbl">One Last Thing</div>
+
+    <div class="row full" style="margin-bottom:14px">
+      <div class="fg">
+        <label>How did you find me?</label>
+        <select id="source">
+          <option value="">Select one</option>
+          <option>Instagram</option>
+          <option>Referral from a friend</option>
+          <option>Google</option>
+          <option>Facebook</option>
+          <option>Zillow</option>
+          <option>YouTube</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row full" style="margin-bottom:0">
+      <div class="fg">
+        <label>Anything else? (optional)</label>
+        <textarea id="notes" placeholder="Tell me more about what you're looking for…"></textarea>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Get in Touch →</button>
+    <p class="submit-note">No spam, ever. I'll reach out personally.</p>
+  </form>
+
+  <div class="success" id="successMsg">
+    <div class="success-icon">✓</div>
+    <h2>Got it — I'll be in touch!</h2>
+    <p>Thanks for reaching out. I'll personally reach out within 24 hours to chat through your options.</p>
+    <p style="margin-top:16px;font-size:13px;color:#aaa">— Matt Golden, MG Realty</p>
+  </div>
+</div>
+
+<script>
+function setIntent(btn) {
+  document.querySelectorAll('.intent-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('intent').value = btn.dataset.val;
+}
+
+document.getElementById('leadForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  // Validate required fields
+  let valid = true;
+  ['first','last','phone'].forEach(id => {
+    const fg = document.getElementById('fg-' + id);
+    const val = document.getElementById(id).value.trim();
+    if (!val) { fg && fg.classList.add('field-err'); valid = false; }
+    else { fg && fg.classList.remove('field-err'); }
+  });
+  if (!valid) return;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  const payload = {
+    first:        document.getElementById('first').value.trim(),
+    last:         document.getElementById('last').value.trim(),
+    phone:        document.getElementById('phone').value.trim(),
+    email:        document.getElementById('email').value.trim(),
+    intent:       document.getElementById('intent').value,
+    budget:       document.getElementById('budget').value,
+    timeline:     document.getElementById('timeline').value,
+    neighborhood: document.getElementById('neighborhood').value.trim(),
+    source:       document.getElementById('source').value,
+    notes:        document.getElementById('notes').value.trim()
+  };
+
+  try {
+    const r = await fetch('/leads/capture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error('Server error');
+    document.getElementById('leadForm').style.display = 'none';
+    document.getElementById('successMsg').style.display = 'block';
+  } catch(err) {
+    btn.disabled = false;
+    btn.textContent = 'Get in Touch →';
+    alert('Something went wrong — please try again or call/text directly.');
+  }
+});
+
+// Live phone formatting
+document.getElementById('phone').addEventListener('input', function() {
+  let v = this.value.replace(/\D/g,'');
+  if (v.length >= 10) v = '(' + v.slice(0,3) + ') ' + v.slice(3,6) + '-' + v.slice(6,10);
+  else if (v.length >= 6) v = '(' + v.slice(0,3) + ') ' + v.slice(3,6) + '-' + v.slice(6);
+  else if (v.length >= 3) v = '(' + v.slice(0,3) + ') ' + v.slice(3);
+  this.value = v;
+});
+</script>
+</body>
+</html>
