@@ -363,11 +363,203 @@ async function executeSmsAction(action, crm) {
       } : l);
       modified = true;
     }
+  } else if (action.action === 'add_lead') {
+    const lead = {
+      id: 'l' + Date.now(),
+      first: action.first || '',
+      last: action.last || '',
+      phone: action.phone || '',
+      email: action.email || '',
+      temp: action.temp || 'warm',
+      source: action.source || '',
+      notes: action.notes || '',
+      stage: 'new',
+      added: today,
+      followup: action.followupDate || '',
+      method: action.followupMethod || 'call'
+    };
+    crm.leads.push(lead);
+    modified = true;
+  } else if (action.action === 'create_task') {
+    const lead = action.leadName ? findLead(crm, action.leadName) : null;
+    crm.tasks.push({
+      id: 't' + Date.now(),
+      title: action.title || 'Task',
+      leadId: lead?.id || '',
+      leadName: lead ? `${lead.first} ${lead.last}` : (action.leadName || ''),
+      due: action.due || today,
+      status: 'open',
+      notes: action.notes || '',
+      created: today
+    });
+    modified = true;
+  } else if (action.action === 'create_appointment') {
+    const lead = action.leadName ? findLead(crm, action.leadName) : null;
+    crm.appointments.push({
+      id: 'ap' + Date.now(),
+      leadId: lead?.id || '',
+      leadName: lead ? `${lead.first} ${lead.last}` : (action.leadName || ''),
+      type: action.type || 'showing',
+      date: action.date || today,
+      time: action.time || '',
+      address: action.address || '',
+      notes: action.notes || '',
+      status: 'scheduled'
+    });
+    modified = true;
+  } else if (action.action === 'create_calendar_event') {
+    try {
+      const token = await googleToken();
+      const calMcp = { type: 'url', url: 'https://calendarmcp.googleapis.com/mcp/v1', name: 'gcal', authorization_token: token };
+      await callClaude(`Create a Google Calendar event:
+Title: "${action.title}"
+Start: ${action.start} America/Los_Angeles
+End: ${action.end || action.start} America/Los_Angeles
+Location: ${action.location || 'TBD'}
+Description: ${action.description || ''}
+Add popup reminder 30 minutes before.
+Return only: {"ok":true}`, [calMcp]);
+      console.log('Calendar event created:', action.title);
+    } catch(e) {
+      console.error('Calendar creation failed:', e.message);
+    }
+    // Also log in CRM appointments
+    if (action.leadName || action.title) {
+      const lead = action.leadName ? findLead(crm, action.leadName) : null;
+      crm.appointments.push({
+        id: 'ap' + Date.now(),
+        leadId: lead?.id || '',
+        leadName: lead ? `${lead.first} ${lead.last}` : (action.leadName || ''),
+        type: action.apptType || 'showing',
+        date: (action.start || '').split('T')[0] || today,
+        time: (action.start || '').split('T')[1]?.substring(0, 5) || '',
+        address: action.location || '',
+        notes: action.description || '',
+        status: 'scheduled'
+      });
+      modified = true;
+    }
+  } else if (action.action === 'send_email_template') {
+    const lead = action.leadName ? findLead(crm, action.leadName) : null;
+    const toEmail = action.email || lead?.email;
+    if (toEmail) {
+      await resend.emails.send({
+        from: 'MG Realty <onboarding@resend.dev>',
+        to: toEmail,
+        subject: action.subject || 'Message from MG Realty',
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+          <div style="background:#1A1914;padding:20px;text-align:center;border-radius:8px 8px 0 0">
+            <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain">
+          </div>
+          <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+            <p>${(action.body || '').replace(/\n/g, '<br>')}</p>
+            <p style="margin-top:24px;color:#666;font-size:12px">Matt Golden · MG Realty · goldenmb@gmail.com</p>
+          </div>
+        </div>`
+      });
+    }
   }
 
   if (modified) await writeCRM(crm);
   return modified;
 }
+
+// ── Twilio: send outbound SMS ─────────────────────────────────
+async function sendSMS(to, body) {
+  const sid   = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from  = process.env.TWILIO_FROM;
+  if (!sid || !token || !from) throw new Error('Twilio env vars not set');
+  const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({ To: to, From: from, Body: body })
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(`Twilio send failed: ${data.message || r.status}`);
+  return data.sid;
+}
+
+// ── AI Nudge: proactive follow-up reminders ───────────────────
+app.post('/ai/nudge', async (req, res) => {
+  // Protect with a secret key
+  if (req.headers['x-api-key'] !== process.env.NUDGE_SECRET) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  try {
+    const crm  = await readCRM();
+    const now  = new Date();
+    const today = now.toISOString().split('T')[0];
+    const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0];
+
+    // Build lead analysis
+    const activeLeads = crm.leads
+      .filter(l => l.temp !== 'done')
+      .map(l => {
+        const daysSince = l.lastcontact
+          ? Math.floor((now - new Date(l.lastcontact)) / 86400000)
+          : 999;
+        return {
+          name: `${l.first} ${l.last}`,
+          temp: l.temp,
+          stage: l.stage || 'new',
+          daysSinceContact: daysSince,
+          followupDate: l.followup || null,
+          overdue: !!(l.followup && l.followup < today)
+        };
+      });
+
+    const todayAppts = crm.appointments.filter(a => a.date === today)
+      .map(a => `${a.leadName} — ${a.type} at ${a.time}${a.address ? ' @ ' + a.address : ''}`);
+    const todayTasks = crm.tasks.filter(t => t.due === today && t.status !== 'done')
+      .map(t => t.title + (t.leadName ? ` (${t.leadName})` : ''));
+
+    const prompt = `You are the AI assistant for Matt Golden, a real estate agent in Los Angeles at MG Realty.
+Analyze his CRM data and write a punchy morning briefing as 1–3 SMS messages (each under 155 chars).
+
+ACTIVE LEADS:
+${JSON.stringify(activeLeads)}
+
+TODAY'S APPOINTMENTS: ${JSON.stringify(todayAppts)}
+TODAY'S TASKS: ${JSON.stringify(todayTasks)}
+TODAY'S DATE: ${today}
+
+Rules:
+- Lead first message with the most urgent item
+- Flag HOT leads with no contact in 3+ days as top priority
+- Call out overdue follow-ups by name
+- Mention today's appointments if any
+- If everything looks good, say so and give one proactive tip
+- Sign off each message with nothing (Matt knows it's his assistant)
+- Be direct, no fluff — Matt is a busy agent
+
+Return ONLY a JSON array of strings, no other text:
+["message 1", "message 2"]`;
+
+    const raw = await callClaude(prompt);
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('Claude returned unexpected format: ' + raw);
+    const messages = JSON.parse(match[0]);
+
+    const ownerPhone = process.env.OWNER_PHONE;
+    if (!ownerPhone) throw new Error('OWNER_PHONE env var not set');
+
+    const sent = [];
+    for (const msg of messages) {
+      const sid = await sendSMS(ownerPhone, msg);
+      sent.push({ sid, msg });
+      console.log(`Nudge sent: ${msg}`);
+    }
+
+    res.json({ ok: true, sent: sent.length, messages });
+  } catch (e) {
+    console.error('NUDGE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 // ── Twilio SMS webhook ────────────────────────────────────────
 app.post('/sms', async (req, res) => {
@@ -382,44 +574,84 @@ app.post('/sms', async (req, res) => {
 
     // Load live CRM data
     const crm = await readCRM();
+    const now2 = new Date();
+    const today2 = now2.toISOString().split('T')[0];
+
     const leadSummary = crm.leads.map(l => ({
-      id: l.id, name: `${l.first} ${l.last}`, temp: l.temp, stage: l.stage||'new',
-      followup: l.followup, method: l.method, prop: l.prop||'', phone: l.phone||''
+      name: `${l.first} ${l.last}`,
+      phone: l.phone || '',
+      email: l.email || '',
+      temp: l.temp,
+      stage: l.stage || 'new',
+      followup: l.followup || '',
+      method: l.method || '',
+      lastContact: l.lastcontact || '',
+      overdue: !!(l.followup && l.followup < today2 && l.temp !== 'done'),
+      notes: (l.notes || '').substring(0, 120),
+      prop: l.prop || ''
     }));
 
-    const systemPrompt = `You are Matt Golden's real estate AI assistant for MG Realty, Los Angeles.
-Matt texts commands to manage his CRM. Be brief (under 160 chars when possible). Always confirm what you did.
+    const recentActs = crm.activities
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 8)
+      .map(a => ({ lead: a.leadName, type: a.type, outcome: a.outcome, date: a.date, notes: a.notes }));
 
-CURRENT LEADS:
-${JSON.stringify(leadSummary, null, 0)}
+    const upcomingAppts = crm.appointments
+      .filter(a => a.date >= today2 && a.status !== 'cancelled')
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 5)
+      .map(a => ({ lead: a.leadName, type: a.type, date: a.date, time: a.time, address: a.address }));
 
-COMMANDS:
-log call/text/email/showing/offer [name] [outcome] [notes?]
-followup [name] [date] [method?]
-stage [name] new|contacted|showing|offer|closed
-temp [name] hot|warm|cold|done
-note [name] [text]
-status [name]
-overdue — list overdue follow-ups
-today — leads due today
-digest — send daily digest
-help — list commands
+    const openTasks = crm.tasks
+      .filter(t => t.status !== 'done')
+      .sort((a, b) => (a.due || '').localeCompare(b.due || ''))
+      .slice(0, 5)
+      .map(t => ({ title: t.title, lead: t.leadName, due: t.due }));
 
-RESPONSE FORMAT — always two lines:
-Line 1: JSON action (required): {"action":"log_activity","lead":"Sarah Chen","type":"call","outcome":"no answer","followupDate":"2026-05-28","followupMethod":"call"}
-  or {"action":"update_stage","lead":"Marcus Webb","stage":"offer"}
-  or {"action":"update_temp","lead":"Linda Torres","temp":"hot"}
-  or {"action":"update_followup","lead":"Kevin Park","date":"2026-05-30","method":"call"}
-  or {"action":"add_note","lead":"Sarah Chen","note":"pre-approved 800k"}
-  or {"action":"send_digest"}
-  or {"action":"none"}
-Line 2: Human reply to send back to Matt (concise).
+    const systemPrompt = `You are Matt Golden's AI assistant for MG Realty in Los Angeles. Matt texts you to manage his real estate business — you're his right hand.
 
-If lead not found, use {"action":"none"} and say so.`;
+TODAY: ${today2} (${now2.toLocaleDateString('en-US', { weekday: 'long' })})
+
+=== LEADS (${crm.leads.filter(l => l.temp !== 'done').length} active) ===
+${JSON.stringify(leadSummary)}
+
+=== RECENT ACTIVITY ===
+${JSON.stringify(recentActs)}
+
+=== UPCOMING APPOINTMENTS ===
+${JSON.stringify(upcomingAppts)}
+
+=== OPEN TASKS ===
+${JSON.stringify(openTasks)}
+
+=== YOUR CAPABILITIES ===
+You can do anything Matt asks. Always pick the right action:
+
+- Log activity: {"action":"log_activity","lead":"Name","type":"call|text|email|showing|offer","outcome":"...","notes":"...","followupDate":"YYYY-MM-DD","followupMethod":"call|text|email"}
+- Update stage: {"action":"update_stage","lead":"Name","stage":"new|contacted|showing|offer|closed"}
+- Update temp: {"action":"update_temp","lead":"Name","temp":"hot|warm|cold|done"}
+- Set follow-up: {"action":"update_followup","lead":"Name","date":"YYYY-MM-DD","method":"call|text|email"}
+- Add note: {"action":"add_note","lead":"Name","note":"..."}
+- Add new lead: {"action":"add_lead","first":"...","last":"...","phone":"...","email":"...","temp":"warm","source":"...","notes":"..."}
+- Create task: {"action":"create_task","title":"...","leadName":"...","due":"YYYY-MM-DD","notes":"..."}
+- Schedule appointment (CRM only): {"action":"create_appointment","leadName":"...","type":"showing|call|meeting|offer","date":"YYYY-MM-DD","time":"HH:MM","address":"..."}
+- Schedule on Google Calendar: {"action":"create_calendar_event","title":"...","start":"YYYY-MM-DDTHH:MM:SS","end":"YYYY-MM-DDTHH:MM:SS","location":"...","description":"...","leadName":"...","apptType":"showing"}
+- Send email to lead: {"action":"send_email_template","leadName":"...","email":"...","subject":"...","body":"..."}
+- Send digest email: {"action":"send_digest"}
+- No action needed: {"action":"none"}
+
+=== RESPONSE RULES ===
+1. First line: JSON action (always required, even if {"action":"none"})
+2. Remaining lines: your conversational reply to Matt
+3. Be direct and brief — Matt is busy. Under 300 chars for routine tasks, more detail only when he asks.
+4. For questions about leads/pipeline, give real answers from the data above.
+5. If a lead name is ambiguous, ask which one.
+6. Always confirm what you did.
+7. Don't use command syntax — talk naturally.`;
 
     const result = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 400,
+      max_tokens: 600,
       system: systemPrompt,
       messages: [{ role: 'user', content: inboundMsg }],
     });
@@ -433,30 +665,25 @@ If lead not found, use {"action":"none"} and say so.`;
       if (jsonLine) {
         const action = JSON.parse(jsonLine);
         console.log('SMS action:', JSON.stringify(action));
-        reply = lines.filter(l => !l.startsWith('{')).join(' ').trim() || raw;
+        reply = lines.filter(l => !l.startsWith('{')).join('\n').trim() || raw;
 
         if (action.action === 'send_digest') {
-          // Trigger digest
-          const overdue = crm.leads.filter(l => l.temp !== 'done' && l.followup && new Date(l.followup) < new Date(new Date().toISOString().split('T')[0]));
-          const dueToday = crm.leads.filter(l => l.temp !== 'done' && l.followup === new Date().toISOString().split('T')[0]);
-          if (overdue.length || dueToday.length) {
-            await resend.emails.send({
-              from: 'MG Realty <onboarding@resend.dev>',
-              to: 'goldenmb@gmail.com',
-              subject: `🏡 MG Realty Digest — ${new Date().toLocaleDateString()}`,
-              html: `<p>Overdue: ${overdue.map(l=>l.first+' '+l.last).join(', ')||'none'}</p><p>Due today: ${dueToday.map(l=>l.first+' '+l.last).join(', ')||'none'}</p>`
-            });
-            reply = `Digest sent — ${overdue.length} overdue, ${dueToday.length} due today.`;
-          } else {
-            reply = 'No overdue leads — digest skipped.';
-          }
+          const overdue = crm.leads.filter(l => l.temp !== 'done' && l.followup && l.followup < today2);
+          const dueToday = crm.leads.filter(l => l.temp !== 'done' && l.followup === today2);
+          await resend.emails.send({
+            from: 'MG Realty <onboarding@resend.dev>',
+            to: 'goldenmb@gmail.com',
+            subject: `🏡 MG Realty Digest — ${new Date().toLocaleDateString()}`,
+            html: `<p>Overdue: ${overdue.map(l=>`${l.first} ${l.last}`).join(', ')||'none'}</p><p>Due today: ${dueToday.map(l=>`${l.first} ${l.last}`).join(', ')||'none'}</p>`
+          });
+          reply = `Digest sent — ${overdue.length} overdue, ${dueToday.length} due today.`;
         } else if (action.action !== 'none') {
           const ok = await executeSmsAction(action, crm);
-          if (!ok && action.lead) reply = `Couldn't find lead "${action.lead}" — check spelling.`;
+          if (!ok && action.lead) reply = `Couldn't find "${action.lead}" — check the name and try again.`;
         }
       }
     } catch(e) {
-      console.error('SMS action parse error:', e.message);
+      console.error('SMS action parse error:', e.message, '\nRaw:', raw);
     }
 
     if (reply.length > 320) reply = reply.substring(0, 317) + '…';
