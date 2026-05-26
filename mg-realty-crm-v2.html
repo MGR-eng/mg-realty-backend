@@ -1039,14 +1039,33 @@ function renderPipeline(){
   const labels={new:'New',contacted:'Contacted',showing:'Showing',offer:'Offer',closed:'Closed'};
   const colors={new:'var(--text2)',contacted:'var(--blue)',showing:'var(--amber)',offer:'var(--purple)',closed:'var(--green)'};
   board.innerHTML=stages.map(stage=>{
-    const group=leads.filter(l=>l.stage===stage);
+    const group=leads.filter(l=>l.stage===stage).sort((a,b)=>(du(a.followup)??9999)-(du(b.followup)??9999));
     const cards=group.length===0
       ?'<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">No leads</div>'
-      :group.map(l=>`<div class="pipe-card">
-        <div class="pipe-card-name">${l.first} ${l.last}</div>
-        <div class="pipe-card-prop">${l.prop||'—'}</div>
-        <div class="pipe-card-footer">${tb(l.temp)}<button class="btn btn-sm" style="margin-left:auto" onclick="openEdit('${l.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button></div>
-      </div>`).join('');
+      :group.map(l=>{
+        const d=l.followup?du(l.followup):null;
+        const fuCls=d===null?'color:var(--text3)':d<0?'color:var(--red);font-weight:600':d===0?'color:var(--red)':d<=2?'color:var(--amber)':'color:var(--text3)';
+        const fuStr=d===null?'No follow-up':d===0?'Due today':d<0?Math.abs(d)+'d overdue':d===1?'Tomorrow':'In '+d+'d';
+        const icMethod={call:'ti-phone',text:'ti-message',email:'ti-mail'};
+        return`<div class="pipe-card" onclick="openLeadDetail('${l.id}')" style="cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:4px">
+            <div class="pipe-card-name">${l.first} ${l.last}</div>
+            ${tb(l.temp)}
+          </div>
+          ${l.prop?`<div class="pipe-card-prop"><i class="ti ti-home" style="font-size:10px;margin-right:3px"></i>${l.prop}</div>`:''}
+          <div style="font-size:11px;margin-top:6px;display:flex;align-items:center;gap:4px;${fuCls}">
+            <i class="ti ${l.method?icMethod[l.method]||'ti-calendar':'ti-calendar'}" style="font-size:10px"></i>${fuStr}
+          </div>
+          ${l.notes?`<div style="font-size:11px;color:var(--text3);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${l.notes.substring(0,55)}${l.notes.length>55?'…':''}</div>`:''}
+          <div class="pipe-card-footer" style="margin-top:8px">
+            ${l.source?`<span style="font-size:10px;color:var(--text3)">${l.source}</span>`:''}
+            <div style="margin-left:auto;display:flex;gap:3px">
+              <button class="btn btn-sm" title="Log activity" onclick="event.stopPropagation();openAct('${l.id}')"><i class="ti ti-activity" style="font-size:11px"></i></button>
+              <button class="btn btn-sm" title="Edit" onclick="event.stopPropagation();openEdit('${l.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
     return`<div class="pipe-col">
       <div class="pipe-col-hd"><span class="pipe-col-title" style="color:${colors[stage]}">${labels[stage]}</span><span class="pipe-count">${group.length}</span></div>
       <div class="pipe-col-body">${cards}</div>

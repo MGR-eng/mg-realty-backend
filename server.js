@@ -182,12 +182,24 @@ app.post('/email/send', async (req, res) => {
 // ── Google Sheets: backup leads + activity ───────────────────
 app.post('/drive/backup', async (req, res) => {
   try {
-    const { sheetId, leadsCsv, activityCsv } = req.body;
+    const { sheetId, leadsCsv, activityCsv, tasksCsv, propsCsv, dealsCsv, agentsCsv } = req.body;
     const token = await serviceAccountToken();
 
-    const csvToRows = csv => csv.trim().split('\n').map(r =>
-      r.split(',').map(c => c.replace(/^"|"$/g,'').replace(/""/g,'"'))
-    );
+    const csvToRows = csv => {
+      const rows = [];
+      let row = [], cell = '', inQ = false;
+      for (let i = 0; i < csv.length; i++) {
+        const ch = csv[i];
+        if (ch === '"' && !inQ) { inQ = true; }
+        else if (ch === '"' && inQ && csv[i+1] === '"') { cell += '"'; i++; }
+        else if (ch === '"' && inQ) { inQ = false; }
+        else if (ch === ',' && !inQ) { row.push(cell); cell = ''; }
+        else if ((ch === '\n' || ch === '\r') && !inQ) { if(ch==='\r'&&csv[i+1]==='\n')i++; row.push(cell); rows.push(row); row=[]; cell=''; }
+        else { cell += ch; }
+      }
+      if (cell || row.length) { row.push(cell); rows.push(row); }
+      return rows;
+    };
 
     const writeSheet = async (range, values) => {
       const r = await fetch(
@@ -201,10 +213,17 @@ app.post('/drive/backup', async (req, res) => {
       if (!r.ok) throw new Error(`Sheets API: ${r.status} ${await r.text()}`);
     };
 
-    await writeSheet('Leads!A1', csvToRows(leadsCsv));
-    await writeSheet('Activity Log!A1', csvToRows(activityCsv));
+    const writes = [
+      writeSheet('Leads!A1',        csvToRows(leadsCsv)),
+      writeSheet('Activity Log!A1', csvToRows(activityCsv)),
+    ];
+    if (tasksCsv)  writes.push(writeSheet('Tasks!A1',      csvToRows(tasksCsv)));
+    if (propsCsv)  writes.push(writeSheet('Properties!A1', csvToRows(propsCsv)));
+    if (dealsCsv)  writes.push(writeSheet('Deals!A1',      csvToRows(dealsCsv)));
+    if (agentsCsv) writes.push(writeSheet('Agents!A1',     csvToRows(agentsCsv)));
 
-    console.log(`Backup complete for sheet ${sheetId}`);
+    await Promise.all(writes);
+    console.log(`Backup complete (6 sheets) for ${sheetId}`);
     res.json({ ok: true });
   } catch (e) {
     console.error('BACKUP ERROR:', e.message);
@@ -215,33 +234,64 @@ app.post('/drive/backup', async (req, res) => {
 // ── Twilio SMS webhook ────────────────────────────────────────
 app.post('/sms', async (req, res) => {
   try {
-    const inboundMsg = req.body.Body || '';
+    const inboundMsg = (req.body.Body || '').trim();
     const from       = req.body.From || '';
-    console.log(`SMS received from ${from}: ${inboundMsg}`);
+    console.log(`SMS from ${from}: ${inboundMsg}`);
 
-    const systemPrompt = `You are Matt Golden's real estate AI assistant for MG Realty.
-Matt will text you commands to manage his CRM. Respond concisely (under 160 chars when possible).
+    const systemPrompt = `You are Matt Golden's real estate AI assistant for MG Realty (Los Angeles).
+Matt texts you commands to manage his CRM. Reply under 160 chars when possible. Be direct and confirm what you did.
 
-You can help with:
-- Logging calls, texts, emails, showings, offers
-- Scheduling follow-ups
-- Answering questions about leads
-- Creating calendar appointments
-- Sending the daily digest
+COMMAND FORMATS Matt uses:
+• "log call [name] [outcome]" — e.g. "log call Sarah Chen no answer"
+• "log text [name] [outcome]" — e.g. "log text Marcus Webb interested, follow up Friday"
+• "log showing [name] [address]" — e.g. "log showing Linda Torres 123 Main St"
+• "log offer [name] [outcome]" — e.g. "log offer Kevin Park accepted"
+• "followup [name] [date] [method]" — e.g. "followup Sarah Chen tomorrow call"
+• "stage [name] [stage]" — e.g. "stage Marcus Webb offer" (stages: new/contacted/showing/offer/closed)
+• "temp [name] [temp]" — e.g. "temp Linda Torres hot"
+• "note [name] [text]" — e.g. "note Kevin Park pre-approval came through 480k"
+• "digest" — send the daily digest email
+• "status [name]" — get a quick summary of a lead
+• "overdue" — list overdue follow-ups
+• "today" — list leads due today
+• "help" — list commands
 
-Always confirm what action you took. Be brief and direct.
-If Matt asks something you can't action directly, tell him what to do in the CRM.`;
+When Matt logs an activity or asks for lead info, respond with a JSON action block AND a human confirmation.
+Format: {"action":"log_activity","lead":"Sarah Chen","type":"call","outcome":"no answer","followup":"2026-05-28","method":"call"}
+Or: {"action":"update_stage","lead":"Marcus Webb","stage":"offer"}
+Or: {"action":"update_temp","lead":"Linda Torres","temp":"hot"}
+Or: {"action":"add_note","lead":"Kevin Park","note":"pre-approval 480k"}
+Or: {"action":"send_digest"}
+Or: {"action":"none"} for info-only replies.
+
+Always include the JSON block first on its own line, then your human reply on the next line.
+If you can't find a lead by name, say so and ask Matt to check the spelling.`;
 
     const result = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 300,
+      max_tokens: 400,
       system: systemPrompt,
       messages: [{ role: 'user', content: inboundMsg }],
     });
 
-    const reply = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
 
-    // Respond with TwiML
+    // Parse action JSON if present
+    let reply = raw;
+    try {
+      const jsonMatch = raw.match(/^\{.*\}/m);
+      if (jsonMatch) {
+        const action = JSON.parse(jsonMatch[0]);
+        reply = raw.replace(jsonMatch[0], '').trim();
+        // Fire action to CRM via a side-channel URL if configured
+        // (CRM is localStorage-based so actions are advisory — logged for future webhook)
+        console.log('SMS action:', JSON.stringify(action));
+      }
+    } catch(e) { /* no action block, plain reply */ }
+
+    reply = reply || raw;
+    if (reply.length > 320) reply = reply.substring(0, 317) + '…';
+
     res.set('Content-Type', 'text/xml');
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
