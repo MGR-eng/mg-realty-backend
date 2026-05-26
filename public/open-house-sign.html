@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MG Realty — Open House Sign Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1A1914;--orange:#E8681A;--font:'DM Sans',sans-serif;
+}
+body{font-family:var(--font);background:#f4f2ee;min-height:100vh}
+
+/* ── Setup UI (no-print) ── */
+.setup{max-width:560px;margin:0 auto;padding:32px 20px}
+.setup-header{text-align:center;margin-bottom:32px}
+.setup-header img{width:48px;height:48px;border-radius:10px;object-fit:cover;margin-bottom:12px}
+.setup-header h1{font-size:22px;font-weight:700;color:#1A1914}
+.setup-header p{font-size:14px;color:#6B6860;margin-top:6px}
+
+.card{background:#fff;border-radius:14px;padding:24px;margin-bottom:16px;border:1px solid #e4e1d9}
+.card h2{font-size:13px;font-weight:700;color:#6B6860;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:16px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:11px;font-weight:600;color:#6B6860;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px}
+.fg input,.fg select{width:100%;font-family:var(--font);font-size:15px;padding:10px 14px;border:1.5px solid #e4e1d9;border-radius:8px;outline:none;background:#fff;color:#1a1a1a}
+.fg input:focus,.fg select:focus{border-color:var(--orange)}
+
+.generate-btn{width:100%;padding:14px;background:var(--orange);border:none;border-radius:10px;font-family:var(--font);font-size:16px;font-weight:600;color:#fff;cursor:pointer;transition:background 0.15s}
+.generate-btn:hover{background:#cf5914}
+
+.print-btn{width:100%;padding:14px;background:#1A1914;border:none;border-radius:10px;font-family:var(--font);font-size:16px;font-weight:600;color:#fff;cursor:pointer;margin-top:10px;transition:background 0.15s;display:none}
+.print-btn:hover{background:#333}
+.print-btn.visible{display:block}
+
+/* ── Sign preview (visible + printed) ── */
+#sign-preview{display:none;margin-top:24px}
+#sign-preview.visible{display:block}
+
+.sign{
+  background:#fff;
+  border-radius:16px;
+  overflow:hidden;
+  border:2px solid #e4e1d9;
+  max-width:560px;
+  margin:0 auto;
+  font-family:var(--font);
+  page-break-inside:avoid;
+}
+
+.sign-top{
+  background:var(--bg);
+  padding:28px 32px 24px;
+  text-align:center;
+}
+.sign-logo-wrap{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px}
+.sign-logo{width:48px;height:48px;border-radius:10px;object-fit:cover}
+.sign-brand{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.01em}
+.sign-headline{font-size:32px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-0.03em;margin-bottom:6px}
+.sign-address{font-size:15px;color:rgba(255,255,255,0.6);font-weight:400;min-height:20px}
+
+.sign-body{
+  padding:28px 32px;
+  display:flex;
+  align-items:center;
+  gap:24px;
+}
+.sign-qr{
+  flex-shrink:0;
+  width:160px;
+  height:160px;
+  border:3px solid var(--orange);
+  border-radius:12px;
+  overflow:hidden;
+  background:#fff;
+}
+.sign-qr img{width:100%;height:100%;display:block}
+
+.sign-right{flex:1}
+.sign-cta-main{font-size:20px;font-weight:700;color:#1A1914;line-height:1.2;margin-bottom:8px}
+.sign-cta-sub{font-size:13px;color:#6B6860;line-height:1.5;margin-bottom:16px}
+.sign-bullets{list-style:none;padding:0}
+.sign-bullets li{font-size:13px;color:#1A1914;padding:3px 0;display:flex;align-items:center;gap:6px}
+.sign-bullets li::before{content:'✓';color:var(--orange);font-weight:700;font-size:12px}
+
+.sign-footer{
+  background:#FFF3ED;
+  padding:16px 32px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  border-top:1px solid #ffe0c8;
+}
+.sign-agent-photo{width:44px;height:44px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;flex-shrink:0;overflow:hidden}
+.sign-agent-photo img{width:100%;height:100%;object-fit:cover}
+.sign-agent-info{flex:1}
+.sign-agent-name{font-size:14px;font-weight:700;color:#1A1914}
+.sign-agent-title{font-size:12px;color:#6B6860}
+.sign-agent-contact{font-size:12px;color:var(--orange);font-weight:600;margin-top:2px}
+
+@media print {
+  .setup{display:none}
+  #sign-preview{display:block!important;margin:0;padding:0}
+  body{background:#fff}
+  .sign{
+    border-radius:0;
+    border:none;
+    max-width:100%;
+    width:100%;
+    min-height:100vh;
+  }
+  .sign-top{padding:40px 48px 32px}
+  .sign-headline{font-size:40px}
+  .sign-body{padding:40px 48px}
+  .sign-qr{width:200px;height:200px}
+  .sign-cta-main{font-size:24px}
+  .sign-cta-sub{font-size:15px}
+  .sign-bullets li{font-size:15px}
+  .sign-footer{padding:20px 48px}
+}
+</style>
+</head>
+<body>
+
+<div class="setup">
+  <div class="setup-header">
+    <img src="/icons/mg-logo.jpg" alt="MG Realty">
+    <h1>Open House Sign Generator</h1>
+    <p>Fill in the details, preview your sign, then print.</p>
+  </div>
+
+  <div class="card">
+    <h2>Property Info</h2>
+    <div class="fg">
+      <label>Property Address</label>
+      <input type="text" id="prop-address" placeholder="e.g. 123 Maple St, Silver Lake, CA 90026">
+    </div>
+    <div class="fg">
+      <label>Open House Date & Time (optional)</label>
+      <input type="text" id="prop-datetime" placeholder="e.g. Sunday, June 1 · 1–4 PM">
+    </div>
+    <div class="fg">
+      <label>Headline</label>
+      <input type="text" id="prop-headline" value="Welcome to Our Open House" placeholder="Welcome to Our Open House">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Your Info</h2>
+    <div class="fg">
+      <label>Your Name</label>
+      <input type="text" id="agent-name" value="Matt Golden" placeholder="Matt Golden">
+    </div>
+    <div class="fg">
+      <label>Phone Number</label>
+      <input type="text" id="agent-phone" placeholder="(310) 555-0123">
+    </div>
+    <div class="fg">
+      <label>Website / Domain</label>
+      <input type="text" id="agent-domain" value="mg-realty-backend.onrender.com" placeholder="mg-realty-backend.onrender.com">
+    </div>
+  </div>
+
+  <button class="generate-btn" onclick="generateSign()">Generate Sign →</button>
+  <button class="print-btn" id="print-btn" onclick="window.print()">🖨 Print Sign</button>
+</div>
+
+<div id="sign-preview">
+  <div class="sign" id="the-sign">
+    <div class="sign-top">
+      <div class="sign-logo-wrap">
+        <img src="/icons/mg-logo.jpg" class="sign-logo" alt="MG Realty">
+        <span class="sign-brand">MG Realty</span>
+      </div>
+      <div class="sign-headline" id="s-headline">Welcome to Our Open House</div>
+      <div class="sign-address" id="s-address"></div>
+    </div>
+
+    <div class="sign-body">
+      <div class="sign-qr">
+        <img id="s-qr" src="" alt="QR Code">
+      </div>
+      <div class="sign-right">
+        <div class="sign-cta-main">Scan to stay in touch</div>
+        <div class="sign-cta-sub">Get updates on this home and similar properties in the area.</div>
+        <ul class="sign-bullets">
+          <li>Takes 30 seconds</li>
+          <li>No spam, ever</li>
+          <li>Matt follows up personally</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sign-footer">
+      <div class="sign-agent-photo">
+        <img src="/icons/mg-logo.jpg" alt="Matt Golden" onerror="this.style.display='none'">
+      </div>
+      <div class="sign-agent-info">
+        <div class="sign-agent-name" id="s-agent-name">Matt Golden</div>
+        <div class="sign-agent-title">MG Realty · Los Angeles</div>
+        <div class="sign-agent-contact" id="s-agent-contact"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function generateSign() {
+  const address  = document.getElementById('prop-address').value.trim();
+  const datetime = document.getElementById('prop-datetime').value.trim();
+  const headline = document.getElementById('prop-headline').value.trim() || 'Welcome to Our Open House';
+  const agentName = document.getElementById('agent-name').value.trim() || 'Matt Golden';
+  const agentPhone = document.getElementById('agent-phone').value.trim();
+  const domain = document.getElementById('agent-domain').value.trim() || 'mg-realty-backend.onrender.com';
+
+  // Build contact form URL with params
+  const params = new URLSearchParams();
+  params.set('source', 'Open House');
+  if (address) params.set('property', address);
+  if (datetime) params.set('event', datetime);
+  const formUrl = `https://${domain}/contact?${params.toString()}`;
+
+  // Update sign content
+  document.getElementById('s-headline').textContent = headline;
+
+  const addrParts = [address, datetime].filter(Boolean);
+  document.getElementById('s-address').textContent = addrParts.join('  ·  ');
+
+  document.getElementById('s-agent-name').textContent = agentName;
+  document.getElementById('s-agent-contact').textContent = agentPhone || domain;
+
+  // Generate QR code via qrserver.com
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(formUrl)}`;
+  document.getElementById('s-qr').src = qrUrl;
+
+  // Show sign + print button
+  const preview = document.getElementById('sign-preview');
+  preview.classList.add('visible');
+  document.getElementById('print-btn').classList.add('visible');
+
+  // Scroll to preview
+  setTimeout(() => preview.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+// Auto-generate if URL has params (direct link from CRM)
+const sp = new URLSearchParams(window.location.search);
+if (sp.get('address')) {
+  document.getElementById('prop-address').value = sp.get('address') || '';
+  document.getElementById('prop-datetime').value = sp.get('datetime') || '';
+  if (sp.get('phone')) document.getElementById('agent-phone').value = sp.get('phone');
+  generateSign();
+}
+</script>
+</body>
+</html>

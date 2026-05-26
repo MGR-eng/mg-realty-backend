@@ -199,6 +199,54 @@ function setIntent(btn) {
   document.getElementById('intent').value = btn.dataset.val;
 }
 
+// Pre-fill from URL params (e.g. ?source=Open+House&property=123+Main+St)
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const source = params.get('source');
+  const property = params.get('property');
+  const event = params.get('event');
+
+  if (source) {
+    // Select matching option or set hidden value
+    const sel = document.getElementById('source');
+    let matched = false;
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value.toLowerCase().includes(source.toLowerCase())) {
+        sel.value = sel.options[i].value;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      const opt = document.createElement('option');
+      opt.value = source;
+      opt.textContent = source;
+      opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+
+  if (property || event) {
+    const notesEl = document.getElementById('notes');
+    const parts = [];
+    if (event) parts.push(`Event: ${event}`);
+    if (property) parts.push(`Property: ${property}`);
+    notesEl.placeholder = parts.join(' · ');
+    // Store in a hidden field so it gets submitted
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.id = 'param-notes';
+    hidden.value = parts.join('\n');
+    document.getElementById('leadForm').appendChild(hidden);
+  }
+
+  // Update hero copy for open house context
+  if (source && source.toLowerCase().includes('open house')) {
+    document.querySelector('.hero h1').innerHTML = "Welcome!<br>Stay in Touch";
+    document.querySelector('.hero p').textContent = "Fill out your info and I'll send you updates on this property and similar homes.";
+  }
+})();
+
 document.getElementById('leadForm').addEventListener('submit', async function(e) {
   e.preventDefault();
 
@@ -226,7 +274,7 @@ document.getElementById('leadForm').addEventListener('submit', async function(e)
     timeline:     document.getElementById('timeline').value,
     neighborhood: document.getElementById('neighborhood').value.trim(),
     source:       document.getElementById('source').value,
-    notes:        document.getElementById('notes').value.trim()
+    notes:        document.getElementById('notes').value.trim() || (document.getElementById('param-notes')?.value || '')
   };
 
   try {
