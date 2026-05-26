@@ -169,6 +169,29 @@ app.post('/gmail/digest', async (req, res) => {
   }
 });
 
+// ── Email: send template ─────────────────────────────────────
+app.post('/email/send', async (req, res) => {
+  try {
+    const { to, subject, html } = req.body;
+    if (!to) throw new Error('No recipient email address');
+    const token = await googleToken();
+    const raw = Buffer.from(
+      `From: MG Realty <goldenmb@gmail.com>\r\nTo: ${to}\r\nSubject: ${subject}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${html}`
+    ).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const gmailRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw })
+    });
+    if (!gmailRes.ok) throw new Error(`Gmail API: ${gmailRes.status} ${await gmailRes.text()}`);
+    console.log(`Email sent to ${to}`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('EMAIL ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Google Sheets: backup leads + activity ───────────────────
 app.post('/drive/backup', async (req, res) => {
   try {

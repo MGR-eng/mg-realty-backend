@@ -199,6 +199,18 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="mfoot"><button class="btn" onclick="closeModal('mLead')">Cancel</button><button class="btn btn-gold" onclick="saveLead()">Save lead</button></div>
 </div></div>
 
+<!-- Email Template Modal -->
+<div class="modal-overlay" id="mEmail"><div class="modal">
+  <div class="modal-title">✉️ Send Email</div>
+  <div id="emailLeadCard" class="lead-card-sm"></div>
+  <div class="fg">
+    <div class="fgg full"><label>To</label><input id="ef1" placeholder="recipient@email.com"></div>
+    <div class="fgg full"><label>Subject</label><input id="ef2"></div>
+    <div class="fgg full"><label>Message</label><textarea id="ef3" style="min-height:180px"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mEmail')">Cancel</button><button class="btn btn-gold" onclick="sendEmailTemplate()"><i class="ti ti-send"></i> Send</button></div>
+</div></div>
+
 <!-- Activity Modal -->
 <div class="modal-overlay" id="mAct"><div class="modal">
   <div class="modal-title">Log activity</div>
@@ -341,7 +353,7 @@ function renderLeads(){
   if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">No leads match</div></td></tr>`;return;}
   tbody.innerHTML=f.map(l=>{
     const d=du(l.followup),rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
-    return`<tr class="${rc}"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td><td style="white-space:nowrap"><button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
+    return`<tr class="${rc}"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td><td style="white-space:nowrap"><button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
   }).join('');
 }
 
@@ -459,6 +471,55 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 load();renderAll();
+
+// ── Email templates ───────────────────────────────────────────
+function openEmailTemplate(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('emailLeadCard').innerHTML = `<div class="avatar">${l.first[0]}${l.last[0]}</div><div><div style="font-weight:600;font-size:13px">${l.first} ${l.last}</div><div style="font-size:11px;color:var(--text2)">${l.email||'No email on file'} · ${l.prop||''}</div></div>`;
+  document.getElementById('ef1').value = l.email || '';
+  document.getElementById('ef2').value = `Thank you for visiting the open house!`;
+  document.getElementById('ef3').value =
+`Hi ${l.first},
+
+Thank you so much for stopping by the open house${l.prop ? ' for ' + l.prop : ''}! It was great meeting you.
+
+${l.notes ? 'Based on what you shared, ' + l.notes.substring(0, 100) + (l.notes.length > 100 ? '…' : '') + '\n\n' : ''}I'd love to help you find the perfect property. Feel free to reach out anytime with questions or if you'd like to schedule a private showing.
+
+Looking forward to working with you!
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`;
+  openModal('mEmail');
+}
+
+async function sendEmailTemplate() {
+  const to      = document.getElementById('ef1').value.trim();
+  const subject = document.getElementById('ef2').value.trim();
+  const text    = document.getElementById('ef3').value.trim();
+  if (!to) { toast('Please enter a recipient email', 'error'); return; }
+  if (!to.includes('@')) { toast('Invalid email address', 'error'); return; }
+  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+    <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0">
+      <h2 style="color:#fff;margin:0;font-size:16px">MG Realty</h2>
+    </div>
+    <div style="padding:24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 8px 8px;white-space:pre-line;font-size:14px;line-height:1.6;color:#333">
+      ${text.replace(/\n/g,'<br>')}
+    </div>
+  </div>`;
+  setSyncStatus('busy', 'Sending email…');
+  try {
+    await api('/email/send', { to, subject, html });
+    closeModal('mEmail');
+    toast(`✉️ Email sent to ${to}`, 'success');
+    setSyncStatus('ok', 'Ready');
+  } catch(e) {
+    toast('Email failed — check logs', 'error');
+    setSyncStatus('ok', 'Ready');
+  }
+}
 
 // ── Auto morning digest ───────────────────────────────────────
 (async function autoDigest(){
