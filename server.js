@@ -747,25 +747,26 @@ app.post('/leads/capture', async (req, res) => {
     await writeCRM(crm);
     console.log(`New lead captured: ${first} ${last} (${source || 'unknown source'})`);
 
-    // Notify Matt — SMS if Twilio is live, else email
-    const notifyMsg = `🏡 New lead!\n${first} ${last}\n${phone}${email ? '\n' + email : ''}\n${intent || 'inquiry'} | ${budget || 'budget TBD'} | ${timeline || ''}\n${neighborhood || ''}\nSource: ${source || 'unknown'}`;
+    // Respond immediately — notification is fire-and-forget
+    res.json({ ok: true });
 
+    // Notify Matt in the background (won't affect form response)
     const ownerPhone = process.env.OWNER_PHONE;
     const twilioReady = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM && ownerPhone;
+    const notifyMsg = `🏡 New lead!\n${first} ${last}\n${phone}${email ? '\n' + email : ''}\n${intent || 'inquiry'} | ${budget || 'budget TBD'} | ${timeline || ''}\n${neighborhood || ''}\nSource: ${source || 'unknown'}`;
 
     if (twilioReady) {
-      try {
-        await sendSMS(ownerPhone, notifyMsg);
-        console.log('Lead notification sent via SMS');
-      } catch(smsErr) {
-        console.error('SMS notification failed, falling back to email:', smsErr.message);
-        await sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes);
-      }
+      sendSMS(ownerPhone, notifyMsg)
+        .then(() => console.log('Lead notification sent via SMS'))
+        .catch(e => {
+          console.error('SMS failed, trying email:', e.message);
+          sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes)
+            .catch(e2 => console.error('Email notification also failed:', e2.message));
+        });
     } else {
-      await sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes);
+      sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes)
+        .catch(e => console.error('Lead email notification failed:', e.message));
     }
-
-    res.json({ ok: true });
   } catch(e) {
     console.error('LEAD CAPTURE ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
