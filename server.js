@@ -1089,5 +1089,68 @@ You can do anything Matt asks. Always pick the right action:
   }
 });
 
+// ── Instagram Content Engine ──────────────────────────────────
+app.post('/api/generate-content', async (req, res) => {
+  try {
+    const { contentType, address, price, beds, baths, sqft, features, notes } = req.body;
+
+    const typeLabels = {
+      new_listing:  'New Listing',
+      price_drop:   'Price Drop / Price Reduction',
+      open_house:   'Open House Announcement',
+      market_tip:   'LA Market Tip',
+      buyer_tip:    'Buyer Tip',
+      seller_tip:   'Seller Tip',
+    };
+
+    const listingContext = address ? `
+Property details:
+- Address: ${address}
+- Price: ${price || 'Contact for price'}
+- Beds/Baths: ${beds || '?'}bd / ${baths || '?'}ba
+- Sqft: ${sqft || 'N/A'}
+- Key features: ${features || 'N/A'}
+- Additional notes: ${notes || 'N/A'}
+` : `Additional context: ${notes || 'General real estate content for LA market'}`;
+
+    const prompt = `You are a real estate social media expert for MG Realty, a boutique real estate business in Los Angeles run by Matt Golden. He helps buyers and sellers of single-family homes and income properties in the LA area. His brand is direct, confident, and approachable — not corporate.
+
+Generate Instagram content for a "${typeLabels[contentType] || contentType}" post.
+${listingContext}
+
+Return a JSON object with exactly these three keys:
+{
+  "caption": "Full Instagram caption, 150-220 words. Start with a hook (no generic openers). Use line breaks for readability. Include a clear CTA at the end (DM, link in bio, or call). Sign off as Matt Golden · MG Realty. Use 2-3 relevant emojis naturally placed, not spammy.",
+  "reelsScript": "A Reels/TikTok script, 45-60 seconds spoken. Format as: [HOOK] (first 3 seconds to stop the scroll), [BODY] (main content, 3-4 punchy points), [CTA] (last 5 seconds). Write it as natural spoken words Matt would say on camera — casual, confident, LA-native tone. No stage directions, just the words.",
+  "hashtags": "30 relevant hashtags as a single string separated by spaces. Mix: broad real estate tags, LA-specific tags, niche buyer/seller tags, and 2-3 unique MG Realty brand tags. No # symbol, just the words separated by spaces."
+}
+
+Return only valid JSON, no markdown code blocks, no extra text.`;
+
+    const resp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const raw = resp.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    let result;
+    try {
+      result = JSON.parse(raw);
+    } catch (e) {
+      // Try to extract JSON if wrapped in markdown
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) result = JSON.parse(match[0]);
+      else throw new Error('Claude returned non-JSON: ' + raw.substring(0, 200));
+    }
+
+    console.log(`Content generated: ${contentType}${address ? ' · ' + address : ''}`);
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('CONTENT ENGINE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
