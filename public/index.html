@@ -1163,7 +1163,7 @@ function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-load();renderAll();syncFromBackend();loadHistory();
+load();renderAll();syncFromBackend();
 
 // ── Lead detail panel ─────────────────────────────────────────
 function openLeadDetail(id){
@@ -1953,6 +1953,9 @@ async function cancelSequence(leadId){
     openLeadDetail(leadId);
   }catch(e){alert('Error cancelling sequence: '+e.message);}
 }
+
+// ── Load content history (must be after Content Engine declarations) ──
+loadHistory();
 
 // ── PWA service worker registration ──────────────────────────
 if ('serviceWorker' in navigator) {
