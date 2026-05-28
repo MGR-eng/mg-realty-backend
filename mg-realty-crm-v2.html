@@ -634,6 +634,13 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <!-- Commission Calculator Modal -->
 <div class="modal-overlay" id="mCommCalc"><div class="modal" style="max-width:460px">
   <div class="modal-title">💰 Commission Calculator</div>
+  <div style="padding:0 20px 12px">
+    <input type="file" id="cc-file" accept=".pdf" style="display:none" onchange="uploadRLA(this)">
+    <button class="btn" id="cc-upload-btn" onclick="document.getElementById('cc-file').click()" style="width:100%;border:1.5px dashed var(--border);background:var(--surface2);color:var(--text2);font-size:12px;padding:10px;gap:6px">
+      <i class="ti ti-file-upload"></i> Upload RLA / contract to auto-fill fields
+    </button>
+    <div id="cc-parse-status" style="display:none;font-size:11px;color:var(--amber);margin-top:6px;text-align:center"></div>
+  </div>
   <div class="fgg-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 4px">
     <div class="fgg full" style="grid-column:1/-1"><label>Sale price</label><input id="cc1" type="text" placeholder="$1,500,000" oninput="calcComm()" style="font-size:16px;font-weight:700"></div>
     <div class="fgg"><label>Total commission %</label><input id="cc2" type="number" value="2.5" step="0.1" min="0" max="10" oninput="calcComm()"></div>
@@ -1923,6 +1930,33 @@ function saveCommCalcAsDeal(){
   document.getElementById('df6').value=parseFloat(document.getElementById('cc3').value)===1?'Both':'Buyer';
   document.getElementById('df7').value=`Calc: Compass split ${document.getElementById('cc4').value}%`;
   closeModal('mCommCalc');openModal('mDeal');
+}
+
+async function uploadRLA(input){
+  const file=input.files[0];if(!file)return;
+  const statusEl=document.getElementById('cc-parse-status');
+  const btnEl=document.getElementById('cc-upload-btn');
+  statusEl.style.display='block';statusEl.textContent='✦ Reading contract…';statusEl.style.color='var(--amber)';
+  btnEl.disabled=true;btnEl.innerHTML='<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Parsing RLA…';
+  try{
+    const base64=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=e=>resolve(e.target.result.split(',')[1]);
+      reader.onerror=reject;reader.readAsDataURL(file);
+    });
+    const res=await fetch('/api/parse-rla',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdfBase64:base64,filename:file.name})});
+    const data=await res.json();
+    if(!data.ok)throw new Error(data.error||'Parse failed');
+    const f=data.fields;let filled=[];
+    if(f.listPrice){document.getElementById('cc1').value=f.listPrice.toLocaleString();filled.push('price');}
+    if(f.commissionPct){document.getElementById('cc2').value=f.commissionPct;filled.push('commission');}
+    if(f.side){const sideMap={both:'1',buyer:'0.5',seller:'0.5'};if(sideMap[f.side])document.getElementById('cc3').value=sideMap[f.side];filled.push('side');}
+    if(f.compassSplit){document.getElementById('cc4').value=f.compassSplit;filled.push('Compass split');}
+    calcComm();
+    statusEl.textContent=filled.length?`✓ Pulled: ${filled.join(', ')}${f.notes?' — '+f.notes:''}`:'⚠️ Couldn\'t find details — fill in manually';
+    statusEl.style.color=filled.length?'var(--green)':'var(--amber)';
+  }catch(e){statusEl.textContent='✗ Error: '+e.message;statusEl.style.color='var(--red)';}
+  finally{btnEl.disabled=false;btnEl.innerHTML='<i class="ti ti-file-upload"></i> Upload RLA / contract to auto-fill fields';input.value='';}
 }
 
 // ── Instagram Content Engine ──────────────────────────────────

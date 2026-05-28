@@ -2523,6 +2523,56 @@ Respond with ONLY valid JSON (no markdown, no backticks):
   }
 });
 
+// ── RLA Parser ───────────────────────────────────────────────
+app.post('/api/parse-rla', async (req, res) => {
+  try {
+    const { pdfBase64, filename } = req.body;
+    if (!pdfBase64) return res.status(400).json({ ok: false, error: 'No PDF data provided' });
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 512,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 }
+          },
+          {
+            type: 'text',
+            text: `You are parsing a California Residential Listing Agreement (RLA) or similar real estate contract. Extract these fields and return ONLY valid JSON, no explanation:
+
+{
+  "listPrice": <number or null — the listing/sale price in dollars>,
+  "commissionPct": <number or null — the total commission percentage, e.g. 2.5>,
+  "side": <"buyer" | "seller" | "both" | null — which side this agent represents>,
+  "compassSplit": <number or null — Compass brokerage split percentage if mentioned, else null>,
+  "notes": <string — any other relevant commission terms in one sentence, or null>
+}
+
+If a field is not found in the document, use null. For listPrice, return the raw number without commas or $ sign. For commissionPct, return just the number (e.g. 2.5 not "2.5%").`
+          }
+        ]
+      }]
+    });
+
+    const raw = msg.content[0].text.trim();
+    let parsed;
+    try {
+      const match = raw.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(match ? match[0] : raw);
+    } catch {
+      return res.status(422).json({ ok: false, error: 'Could not parse AI response', raw });
+    }
+
+    res.json({ ok: true, fields: parsed });
+  } catch (e) {
+    console.error('parse-rla error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Property Tour Scheduler ───────────────────────────────────
 app.post('/api/book-tour', async (req, res) => {
   try {
