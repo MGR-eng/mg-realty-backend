@@ -339,6 +339,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
             <span id="cl-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
           </div>
           <button class="btn btn-sm" id="briefing-btn" onclick="sendMorningBriefing()" title="Send morning briefing to your inbox" style="background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)"><i class="ti ti-mail-forward" style="font-size:11px"></i> Briefing</button>
+          <button class="btn btn-sm" id="digest-btn" onclick="sendWeeklyDigest()" title="Send weekly pipeline digest" style="background:var(--surface2);border-color:var(--border)"><i class="ti ti-chart-bar" style="font-size:11px"></i> Digest</button>
           <button class="btn btn-sm btn-primary" id="cl-refresh-btn" onclick="refreshCallList()"><i class="ti ti-refresh" style="font-size:11px"></i> Refresh</button>
         </div>
         <div id="cl-body">
@@ -2408,6 +2409,24 @@ async function sendMorningBriefing() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-mail-forward" style="font-size:11px"></i> Briefing';
+  }
+}
+
+async function sendWeeklyDigest() {
+  const btn = document.getElementById('digest-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="ce-spinner" style="width:10px;height:10px;border-width:1.5px;display:inline-block;vertical-align:middle;margin-right:4px"></div> Sending…';
+  try {
+    const res = await fetch(BACKEND + '/api/weekly-digest', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    toast('📊 Weekly digest sent to your inbox!', 'success');
+  } catch(e) {
+    toast('Digest failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-chart-bar" style="font-size:11px"></i> Digest';
   }
 }
 

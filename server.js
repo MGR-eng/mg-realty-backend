@@ -1841,6 +1841,254 @@ Write the summary in 2nd person ("You have…", "Your top priority…"). Sound l
   }
 });
 
+// ── Weekly Pipeline Digest ────────────────────────────────────
+app.post('/api/weekly-digest', async (req, res) => {
+  try {
+    const crm  = await readCRM();
+    const now  = new Date();
+    const toLA = d => new Date(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const la   = toLA(now);
+
+    // Week window: last 7 days
+    const weekAgo = new Date(la); weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = [weekAgo.getFullYear(), String(weekAgo.getMonth()+1).padStart(2,'0'), String(weekAgo.getDate()).padStart(2,'0')].join('-');
+    const todayStr   = [la.getFullYear(), String(la.getMonth()+1).padStart(2,'0'), String(la.getDate()).padStart(2,'0')].join('-');
+
+    const activeLeads  = crm.leads.filter(l => l.temp !== 'done');
+    const activities   = crm.activities || [];
+
+    // ── Stage counts ──────────────────────────────────────────
+    const stages = { new: 0, contacted: 0, showing: 0, offer: 0, closed: 0 };
+    activeLeads.forEach(l => { const s = l.stage || 'new'; if (stages[s] !== undefined) stages[s]++; });
+
+    // ── Estimate pipeline value ───────────────────────────────
+    const stageWeight = { new: 0.05, contacted: 0.15, showing: 0.35, offer: 0.70, closed: 1.0 };
+    let pipelineValue = 0;
+    activeLeads.forEach(l => {
+      const budget = parseFloat((l.budget || '').toString().replace(/[^0-9.]/g, '')) || 800000;
+      const commission = budget * 0.025; // 2.5% avg
+      pipelineValue += commission * (stageWeight[l.stage || 'new'] || 0.05);
+    });
+
+    // ── This week's activity ──────────────────────────────────
+    const weekActs = activities.filter(a => a.date >= weekAgoStr && a.date <= todayStr);
+    const actByType = {};
+    weekActs.forEach(a => { actByType[a.type] = (actByType[a.type] || 0) + 1; });
+    const actSummary = Object.entries(actByType).map(([t, c]) => `${c} ${t}${c > 1 ? 's' : ''}`).join(', ') || 'none';
+
+    // ── Leads active this week ────────────────────────────────
+    const activeThisWeek = [...new Set(weekActs.map(a => a.leadId))]
+      .map(id => crm.leads.find(l => l.id === id))
+      .filter(Boolean);
+
+    // ── Stalled leads (no contact in 7+ days, not done) ───────
+    const stalled = activeLeads
+      .filter(l => {
+        if (!l.lastcontact) return true;
+        const d = new Date(l.lastcontact.split('-').map((v,i)=>i===1?Number(v)-1:Number(v)));
+        return (la - d) > 7 * 86400000;
+      })
+      .filter(l => l.temp === 'hot' || l.temp === 'warm')
+      .sort((a, b) => (a.lastcontact || '') < (b.lastcontact || '') ? -1 : 1)
+      .slice(0, 4);
+
+    // ── Overdue follow-ups ────────────────────────────────────
+    const overdue = activeLeads
+      .filter(l => l.followup && l.followup < todayStr)
+      .sort((a, b) => a.followup < b.followup ? -1 : 1)
+      .slice(0, 5);
+
+    // ── Next week's appointments ──────────────────────────────
+    const nextWeek = new Date(la); nextWeek.setDate(nextWeek.getDate() + 7);
+    const nextWeekStr = [nextWeek.getFullYear(), String(nextWeek.getMonth()+1).padStart(2,'0'), String(nextWeek.getDate()).padStart(2,'0')].join('-');
+    const upcomingAppts = (crm.appointments || [])
+      .filter(a => a.date > todayStr && a.date <= nextWeekStr)
+      .sort((a, b) => a.date < b.date ? -1 : 1)
+      .slice(0, 5);
+
+    // ── AI strategic summary ──────────────────────────────────
+    const aiPrompt = `You are Matt Golden's AI assistant at MG Realty, Los Angeles.
+Write a 3–4 sentence strategic weekly summary for his pipeline digest. Be direct, specific, actionable.
+Data:
+- Active leads: ${activeLeads.length} (${stages.hot || 0} hot, ${stages.warm || 0} warm)
+- Pipeline est. value: $${Math.round(pipelineValue).toLocaleString()} in weighted commissions
+- This week's activity: ${actSummary}
+- Leads touched this week: ${activeThisWeek.length}
+- Stalled hot/warm leads: ${stalled.length}
+- Overdue follow-ups: ${overdue.length}
+- Upcoming appts next 7 days: ${upcomingAppts.length}
+Top stalled: ${stalled.slice(0,2).map(l=>`${l.first} ${l.last} (${l.temp}, last contact: ${l.lastcontact||'never'})`).join(', ')||'none'}
+Focus on what needs attention this week. No bullet points, just 3-4 tight sentences.`;
+
+    const aiMsg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{ role: 'user', content: aiPrompt }]
+    });
+    const aiSummary = aiMsg.content[0].text.trim();
+
+    // ── Format helpers ────────────────────────────────────────
+    const weekLabel = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' });
+    const fmt = s => s ? new Date(s+'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+    const tempBadge = t => ({ hot: '#dc2626', warm: '#d97706', cold: '#6b7280', cool: '#6b7280' }[t] || '#6b7280');
+    const stageLabel = { new: 'New', contacted: 'Contacted', showing: 'Showing', offer: 'Offer', closed: 'Closed' };
+
+    const fmtMoney = n => n >= 1000000 ? `$${(n/1000000).toFixed(2)}M` : `$${Math.round(n/1000)}K`;
+
+    // ── Build email HTML ──────────────────────────────────────
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f4f5;margin:0;padding:20px}
+  .wrap{max-width:600px;margin:0 auto}
+  .card{background:#fff;border-radius:12px;overflow:hidden;margin-bottom:16px;border:1px solid #e4e4e7}
+  .header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:28px 28px 24px;color:#fff}
+  .header-eyebrow{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#fbbf24;margin-bottom:6px}
+  .header-title{font-size:22px;font-weight:700;margin:0 0 4px}
+  .header-date{font-size:13px;color:rgba(255,255,255,0.6)}
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+  .stat{padding:16px;text-align:center;border-right:1px solid #e4e4e7}
+  .stat:last-child{border-right:none}
+  .stat-val{font-size:22px;font-weight:800;color:#111}
+  .stat-label{font-size:10px;font-weight:600;color:#71717a;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px}
+  .stat-val.gold{color:#d97706}
+  .stat-val.green{color:#059669}
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#71717a;padding:14px 20px 0}
+  .ai-box{margin:12px 20px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;font-size:13px;line-height:1.6;color:#1c1917}
+  .ai-box-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#d97706;margin-bottom:6px;display:flex;align-items:center;gap:4px}
+  table{width:100%;border-collapse:collapse}
+  td,th{padding:10px 20px;font-size:12px;text-align:left;border-bottom:1px solid #f4f4f5}
+  th{font-size:10px;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:0.06em;background:#fafafa}
+  tr:last-child td{border-bottom:none}
+  .name{font-weight:600;font-size:13px;color:#111}
+  .sub{font-size:11px;color:#71717a;margin-top:1px}
+  .badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;color:#fff}
+  .stage{font-size:11px;color:#71717a;text-transform:capitalize}
+  .pipeline-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:12px 20px 16px}
+  .footer{text-align:center;padding:16px;font-size:11px;color:#a1a1aa}
+  .week-activity{padding:12px 20px 16px;display:flex;gap:16px;flex-wrap:wrap}
+  .act-chip{background:#f4f4f5;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:500;color:#374151}
+  .act-chip span{font-weight:800;color:#111;margin-right:4px}
+  .empty-note{padding:12px 20px;font-size:12px;color:#a1a1aa;font-style:italic}
+</style></head><body><div class="wrap">
+
+<div class="card">
+  <div class="header">
+    <div class="header-eyebrow">📊 Weekly Digest</div>
+    <div class="header-title">MG Realty Pipeline Review</div>
+    <div class="header-date">Week of ${weekLabel}</div>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-val">${activeLeads.length}</div><div class="stat-label">Active Leads</div></div>
+    <div class="stat"><div class="stat-val gold">${activeLeads.filter(l=>l.temp==='hot').length}</div><div class="stat-label">Hot Leads</div></div>
+    <div class="stat"><div class="stat-val">${weekActs.length}</div><div class="stat-label">Actions This Week</div></div>
+    <div class="stat"><div class="stat-val green">${fmtMoney(pipelineValue)}</div><div class="stat-label">Est. Pipeline</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">⚡ AI Weekly Take</div>
+  <div class="ai-box"><div class="ai-box-label">✦ AI Analysis</div>${aiSummary}</div>
+</div>
+
+${stalled.length > 0 ? `
+<div class="card">
+  <div class="section-title">🔴 Stalled — Needs Attention</div>
+  <table>
+    <tr><th>Lead</th><th>Temp</th><th>Stage</th><th>Last Contact</th></tr>
+    ${stalled.map(l => `<tr>
+      <td><div class="name">${l.first} ${l.last}</div><div class="sub">${l.prop || l.type || ''}</div></td>
+      <td><span class="badge" style="background:${tempBadge(l.temp)}">${l.temp}</span></td>
+      <td class="stage">${stageLabel[l.stage||'new']||'New'}</td>
+      <td style="font-size:12px;color:#71717a">${l.lastcontact ? fmt(l.lastcontact) : 'Never'}</td>
+    </tr>`).join('')}
+  </table>
+</div>` : ''}
+
+${overdue.length > 0 ? `
+<div class="card">
+  <div class="section-title">📅 Overdue Follow-ups</div>
+  <table>
+    <tr><th>Lead</th><th>Temp</th><th>Follow-up Was Due</th></tr>
+    ${overdue.map(l => `<tr>
+      <td><div class="name">${l.first} ${l.last}</div><div class="sub">${l.phone||l.email||''}</div></td>
+      <td><span class="badge" style="background:${tempBadge(l.temp)}">${l.temp}</span></td>
+      <td style="font-size:12px;color:#dc2626;font-weight:600">${fmt(l.followup)}</td>
+    </tr>`).join('')}
+  </table>
+</div>` : ''}
+
+<div class="card">
+  <div class="section-title">📈 Pipeline Stage Breakdown</div>
+  <div class="pipeline-bar">
+    ${[['new','#94a3b8'],['contacted','#60a5fa'],['showing','#f97316'],['offer','#a855f7'],['closed','#22c55e']].map(([s,c])=>{
+      const pct = activeLeads.length ? Math.round((stages[s]||0)/activeLeads.length*100) : 0;
+      return pct > 0 ? `<div style="width:${pct}%;background:${c}" title="${stageLabel[s]}: ${stages[s]||0}"></div>` : '';
+    }).join('')}
+  </div>
+  <table>
+    <tr><th>Stage</th><th>Count</th><th>% of Pipeline</th></tr>
+    ${[['new','#94a3b8'],['contacted','#60a5fa'],['showing','#f97316'],['offer','#a855f7'],['closed','#22c55e']].map(([s,c])=>{
+      const cnt = stages[s]||0;
+      const pct = activeLeads.length ? Math.round(cnt/activeLeads.length*100) : 0;
+      return cnt > 0 ? `<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px"></span>${stageLabel[s]}</td><td style="font-weight:700">${cnt}</td><td style="color:#71717a">${pct}%</td></tr>` : '';
+    }).join('')}
+  </table>
+</div>
+
+<div class="card">
+  <div class="section-title">🗓️ This Week's Activity</div>
+  ${Object.keys(actByType).length > 0
+    ? `<div class="week-activity">${Object.entries(actByType).map(([t,c])=>`<div class="act-chip"><span>${c}</span>${t}${c>1?'s':''}</div>`).join('')}</div>`
+    : '<div class="empty-note">No activity logged this week.</div>'}
+</div>
+
+${upcomingAppts.length > 0 ? `
+<div class="card">
+  <div class="section-title">📋 Coming Up Next Week</div>
+  <table>
+    <tr><th>Date</th><th>Type</th><th>Lead / Notes</th></tr>
+    ${upcomingAppts.map(a => {
+      const lead = crm.leads.find(l => l.id === a.leadId);
+      return `<tr>
+        <td style="font-weight:600;white-space:nowrap">${fmt(a.date)}</td>
+        <td style="text-transform:capitalize;color:#71717a">${a.type||'Appointment'}</td>
+        <td>${lead ? `${lead.first} ${lead.last}` : ''}${a.notes ? `<div class="sub">${a.notes}</div>` : ''}</td>
+      </tr>`;
+    }).join('')}
+  </table>
+</div>` : ''}
+
+<div class="footer">MG Realty · Matt Golden · goldenmb@gmail.com<br>Weekly digest sent every Sunday evening</div>
+</div></body></html>`;
+
+    // ── Send via Gmail API ─────────────────────────────────────
+    const subject = `📊 Weekly Digest — Week of ${weekLabel}`;
+    const rawMessage = [
+      `From: MG Realty <goldenmb@gmail.com>`,
+      `To: goldenmb@gmail.com`,
+      `Subject: ${subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=utf-8`,
+      ``,
+      html
+    ].join('\r\n');
+    const encoded = Buffer.from(rawMessage).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const token = await googleToken();
+    const gmailRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: encoded })
+    });
+    const gmailData = await gmailRes.json();
+    if (gmailData.error) throw new Error('Gmail API: ' + gmailData.error.message);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('WEEKLY DIGEST ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── AI Follow-up Suggestion ───────────────────────────────────
 app.post('/api/ai-suggestion', async (req, res) => {
   try {
