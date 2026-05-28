@@ -178,6 +178,19 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .tone-btn.active{background:#1A1914;color:#fff}
 .ce-hist-item{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
 .ce-hist-item:last-child{border-bottom:none}
+/* ── Inbox Widget ── */
+.ib-item{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;cursor:default}
+.ib-item:last-child{border-bottom:none}
+.ib-item.unread{background:color-mix(in srgb,var(--blue) 4%,transparent)}
+.ib-subject{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib-item.unread .ib-subject{color:var(--text)}
+.ib-snippet{font-size:11px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:480px}
+.ib-meta{font-size:10px;color:var(--text3);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ib-dot{width:7px;height:7px;background:var(--blue);border-radius:50%;flex-shrink:0}
+.ib-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-bottom:1px solid var(--border)}
+.ib-tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.ib-tab{padding:5px 12px;font-size:11px;font-weight:500;background:transparent;border:none;cursor:pointer;color:var(--text2);font-family:var(--font)}
+.ib-tab.active{background:var(--surface2);color:var(--text)}
 /* ── Call List Widget ── */
 .cl-item{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
 .cl-item:last-child{border-bottom:none}
@@ -238,6 +251,29 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         </div>
         <div id="cl-body">
           <div class="cl-loading"><div class="ce-spinner"></div><span>Analyzing your leads…</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lead Inbox -->
+    <div style="margin-bottom:18px">
+      <div class="tw" id="inbox-widget">
+        <div class="ib-hd">
+          <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+            <i class="ti ti-mail" style="color:var(--blue);font-size:15px"></i> Lead Inbox
+            <span id="ib-unread-badge" style="display:none;background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px"></span>
+            <span id="ib-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="ib-tabs">
+              <button class="ib-tab active" id="ib-tab-reply" onclick="setInboxTab('reply')">Needs reply</button>
+              <button class="ib-tab" id="ib-tab-all" onclick="setInboxTab('all')">All</button>
+            </div>
+            <button class="btn btn-sm btn-primary" id="ib-refresh-btn" onclick="refreshInbox()"><i class="ti ti-refresh" style="font-size:11px"></i> Refresh</button>
+          </div>
+        </div>
+        <div id="ib-body">
+          <div class="cl-loading"><div class="ce-spinner"></div><span>Loading emails…</span></div>
         </div>
       </div>
     </div>
@@ -910,7 +946,7 @@ function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-load();renderAll();syncFromBackend();setTimeout(loadCallList,300);
+load();renderAll();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadInbox,600);
 
 // ── Lead detail panel ─────────────────────────────────────────
 function openLeadDetail(id){
@@ -1776,6 +1812,133 @@ function quickLogCall(leadId) {
     const el = document.getElementById('af1');
     if (el) el.value = 'call';
   }, 100);
+}
+
+// ── Lead Inbox ────────────────────────────────────────────────
+const IB_KEY = 'mg_inbox_v1';
+let ibTab = 'reply';
+let ibThreads = [];
+
+function loadInbox() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(IB_KEY) || 'null');
+    const now = Date.now();
+    if (cached && cached.ts && (now - cached.ts) < 15 * 60 * 1000 && cached.threads) {
+      ibThreads = cached.threads;
+      renderInbox();
+      return;
+    }
+  } catch(e) {}
+  fetchInbox();
+}
+
+async function fetchInbox() {
+  const body = document.getElementById('ib-body');
+  const btn  = document.getElementById('ib-refresh-btn');
+  if (!body) return;
+  body.innerHTML = `<div class="cl-loading"><div class="ce-spinner"></div><span>Loading emails…</span></div>`;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="ce-spinner" style="width:11px;height:11px;border-width:1.5px"></div>'; }
+
+  const emails = leads.map(l => l.email).filter(e => e && e.includes('@'));
+  if (!emails.length) {
+    body.innerHTML = `<div style="padding:22px;text-align:center;color:var(--text2);font-size:13px"><i class="ti ti-mail-off" style="font-size:22px;display:block;margin-bottom:8px;color:var(--border)"></i>No lead email addresses on file.</div>`;
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh" style="font-size:11px"></i> Refresh'; }
+    return;
+  }
+
+  try {
+    const res  = await fetch(BACKEND + '/api/inbox', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emails })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    ibThreads = data.threads || [];
+    try { localStorage.setItem(IB_KEY, JSON.stringify({ ts: Date.now(), threads: ibThreads })); } catch(e) {}
+    renderInbox();
+  } catch(e) {
+    body.innerHTML = `<div style="padding:18px;text-align:center;color:var(--red);font-size:13px"><i class="ti ti-alert-circle" style="font-size:20px;display:block;margin-bottom:6px"></i>${e.message}</div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh" style="font-size:11px"></i> Refresh'; }
+  }
+}
+
+function renderInbox() {
+  const body = document.getElementById('ib-body');
+  const badge = document.getElementById('ib-unread-badge');
+  const upd   = document.getElementById('ib-updated');
+  if (!body) return;
+
+  const unreadCount = ibThreads.filter(t => t.isUnread || t.needsReply).length;
+  if (badge) { badge.style.display = unreadCount ? '' : 'none'; badge.textContent = unreadCount; }
+  if (upd) { upd.textContent = '· just now'; }
+
+  const filtered = ibTab === 'reply' ? ibThreads.filter(t => t.needsReply) : ibThreads;
+
+  if (!filtered.length) {
+    body.innerHTML = `<div style="padding:22px;text-align:center;color:var(--text2);font-size:13px">
+      <i class="ti ti-circle-check" style="font-size:24px;display:block;margin-bottom:8px;color:var(--green)"></i>
+      ${ibTab === 'reply' ? 'All caught up — no threads waiting on a reply.' : 'No email threads found for your leads.'}
+    </div>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(t => {
+    const lead = leads.find(l => l.email && l.email.toLowerCase() === t.leadEmail.toLowerCase());
+    const leadName = lead ? `${lead.first || ''} ${lead.last || ''}`.trim() : t.leadEmail;
+    const date = t.date ? new Date(t.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+    const gmailUrl = `https://mail.google.com/mail/u/0/#inbox/${t.threadId}`;
+    return `<div class="ib-item${t.isUnread ? ' unread' : ''}">
+      ${t.isUnread ? '<div class="ib-dot" style="margin-top:4px;flex-shrink:0"></div>' : '<div style="width:7px;flex-shrink:0"></div>'}
+      <div style="flex:1;min-width:0">
+        <div class="ib-subject">${t.subject}</div>
+        <div class="ib-snippet">${t.snippet}</div>
+        <div class="ib-meta">
+          <span style="font-weight:600;color:var(--text2)">${leadName}</span>
+          ${t.needsReply ? '<span class="badge b-red" style="font-size:9px;padding:1px 5px">Needs reply</span>' : ''}
+          ${t.messageCount > 1 ? `<span style="color:var(--text3)">${t.messageCount} msgs</span>` : ''}
+          ${date ? `<span>${date}</span>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">
+        <button class="btn btn-sm btn-blue" onclick="quickReply('${lead?.id || ''}','${t.subject.replace(/'/g,'').replace(/"/g,'')}','${t.leadEmail}')"><i class="ti ti-send" style="font-size:11px"></i> Reply</button>
+        <a href="${gmailUrl}" target="_blank" class="btn btn-sm" title="Open in Gmail"><i class="ti ti-external-link" style="font-size:11px"></i></a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setInboxTab(tab) {
+  ibTab = tab;
+  document.getElementById('ib-tab-reply').classList.toggle('active', tab === 'reply');
+  document.getElementById('ib-tab-all').classList.toggle('active', tab === 'all');
+  renderInbox();
+}
+
+function refreshInbox() {
+  try { localStorage.removeItem(IB_KEY); } catch(e) {}
+  fetchInbox();
+}
+
+function quickReply(leadId, subject, email) {
+  const subj = subject.startsWith('Re:') ? subject : 'Re: ' + subject;
+  if (leadId) {
+    openEmailTemplate(leadId);
+  } else {
+    openModal('mEmail');
+    setTimeout(() => {
+      const toEl = document.getElementById('ef1');
+      if (toEl) toEl.value = email;
+    }, 50);
+  }
+  setTimeout(() => {
+    const subjEl = document.getElementById('ef2');
+    if (subjEl) subjEl.value = subj;
+    const tmplEl = document.getElementById('ef0');
+    if (tmplEl) { tmplEl.value = 'custom'; applyEmailTemplate(); }
+    setTimeout(() => { const s = document.getElementById('ef2'); if (s) s.value = subj; }, 50);
+  }, 150);
 }
 
 // Load content history (must be after Content Engine declarations)

@@ -1161,6 +1161,105 @@ Return only valid JSON, no markdown code blocks, no extra text.`;
   }
 });
 
+// ── Gmail Inbox: lead email threads ──────────────────────────
+app.post('/api/inbox', async (req, res) => {
+  try {
+    const { emails } = req.body; // array of lead email addresses
+    if (!emails || !emails.length) return res.json({ ok: true, threads: [] });
+
+    const MATT = 'goldenmb@gmail.com';
+    const token = await googleToken();
+    const headers = { Authorization: `Bearer ${token}` };
+
+    // Build search query — threads to/from any lead email, last 60 days
+    const validEmails = emails.filter(e => e && e.includes('@')).slice(0, 30);
+    if (!validEmails.length) return res.json({ ok: true, threads: [] });
+
+    const orClause = validEmails.map(e => `(from:${e} OR to:${e})`).join(' OR ');
+    const q = encodeURIComponent(`(${orClause}) newer_than:60d -in:drafts`);
+
+    const listRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${q}&maxResults=25`,
+      { headers }
+    );
+    const listData = await listRes.json();
+    if (!listData.threads || !listData.threads.length) return res.json({ ok: true, threads: [] });
+
+    // Fetch metadata for each thread in parallel (cap at 20)
+    const threadIds = listData.threads.slice(0, 20).map(t => t.id);
+    const threadDetails = await Promise.all(threadIds.map(async id => {
+      try {
+        const r = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/threads/${id}?format=metadata&metadataHeaders=Subject,From,To,Date`,
+          { headers }
+        );
+        return await r.json();
+      } catch(e) { return null; }
+    }));
+
+    const getHeader = (msg, name) => {
+      const h = (msg.payload?.headers || []).find(h => h.name.toLowerCase() === name.toLowerCase());
+      return h ? h.value : '';
+    };
+
+    const extractEmail = (str) => {
+      const m = str.match(/<([^>]+)>/);
+      return m ? m[1].toLowerCase() : str.toLowerCase().trim();
+    };
+
+    const threads = threadDetails
+      .filter(Boolean)
+      .map(thread => {
+        const messages = thread.messages || [];
+        if (!messages.length) return null;
+
+        const firstMsg  = messages[0];
+        const lastMsg   = messages[messages.length - 1];
+        const subject   = getHeader(firstMsg, 'Subject') || '(no subject)';
+        const lastFrom  = extractEmail(getHeader(lastMsg, 'From') || '');
+        const dateStr   = getHeader(lastMsg, 'Date') || '';
+        const isUnread  = (thread.messages || []).some(m => (m.labelIds || []).includes('UNREAD'));
+        const needsReply = lastFrom !== MATT.toLowerCase() && validEmails.some(e => e.toLowerCase() === lastFrom);
+        const snippet   = lastMsg.snippet || '';
+        const matchedEmail = validEmails.find(e => {
+          const from = extractEmail(getHeader(lastMsg, 'From') || '');
+          const to   = getHeader(lastMsg, 'To') || '';
+          return e.toLowerCase() === from || to.toLowerCase().includes(e.toLowerCase());
+        }) || validEmails.find(e => {
+          // fallback: check any message in thread
+          return messages.some(m => {
+            const f = getHeader(m, 'From') || '';
+            return f.toLowerCase().includes(e.toLowerCase());
+          });
+        }) || '';
+
+        return {
+          threadId:    thread.id,
+          subject,
+          snippet:     snippet.substring(0, 160),
+          lastFrom,
+          date:        dateStr,
+          messageCount: messages.length,
+          isUnread,
+          needsReply,
+          leadEmail:   matchedEmail,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        // Sort: needs reply first, then unread, then by date
+        if (a.needsReply !== b.needsReply) return a.needsReply ? -1 : 1;
+        if (a.isUnread   !== b.isUnread)   return a.isUnread   ? -1 : 1;
+        return new Date(b.date) - new Date(a.date);
+      });
+
+    res.json({ ok: true, threads });
+  } catch (e) {
+    console.error('INBOX ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── AI Lead Prioritizer ───────────────────────────────────────
 app.post('/api/prioritize-leads', async (req, res) => {
   try {
