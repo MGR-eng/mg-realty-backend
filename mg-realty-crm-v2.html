@@ -226,6 +226,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 /* ── Call List Widget ── */
 .cl-item{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
 .cl-item:last-child{border-bottom:none}
+.snooze-menu{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.18);padding:5px;z-index:9999;display:none;min-width:136px}
+.snooze-menu.open{display:block}
+.snooze-opt{padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text);white-space:nowrap}
+.snooze-opt:hover{background:var(--surface2)}
 .cl-name{font-weight:600;font-size:13px;cursor:pointer;color:var(--text)}
 .cl-name:hover{color:var(--blue);text-decoration:underline}
 .cl-reason{font-size:11px;color:var(--text2);margin-top:2px;font-style:italic}
@@ -1082,6 +1086,7 @@ function openLeadDetail(id){
   document.getElementById('dp-actions').innerHTML=`
     <button class="btn btn-gold" onclick="openEmailTemplate('${id}')"><i class="ti ti-mail"></i> Email</button>
     <button class="btn btn-blue" onclick="openAct('${id}')"><i class="ti ti-activity"></i> Log</button>
+    <button class="btn" onclick="showSnoozeMenu(event,'${id}')" title="Snooze follow-up"><i class="ti ti-alarm-snooze"></i> Snooze</button>
     <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
 
@@ -1956,6 +1961,7 @@ function renderCallList(items, ts) {
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         ${phone ? `<a href="tel:${phone}" class="btn btn-sm btn-green"><i class="ti ti-phone" style="font-size:11px"></i></a>` : ''}
+        <button class="btn btn-sm" onclick="showSnoozeMenu(event,'${lead.id}')" title="Snooze follow-up"><i class="ti ti-alarm-snooze" style="font-size:11px"></i></button>
         <button class="btn btn-sm btn-primary" onclick="quickLogCall('${lead.id}')"><i class="ti ti-edit" style="font-size:11px"></i> Log</button>
       </div>
     </div>`;
@@ -2262,6 +2268,51 @@ function quickReply(leadId, subject, email) {
 
 // Load content history (must be after Content Engine declarations)
 loadHistory();
+
+// ── Follow-up Snooze ──────────────────────────────────────────
+let snoozeLeadId = null;
+
+function showSnoozeMenu(e, leadId) {
+  e.stopPropagation();
+  snoozeLeadId = leadId;
+  const menu = document.getElementById('snoozeMenu');
+  const rect = e.currentTarget.getBoundingClientRect();
+  let left = rect.left;
+  if (left + 140 > window.innerWidth) left = window.innerWidth - 148;
+  menu.style.top  = (rect.bottom + 6) + 'px';
+  menu.style.left = left + 'px';
+  menu.classList.add('open');
+}
+
+function snoozeFor(days) {
+  document.getElementById('snoozeMenu').classList.remove('open');
+  if (!snoozeLeadId) return;
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const newDate = d.toISOString().split('T')[0];
+  const label = days === 1 ? 'tomorrow' : `${days} days`;
+  leads = leads.map(l => l.id !== snoozeLeadId ? l : { ...l, followup: newDate });
+  autoLogActivity(snoozeLeadId, 'note', 'n/a', 'snoozed', `Snoozed follow-up ${label} → ${newDate}`);
+  persist();
+  try { localStorage.removeItem(CL_KEY); } catch(e) {}
+  fetchCallList();
+  toast(`⏰ Snoozed ${label}`, 'success');
+  snoozeLeadId = null;
+}
+
+document.addEventListener('click', () => {
+  const menu = document.getElementById('snoozeMenu');
+  if (menu) menu.classList.remove('open');
+});
 </script>
+
+<!-- Snooze dropdown menu -->
+<div id="snoozeMenu" class="snooze-menu">
+  <div class="snooze-opt" onclick="snoozeFor(1)"><i class="ti ti-sun"></i> Tomorrow</div>
+  <div class="snooze-opt" onclick="snoozeFor(3)"><i class="ti ti-clock"></i> 3 days</div>
+  <div class="snooze-opt" onclick="snoozeFor(7)"><i class="ti ti-calendar-week"></i> 1 week</div>
+  <div class="snooze-opt" onclick="snoozeFor(14)"><i class="ti ti-calendar"></i> 2 weeks</div>
+</div>
+
 </body>
 </html>
