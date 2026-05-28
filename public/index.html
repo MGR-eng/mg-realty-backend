@@ -212,6 +212,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 @keyframes ce-spin{to{transform:rotate(360deg)}}
 .ce-spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--text2);border-radius:50%;animation:ce-spin 0.7s linear infinite;flex-shrink:0}
 @media(max-width:900px){#pane-content .content>div{grid-template-columns:1fr!important}}
+.tone-btn{flex:1;padding:7px 10px;font-size:12px;font-family:var(--font);font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--text2);transition:all 0.15s;line-height:1}
+.tone-btn.active{background:#1A1914;color:#fff}
+.ce-hist-item{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
+.ce-hist-item:last-child{border-bottom:none}
 </style>
 </head>
 <body>
@@ -343,6 +347,9 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
               <option value="new_listing">🏡 New Listing</option>
               <option value="price_drop">💰 Price Drop</option>
               <option value="open_house">🔑 Open House</option>
+              <option value="just_sold">🏆 Just Sold</option>
+              <option value="neighborhood">🏘️ Neighborhood Spotlight</option>
+              <option value="testimonial">💬 Client Testimonial</option>
               <option value="market_tip">📊 Market Tip</option>
               <option value="buyer_tip">🎯 Buyer Tip</option>
               <option value="seller_tip">📋 Seller Tip</option>
@@ -387,6 +394,14 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
             <textarea id="ce-notes" placeholder="What's the hook? Who's this for? Any specific angle you want to hit…" style="min-height:65px"></textarea>
           </div>
 
+          <div>
+            <label>Tone</label>
+            <div style="display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
+              <button id="tone-casual" class="tone-btn active" onclick="setTone('casual')">Casual</button>
+              <button id="tone-pro" class="tone-btn" onclick="setTone('professional')">Professional</button>
+            </div>
+          </div>
+
           <button class="btn btn-gold" id="ce-generate-btn" onclick="generateContent()" style="width:100%;justify-content:center;padding:10px">
             <i class="ti ti-sparkles"></i> Generate with AI
           </button>
@@ -403,6 +418,16 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       </div>
 
     </div>
+
+    <!-- History section -->
+    <div id="ce-history-section" style="margin-top:18px;display:none">
+      <div style="font-size:13px;font-weight:600;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between">
+        <span><i class="ti ti-history" style="margin-right:5px;color:var(--text2)"></i>Post History</span>
+        <button class="btn btn-sm btn-red" onclick="clearHistory()"><i class="ti ti-trash" style="font-size:11px"></i> Clear all</button>
+      </div>
+      <div id="ce-history-list" class="tw"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1138,7 +1163,7 @@ function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-load();renderAll();syncFromBackend();
+load();renderAll();syncFromBackend();loadHistory();
 
 // ── Lead detail panel ─────────────────────────────────────────
 function openLeadDetail(id){
@@ -1639,7 +1664,68 @@ function saveDeal(){
 function delDeal(id){if(confirm('Delete this deal?')){deals=deals.filter(d=>d.id!==id);persist();renderCommission();}}
 
 // ── Instagram Content Engine ──────────────────────────────────
-const LISTING_TYPES = new Set(['new_listing','price_drop','open_house']);
+const LISTING_TYPES = new Set(['new_listing','price_drop','open_house','just_sold','neighborhood','testimonial']);
+
+const CE_TYPE_LABELS = { new_listing:'New Listing', price_drop:'Price Drop', open_house:'Open House', just_sold:'Just Sold', neighborhood:'Neighborhood Spotlight', testimonial:'Client Testimonial', market_tip:'Market Tip', buyer_tip:'Buyer Tip', seller_tip:'Seller Tip' };
+const SCH_CE = 'mg_content_v1';
+let contentTone = 'casual';
+let contentHistory = [];
+
+function loadHistory() {
+  try { contentHistory = JSON.parse(localStorage.getItem(SCH_CE) || '[]'); } catch(e) { contentHistory = []; }
+  renderHistory();
+}
+
+function saveToHistory(entry) {
+  contentHistory.unshift({ id: 'ch'+Date.now(), date: new Date().toISOString(), ...entry });
+  if (contentHistory.length > 50) contentHistory = contentHistory.slice(0, 50);
+  try { localStorage.setItem(SCH_CE, JSON.stringify(contentHistory)); } catch(e) {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const section = document.getElementById('ce-history-section');
+  const list = document.getElementById('ce-history-list');
+  if (!section || !list) return;
+  if (!contentHistory.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  list.innerHTML = contentHistory.map(h => `
+    <div class="ce-hist-item">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${CE_TYPE_LABELS[h.type]||h.type}${h.address?' · '+h.address:''}<span class="badge b-neutral" style="margin-left:6px;font-size:10px">${h.tone||'casual'}</span></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;font-family:var(--mono)">${new Date(h.date).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:500px">${(h.caption||'').replace(/\n/g,' ').substring(0,120)}…</div>
+      </div>
+      <button class="btn btn-sm btn-blue" onclick="reuseHistory('${h.id}')"><i class="ti ti-refresh" style="font-size:11px"></i> Re-use</button>
+    </div>`).join('');
+}
+
+function reuseHistory(id) {
+  const h = contentHistory.find(x => x.id === id);
+  if (!h) return;
+  window._ceData = { caption: h.caption, reelsScript: h.reelsScript, hashtags: h.hashtags };
+  document.getElementById('ce-output').innerHTML = buildOutputHTML(h.caption, h.reelsScript, h.hashtags);
+  if (h.type) document.getElementById('ce-type').value = h.type;
+  if (h.address) document.getElementById('ce-address').value = h.address;
+  setTone(h.tone || 'casual');
+  onContentTypeChange();
+  toast('Loaded from history');
+}
+
+function clearHistory() {
+  if (!confirm('Clear all post history?')) return;
+  contentHistory = [];
+  try { localStorage.removeItem(SCH_CE); } catch(e) {}
+  renderHistory();
+}
+
+function setTone(tone) {
+  contentTone = tone;
+  const casual = document.getElementById('tone-casual');
+  const pro = document.getElementById('tone-pro');
+  if (casual) casual.classList.toggle('active', tone === 'casual');
+  if (pro) pro.classList.toggle('active', tone === 'professional');
+}
 
 function onContentTypeChange() {
   const type = document.getElementById('ce-type').value;
@@ -1647,12 +1733,14 @@ function onContentTypeChange() {
   const notesLbl = document.getElementById('ce-notes-lbl');
   lf.style.display = LISTING_TYPES.has(type) ? '' : 'none';
   const hints = {
-    market_tip: 'What market insight do you want to share? (e.g. "Inventory is down 18% in Silver Lake this month")',
-    buyer_tip: 'What buyer tip or mistake do you want to highlight?',
-    seller_tip: 'What seller tip or prep advice do you want to share?',
+    market_tip:   'What market insight? (e.g. "Inventory is down 18% in Silver Lake this month")',
+    buyer_tip:    'What buyer tip or common mistake do you want to highlight?',
+    seller_tip:   'What seller tip or prep advice do you want to share?',
+    testimonial:  'Client story — who they were, what they wanted, what they found. Client name optional.',
+    neighborhood: 'What makes this neighborhood special? Vibe, walkability, schools, hidden gems…',
   };
   notesLbl.textContent = hints[type] ? 'What\'s the angle?' : 'Angle / talking points';
-  document.getElementById('ce-notes').placeholder = hints[type] || 'What\'s the hook? Any specific angle…';
+  document.getElementById('ce-notes').placeholder = hints[type] || 'What\'s the hook? Any specific angle you want to hit…';
 }
 
 function onPropSelect() {
@@ -1682,12 +1770,56 @@ function clearContentForm() {
   });
   document.getElementById('ce-type').value = 'new_listing';
   document.getElementById('ce-prop-select').value = '';
+  setTone('casual');
   onContentTypeChange();
-  document.getElementById('ce-output').innerHTML = `
-    <div class="tw" style="padding:28px 22px;text-align:center;color:var(--text3)">
-      <i class="ti ti-brand-instagram" style="font-size:36px;display:block;margin-bottom:10px;color:var(--border)"></i>
-      <div style="font-size:13px;font-weight:500;margin-bottom:5px">No content yet</div>
-      <div style="font-size:12px">Fill in the form and hit Generate — AI will write an Instagram caption, a Reels script, and hashtags ready to copy.</div>
+  document.getElementById('ce-output').innerHTML = ceEmptyState();
+}
+
+function ceEmptyState() {
+  return `<div class="tw" style="padding:28px 22px;text-align:center;color:var(--text3)">
+    <i class="ti ti-brand-instagram" style="font-size:36px;display:block;margin-bottom:10px;color:var(--border)"></i>
+    <div style="font-size:13px;font-weight:500;margin-bottom:5px">No content yet</div>
+    <div style="font-size:12px">Fill in the form and hit Generate — AI will write a caption, Reels script, and hashtags ready to copy.</div>
+  </div>`;
+}
+
+function buildOutputHTML(caption, reelsScript, hashtags) {
+  const fmtH = (hashtags||'').replace(/\s+/g,' ').trim().split(' ').map(t=>t.startsWith('#')?t:'#'+t).join(' ');
+  return `
+    <div class="ce-output-block">
+      <div class="ce-output-hd">
+        <div class="ce-output-title"><i class="ti ti-brand-instagram" style="font-size:14px;color:#C13584"></i> Instagram Caption</div>
+        <button class="btn btn-sm btn-blue" id="copy-caption" onclick="copyContent('caption','copy-caption')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
+      </div>
+      <div class="ce-output-body" id="out-caption">${escHtml(caption)}</div>
+    </div>
+    <div class="ce-output-block">
+      <div class="ce-output-hd">
+        <div class="ce-output-title"><i class="ti ti-video" style="font-size:14px;color:#E8681A"></i> Reels Script <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0">~45 sec</span></div>
+        <button class="btn btn-sm btn-amber" id="copy-reels" onclick="copyContent('reels','copy-reels')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
+      </div>
+      <div class="ce-output-body" id="out-reels">${escHtml(reelsScript)}</div>
+    </div>
+    <div class="ce-output-block">
+      <div class="ce-output-hd">
+        <div class="ce-output-title"><i class="ti ti-hash" style="font-size:14px;color:#185FA5"></i> Hashtags <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0">30 tags</span></div>
+        <button class="btn btn-sm btn-primary" id="copy-hashtags" onclick="copyContent('hashtags','copy-hashtags')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
+      </div>
+      <div class="ce-output-body hashtags" id="out-hashtags">${fmtH}</div>
+    </div>
+    <div class="ce-output-block">
+      <div class="ce-output-hd">
+        <div class="ce-output-title"><i class="ti ti-calendar-time" style="font-size:14px;color:#3C3489"></i> Schedule Post</div>
+      </div>
+      <div style="padding:14px 15px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div><label>Date</label><input type="date" id="ce-sched-date" style="width:155px"></div>
+        <div><label>Time</label><input type="time" id="ce-sched-time" value="09:00" style="width:120px"></div>
+        <button class="btn btn-purple" onclick="schedulePost()"><i class="ti ti-calendar-plus"></i> Add to tasks</button>
+      </div>
+      <div style="padding:0 15px 14px;display:flex;gap:8px;flex-wrap:wrap">
+        <a href="https://buffer.com/add" target="_blank" class="btn btn-sm btn-blue"><i class="ti ti-external-link" style="font-size:11px"></i> Open Buffer</a>
+        <a href="https://app.later.com/calendar" target="_blank" class="btn btn-sm btn-primary"><i class="ti ti-external-link" style="font-size:11px"></i> Open Later</a>
+      </div>
     </div>`;
 }
 
@@ -1699,6 +1831,7 @@ async function generateContent() {
 
   const payload = {
     contentType: type,
+    tone: contentTone,
     notes: document.getElementById('ce-notes').value.trim(),
   };
   if (isListing) {
@@ -1723,32 +1856,13 @@ async function generateContent() {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Generation failed');
 
-    output.innerHTML = `
-      <div class="ce-output-block">
-        <div class="ce-output-hd">
-          <div class="ce-output-title"><i class="ti ti-brand-instagram" style="font-size:14px;color:#C13584"></i> Instagram Caption</div>
-          <button class="btn btn-sm btn-blue" id="copy-caption" onclick="copyContent('caption','copy-caption')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
-        </div>
-        <div class="ce-output-body" id="out-caption">${escHtml(data.caption)}</div>
-      </div>
-      <div class="ce-output-block">
-        <div class="ce-output-hd">
-          <div class="ce-output-title"><i class="ti ti-video" style="font-size:14px;color:#E8681A"></i> Reels Script <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0">~45 sec</span></div>
-          <button class="btn btn-sm btn-amber" id="copy-reels" onclick="copyContent('reels','copy-reels')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
-        </div>
-        <div class="ce-output-body" id="out-reels">${escHtml(data.reelsScript)}</div>
-      </div>
-      <div class="ce-output-block">
-        <div class="ce-output-hd">
-          <div class="ce-output-title"><i class="ti ti-hash" style="font-size:14px;color:#185FA5"></i> Hashtags <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0">30 tags</span></div>
-          <button class="btn btn-sm btn-primary" id="copy-hashtags" onclick="copyContent('hashtags','copy-hashtags')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
-        </div>
-        <div class="ce-output-body hashtags" id="out-hashtags">#${data.hashtags.replace(/\s+/g,' ').trim().split(' ').map(t=>t.startsWith('#')?t:'#'+t).join(' ')}</div>
-      </div>`;
+    const fmtHashtags = (data.hashtags||'').replace(/\s+/g,' ').trim().split(' ').map(t=>t.startsWith('#')?t:'#'+t).join(' ');
+    window._ceData = { caption: data.caption, reelsScript: data.reelsScript, hashtags: fmtHashtags };
+    output.innerHTML = buildOutputHTML(data.caption, data.reelsScript, data.hashtags);
+    saveToHistory({ type, tone: contentTone, address: payload.address||'', caption: data.caption, reelsScript: data.reelsScript, hashtags: fmtHashtags });
 
     setSyncStatus('ok', 'Content ready');
     toast('Content generated ✓');
-    window._ceData = { caption: data.caption, reelsScript: data.reelsScript, hashtags: '#' + data.hashtags.replace(/\s+/g,' ').trim().split(' ').map(t=>t.startsWith('#')?t:'#'+t).join(' ') };
   } catch (e) {
     output.innerHTML = `<div class="tw" style="padding:22px;text-align:center;color:var(--red);font-size:13px"><i class="ti ti-alert-circle" style="font-size:24px;display:block;margin-bottom:8px"></i>${e.message}</div>`;
     setSyncStatus('err', 'Content failed');
@@ -1757,6 +1871,19 @@ async function generateContent() {
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate with AI';
   }
+}
+
+function schedulePost() {
+  const dateVal = document.getElementById('ce-sched-date').value;
+  if (!dateVal) { toast('Pick a date first', 'err'); return; }
+  const type = document.getElementById('ce-type').value;
+  const address = (document.getElementById('ce-address')?.value||'').trim();
+  const title = `📸 Post Instagram: ${CE_TYPE_LABELS[type]||type}${address?' — '+address:''}`;
+  const preview = window._ceData?.caption ? window._ceData.caption.substring(0,200).replace(/\n/g,' ') + '…' : '';
+  tasks.push({ id: 't'+Date.now(), title, due: dateVal, priority: 'normal', leadId: '', notes: preview, done: false });
+  persist(); renderTasks(); updateBadges();
+  const d = new Date(dateVal+'T12:00:00');
+  toast(`Reminder added for ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} ✓`);
 }
 
 function copyContent(key, btnId) {
