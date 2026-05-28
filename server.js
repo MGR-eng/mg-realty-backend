@@ -861,6 +861,249 @@ app.get('/sequences/status/:leadId', async (req, res) => {
 app.get('/contact', (req, res) => res.sendFile(path.join(__dirname, 'public', 'contact.html')));
 app.get('/open-house', (req, res) => res.sendFile(path.join(__dirname, 'public', 'open-house-sign.html')));
 
+// ── Instagram Bio Link Page ───────────────────────────────────
+app.get('/link', async (req, res) => {
+  let properties = [];
+  try {
+    const crm = await readCRM();
+    properties = (crm.properties || [])
+      .filter(p => p.status === 'active' || p.status === 'Active' || !p.status)
+      .slice(0, 4);
+  } catch(e) { /* serve page even if CRM fails */ }
+
+  const formatPrice = p => {
+    if (!p) return '';
+    const n = parseFloat(String(p).replace(/[^0-9.]/g, ''));
+    if (!n) return p;
+    return n >= 1000000 ? `$${(n/1000000).toFixed(2)}M` : `$${Math.round(n/1000)}K`;
+  };
+
+  const listingCards = properties.length > 0 ? properties.map(p => `
+    <div class="listing-card">
+      <div class="listing-img-wrap">
+        ${p.image ? `<img src="${p.image}" alt="${p.address||'Listing'}" class="listing-img">` : `<div class="listing-img-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`}
+        ${p.price ? `<div class="listing-price">${formatPrice(p.price)}</div>` : ''}
+      </div>
+      <div class="listing-info">
+        <div class="listing-address">${p.address || 'Los Angeles, CA'}</div>
+        <div class="listing-meta">${[p.beds ? p.beds+' bd' : '', p.baths ? p.baths+' ba' : '', p.sqft ? p.sqft+' sqft' : ''].filter(Boolean).join(' · ') || p.type || 'Single Family'}</div>
+      </div>
+    </div>`).join('') : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Matt Golden · MG Realty · Los Angeles</title>
+<meta name="description" content="LA real estate with Matt Golden. Helping buyers and sellers find the best move in Los Angeles.">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--gold:#C8973A;--gold-lt:#F5C97A;--dark:#0D0D0D;--surface:#1A1A1A;--surface2:#242424;--border:#2E2E2E;--text:#F5F5F5;--text2:#A8A8A8;--text3:#6B6B6B;--r:10px;--rl:14px}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--dark);color:var(--text);min-height:100vh;padding-bottom:40px}
+  a{color:inherit;text-decoration:none}
+
+  /* Header */
+  .header{padding:36px 24px 28px;text-align:center;position:relative}
+  .header::after{content:'';display:block;height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin-top:28px}
+  .avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8B6520);margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;border:2px solid var(--gold)}
+  .name{font-size:22px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px}
+  .title{font-size:13px;color:var(--text2);font-weight:500;margin-bottom:6px}
+  .location{font-size:12px;color:var(--text3);display:flex;align-items:center;justify-content:center;gap:4px}
+
+  /* Social proof */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);margin:24px 20px;border-radius:var(--rl);overflow:hidden}
+  .stat{background:var(--surface);padding:16px 8px;text-align:center}
+  .stat-val{font-size:20px;font-weight:800;color:var(--gold);letter-spacing:-0.02em}
+  .stat-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-top:3px}
+
+  /* About */
+  .about{margin:0 20px 24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px}
+  .about-text{font-size:14px;line-height:1.65;color:var(--text2)}
+  .about-text strong{color:var(--text)}
+
+  /* Listings */
+  .section-hd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);padding:0 20px 12px}
+  .listings{padding:0 20px;display:flex;flex-direction:column;gap:12px;margin-bottom:28px}
+  .listing-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+  .listing-img-wrap{position:relative;height:160px;background:var(--surface2)}
+  .listing-img{width:100%;height:100%;object-fit:cover}
+  .listing-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e)}
+  .listing-price{position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);color:var(--gold-lt);font-size:15px;font-weight:800;padding:5px 10px;border-radius:7px;letter-spacing:-0.01em}
+  .listing-info{padding:13px 15px}
+  .listing-address{font-size:14px;font-weight:600;margin-bottom:4px}
+  .listing-meta{font-size:12px;color:var(--text3)}
+
+  /* Form */
+  .form-wrap{margin:0 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+  .form-hd{background:linear-gradient(135deg,var(--gold),#8B6520);padding:18px 20px}
+  .form-hd-title{font-size:16px;font-weight:700;color:#fff;margin-bottom:3px}
+  .form-hd-sub{font-size:12px;color:rgba(255,255,255,0.75)}
+  .form-body{padding:20px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .form-row.full{grid-template-columns:1fr}
+  .form-group{display:flex;flex-direction:column;gap:5px}
+  label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em}
+  input,select,textarea{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:inherit;font-size:14px;padding:11px 13px;width:100%;outline:none;-webkit-appearance:none;transition:border-color 0.15s}
+  input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+  input::placeholder{color:var(--text3)}
+  select option{background:var(--surface2)}
+  textarea{resize:none;height:72px;line-height:1.5}
+  .submit-btn{width:100%;margin-top:14px;padding:15px;background:linear-gradient(135deg,var(--gold),#8B6520);border:none;border-radius:var(--r);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.01em;transition:opacity 0.15s}
+  .submit-btn:active{opacity:0.85}
+  .submit-btn:disabled{opacity:0.6;cursor:not-allowed}
+  .success-msg{display:none;text-align:center;padding:28px 20px}
+  .success-icon{font-size:44px;margin-bottom:12px}
+  .success-title{font-size:18px;font-weight:700;margin-bottom:6px;color:var(--gold)}
+  .success-sub{font-size:13px;color:var(--text2);line-height:1.6}
+
+  /* Footer */
+  .footer{text-align:center;margin-top:32px;font-size:11px;color:var(--text3);padding:0 20px}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="avatar">M</div>
+  <div class="name">Matt Golden</div>
+  <div class="title">Real Estate Agent · MG Realty</div>
+  <div class="location">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    Los Angeles, CA
+  </div>
+</div>
+
+<!-- Social proof -->
+<div class="stats">
+  <div class="stat"><div class="stat-val">5+</div><div class="stat-label">Years in LA</div></div>
+  <div class="stat"><div class="stat-val">100+</div><div class="stat-label">Deals Closed</div></div>
+  <div class="stat"><div class="stat-val">$50M+</div><div class="stat-label">Volume Sold</div></div>
+</div>
+
+<!-- About -->
+<div class="about">
+  <div class="about-text">
+    I help <strong>buyers and sellers</strong> navigate the LA market — from first-time buyers to income property investors. My focus is finding you the <strong>best possible situation</strong>, not just any deal. Based in Los Angeles, available 7 days a week.
+  </div>
+</div>
+
+${listingCards ? `
+<!-- Listings -->
+<div class="section-hd">Featured Listings</div>
+<div class="listings">${listingCards}</div>
+` : ''}
+
+<!-- Lead capture form -->
+<div class="form-wrap">
+  <div class="form-hd">
+    <div class="form-hd-title">Let's talk about your move</div>
+    <div class="form-hd-sub">I'll reach out within a few hours</div>
+  </div>
+  <div class="form-body" id="formBody">
+    <form id="leadForm" onsubmit="submitForm(event)">
+      <div class="form-row">
+        <div class="form-group"><label>First name *</label><input type="text" name="first" placeholder="Jane" required></div>
+        <div class="form-group"><label>Last name *</label><input type="text" name="last" placeholder="Smith" required></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label>Phone *</label><input type="tel" name="phone" placeholder="(323) 555-0100" required></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label>Email</label><input type="email" name="email" placeholder="jane@email.com"></div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>I'm looking to…</label>
+          <select name="intent">
+            <option value="">Select one</option>
+            <option value="buy">Buy a home</option>
+            <option value="sell">Sell my home</option>
+            <option value="both">Buy and sell</option>
+            <option value="invest">Invest in property</option>
+            <option value="rent">Find a rental</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Budget range</label>
+          <select name="budget">
+            <option value="">Not sure yet</option>
+            <option value="Under $500K">Under $500K</option>
+            <option value="$500K – $800K">$500K – $800K</option>
+            <option value="$800K – $1.2M">$800K – $1.2M</option>
+            <option value="$1.2M – $2M">$1.2M – $2M</option>
+            <option value="$2M+">$2M+</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Neighborhood / area of interest</label>
+          <input type="text" name="neighborhood" placeholder="e.g. Silver Lake, Culver City, Venice…">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Anything else?</label>
+          <textarea name="notes" placeholder="Timeline, questions, specific needs…"></textarea>
+        </div>
+      </div>
+      <button type="submit" class="submit-btn" id="submitBtn">Send Message →</button>
+    </form>
+    <div class="success-msg" id="successMsg">
+      <div class="success-icon">🏡</div>
+      <div class="success-title">Got it! I'll be in touch soon.</div>
+      <div class="success-sub">Thanks for reaching out. I typically respond within a few hours — talk soon.</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Matt Golden · MG Realty · Los Angeles<br>DRE #00000000 · goldenmb@gmail.com</div>
+
+<script>
+async function submitForm(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  const form = e.target;
+  const data = {
+    first: form.first.value.trim(),
+    last: form.last.value.trim(),
+    phone: form.phone.value.trim(),
+    email: form.email.value.trim(),
+    intent: form.intent.value,
+    budget: form.budget.value,
+    neighborhood: form.neighborhood.value.trim(),
+    notes: form.notes.value.trim(),
+    source: 'Instagram',
+    notify: true
+  };
+  try {
+    const res = await fetch('/leads/capture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.error || 'Something went wrong');
+    document.getElementById('leadForm').style.display = 'none';
+    document.getElementById('successMsg').style.display = 'block';
+  } catch(err) {
+    btn.disabled = false;
+    btn.textContent = 'Send Message →';
+    alert('Something went wrong — please try again or text me directly.');
+  }
+}
+</script>
+</body>
+</html>`;
+
+  res.send(html);
+});
+
 // ── Lead capture form ─────────────────────────────────────────
 app.post('/leads/capture', async (req, res) => {
   try {
