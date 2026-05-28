@@ -878,17 +878,6 @@ app.get('/link', async (req, res) => {
     return n >= 1000000 ? `$${(n/1000000).toFixed(2)}M` : `$${Math.round(n/1000)}K`;
   };
 
-  const listingCards = properties.length > 0 ? properties.map(p => `
-    <div class="listing-card">
-      <div class="listing-img-wrap">
-        ${p.image ? `<img src="${p.image}" alt="${p.address||'Listing'}" class="listing-img">` : `<div class="listing-img-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`}
-        ${p.price ? `<div class="listing-price">${formatPrice(p.price)}</div>` : ''}
-      </div>
-      <div class="listing-info">
-        <div class="listing-address">${p.address || 'Los Angeles, CA'}</div>
-        <div class="listing-meta">${[p.beds ? p.beds+' bd' : '', p.baths ? p.baths+' ba' : '', p.sqft ? p.sqft+' sqft' : ''].filter(Boolean).join(' · ') || p.type || 'Single Family'}</div>
-      </div>
-    </div>`).join('') : '';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -922,17 +911,10 @@ app.get('/link', async (req, res) => {
   .about-text{font-size:14px;line-height:1.65;color:var(--text2)}
   .about-text strong{color:var(--text)}
 
-  /* Listings */
-  .section-hd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);padding:0 20px 12px}
-  .listings{padding:0 20px;display:flex;flex-direction:column;gap:12px;margin-bottom:28px}
-  .listing-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
-  .listing-img-wrap{position:relative;height:160px;background:var(--surface2)}
-  .listing-img{width:100%;height:100%;object-fit:cover}
-  .listing-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#16213e)}
-  .listing-price{position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);color:var(--gold-lt);font-size:15px;font-weight:800;padding:5px 10px;border-radius:7px;letter-spacing:-0.01em}
-  .listing-info{padding:13px 15px}
-  .listing-address{font-size:14px;font-weight:600;margin-bottom:4px}
-  .listing-meta{font-size:12px;color:var(--text3)}
+  /* Compass button */
+  .compass-btn{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 20px 24px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);font-size:14px;font-weight:600;color:var(--text);text-decoration:none;transition:border-color 0.15s,background 0.15s}
+  .compass-btn:active{background:var(--surface2)}
+  .compass-btn svg{flex-shrink:0}
 
   /* Form */
   .form-wrap{margin:0 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
@@ -988,11 +970,12 @@ app.get('/link', async (req, res) => {
   </div>
 </div>
 
-${listingCards ? `
-<!-- Listings -->
-<div class="section-hd">Featured Listings</div>
-<div class="listings">${listingCards}</div>
-` : ''}
+<!-- Compass listings button -->
+<a href="https://www.compass.com/agents/matthew-golden/" target="_blank" class="compass-btn">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+  View My Listings on Compass
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+</a>
 
 <!-- Lead capture form -->
 <div class="form-wrap">
