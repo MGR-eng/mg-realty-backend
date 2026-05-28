@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MG Realty — Client Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh;display:flex;flex-direction:column}
+  :root{--accent:#E8681A;--card:#1a1a1a;--border:#2a2a2a;--text2:#888;--green:#27AE60;--amber:#F39C12;--red:#E74C3C;--blue:#3498db}
+
+  /* Header */
+  .header{background:#141414;border-bottom:1px solid #222;padding:16px 20px;display:flex;align-items:center;gap:12px}
+  .header-logo{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;flex-shrink:0}
+  .header-title{font-weight:700;font-size:16px}
+  .header-sub{font-size:12px;color:var(--text2)}
+
+  /* Login box */
+  .login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+  .login-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px 28px;width:100%;max-width:400px}
+  .login-icon{width:52px;height:52px;background:rgba(232,104,26,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+  .login-icon i{font-size:26px;color:var(--accent)}
+  .login-title{font-size:20px;font-weight:700;margin-bottom:6px}
+  .login-sub{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.5}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+  .field input{width:100%;padding:11px 13px;background:#111;border:1px solid var(--border);border-radius:8px;color:#f0f0f0;font-size:15px;font-family:inherit;outline:none;transition:.15s}
+  .field input:focus{border-color:var(--accent)}
+  .field{margin-bottom:16px}
+  .btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;margin-top:4px}
+  .btn:hover{opacity:.9}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-sec{background:transparent;border:1px solid var(--border);color:var(--text2);margin-top:10px}
+  .err{background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.3);color:#f88;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+  .ok-msg{background:rgba(39,174,96,.12);border:1px solid rgba(39,174,96,.3);color:#6f9;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+
+  /* Portal dashboard */
+  .portal-wrap{flex:1;padding:20px;max-width:700px;margin:0 auto;width:100%}
+  .welcome{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+  .avatar{width:48px;height:48px;background:rgba(232,104,26,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:var(--accent);flex-shrink:0}
+  .welcome-name{font-size:18px;font-weight:700}
+  .welcome-sub{font-size:13px;color:var(--text2);margin-top:2px}
+
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:10px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px}
+  .card-title{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+  .card-title i{color:var(--accent)}
+
+  /* Status bar */
+  .stages{display:flex;gap:0;margin-top:4px}
+  .stage-step{flex:1;text-align:center;position:relative}
+  .stage-step::before{content:'';position:absolute;top:10px;left:50%;right:-50%;height:2px;background:var(--border);z-index:0}
+  .stage-step:last-child::before{display:none}
+  .stage-dot{width:20px;height:20px;border-radius:50%;background:var(--border);border:2px solid var(--border);margin:0 auto 5px;position:relative;z-index:1;display:flex;align-items:center;justify-content:center}
+  .stage-dot.done{background:var(--green);border-color:var(--green)}
+  .stage-dot.done i{font-size:10px;color:#fff}
+  .stage-dot.active{background:var(--accent);border-color:var(--accent)}
+  .stage-dot.active i{font-size:10px;color:#fff}
+  .stage-lbl{font-size:10px;color:var(--text2);line-height:1.2}
+  .stage-lbl.active{color:var(--accent);font-weight:600}
+  .stage-lbl.done{color:var(--green)}
+
+  /* Activities */
+  .act-row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+  .act-row:last-child{border-bottom:none}
+  .act-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+  .act-call{background:rgba(52,152,219,.15);color:var(--blue)}
+  .act-email{background:rgba(139,92,246,.15);color:#8b5cf6}
+  .act-text{background:rgba(39,174,96,.15);color:var(--green)}
+  .act-showing{background:rgba(232,104,26,.15);color:var(--accent)}
+  .act-offer{background:rgba(231,76,60,.15);color:var(--red)}
+  .act-note{background:rgba(243,156,18,.15);color:var(--amber)}
+  .act-body{flex:1}
+  .act-type{font-size:12px;font-weight:600;text-transform:capitalize}
+  .act-outcome{font-size:12px;color:var(--text2);margin-top:1px}
+  .act-date{font-size:11px;color:var(--text2);white-space:nowrap}
+
+  /* Appts */
+  .appt-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+  .appt-row:last-child{border-bottom:none}
+  .appt-date-box{background:rgba(232,104,26,.12);border-radius:8px;padding:8px 12px;text-align:center;flex-shrink:0;min-width:52px}
+  .appt-month{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--accent)}
+  .appt-day{font-size:18px;font-weight:800;color:var(--accent);line-height:1}
+  .appt-title{font-size:13px;font-weight:600}
+  .appt-loc{font-size:12px;color:var(--text2);margin-top:2px}
+
+  /* Notes */
+  .notes-box{background:#111;border-radius:8px;padding:12px;font-size:13px;color:#ccc;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+  .empty{font-size:13px;color:var(--text2);padding:8px 0}
+
+  .logout-btn{background:transparent;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:8px 0;font-family:inherit;margin-top:8px}
+  .logout-btn:hover{color:#f0f0f0}
+
+  .contact-strip{background:rgba(232,104,26,.08);border:1px solid rgba(232,104,26,.2);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .contact-strip a{color:var(--accent);text-decoration:none;font-size:13px;font-weight:600}
+
+  @media(max-width:480px){
+    .portal-wrap{padding:14px}
+    .stages{flex-wrap:wrap;gap:8px}
+    .stage-step::before{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">MG</div>
+  <div>
+    <div class="header-title">MG Realty</div>
+    <div class="header-sub">Client Portal</div>
+  </div>
+</div>
+
+<!-- Login view -->
+<div id="view-login" class="login-wrap">
+  <div class="login-card">
+    <div class="login-icon"><i class="ti ti-shield-check"></i></div>
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Enter your mobile number and we'll text you a one-time code to access your deal status.</div>
+    <div id="login-err" class="err" style="display:none"></div>
+    <div id="login-ok" class="ok-msg" style="display:none"></div>
+
+    <!-- Step 1: phone -->
+    <div id="step-phone">
+      <div class="field">
+        <label>Mobile Number</label>
+        <input type="tel" id="inp-phone" placeholder="(310) 555-0100" inputmode="tel">
+      </div>
+      <button class="btn" onclick="requestCode()">Send Code</button>
+    </div>
+
+    <!-- Step 2: code -->
+    <div id="step-code" style="display:none">
+      <div class="field">
+        <label>6-Digit Code</label>
+        <input type="text" id="inp-code" placeholder="123456" maxlength="6" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <button class="btn" onclick="verifyCode()">Access My Portal</button>
+      <button class="btn btn-sec" onclick="backToPhone()">← Use a different number</button>
+    </div>
+  </div>
+</div>
+
+<!-- Portal dashboard -->
+<div id="view-portal" style="display:none">
+  <div class="portal-wrap">
+    <!-- Welcome -->
+    <div class="welcome">
+      <div class="avatar" id="portal-avatar">?</div>
+      <div>
+        <div class="welcome-name" id="portal-name">Welcome</div>
+        <div class="welcome-sub">Here's where things stand on your deal.</div>
+      </div>
+      <button class="logout-btn" style="margin-left:auto" onclick="logout()"><i class="ti ti-logout" style="margin-right:4px"></i>Log out</button>
+    </div>
+
+    <!-- Deal stage -->
+    <div class="section-title">Deal Progress</div>
+    <div class="card" style="margin-bottom:20px">
+      <div id="portal-stage-bar"></div>
+    </div>
+
+    <!-- Appointments -->
+    <div class="section-title">Upcoming Appointments</div>
+    <div class="card" style="margin-bottom:20px">
+      <div id="portal-appts"></div>
+    </div>
+
+    <!-- Recent activity -->
+    <div class="section-title">Recent Activity</div>
+    <div class="card" style="margin-bottom:20px">
+      <div id="portal-acts"></div>
+    </div>
+
+    <!-- Notes from Matt -->
+    <div class="section-title">Notes from Matt</div>
+    <div class="card" style="margin-bottom:20px">
+      <div id="portal-notes"></div>
+    </div>
+
+    <!-- Contact Matt -->
+    <div class="contact-strip">
+      <div style="font-size:13px;color:#ccc">Questions? Reach Matt directly:</div>
+      <div style="display:flex;gap:14px">
+        <a href="tel:+13236883855"><i class="ti ti-phone" style="margin-right:4px"></i>(323) 688-3855</a>
+        <a href="sms:+13236883855"><i class="ti ti-message" style="margin-right:4px"></i>Text me</a>
+      </div>
+    </div>
+    <div style="height:32px"></div>
+  </div>
+</div>
+
+<script>
+const BACKEND = 'https://mg-realty-backend.onrender.com';
+let sessionToken = null;
+
+const STAGES = ['new','contacted','showing','offer','contract','closed'];
+const STAGE_LABELS = { new:'New Lead', contacted:'Contacted', showing:'Showings', offer:'Offer', contract:'In Contract', closed:'Closed 🎉' };
+
+function showErr(msg){ const e=document.getElementById('login-err'); e.textContent=msg; e.style.display=''; document.getElementById('login-ok').style.display='none'; }
+function showOk(msg){ const e=document.getElementById('login-ok'); e.textContent=msg; e.style.display=''; document.getElementById('login-err').style.display='none'; }
+function clearMsgs(){ document.getElementById('login-err').style.display='none'; document.getElementById('login-ok').style.display='none'; }
+
+async function requestCode() {
+  clearMsgs();
+  const phone = document.getElementById('inp-phone').value.trim();
+  if (!phone) { showErr('Please enter your mobile number.'); return; }
+  const btn = document.querySelector('#step-phone .btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(BACKEND + '/portal/request-code', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone })
+    });
+    const d = await r.json();
+    if (!d.ok) { showErr(d.error); btn.disabled=false; btn.textContent='Send Code'; return; }
+    showOk('Code sent! Check your texts.');
+    document.getElementById('step-phone').style.display = 'none';
+    document.getElementById('step-code').style.display = '';
+    document.getElementById('inp-code').focus();
+  } catch(e) { showErr('Network error. Try again.'); }
+  btn.disabled = false; btn.textContent = 'Send Code';
+}
+
+async function verifyCode() {
+  clearMsgs();
+  const phone = document.getElementById('inp-phone').value.trim();
+  const code  = document.getElementById('inp-code').value.trim();
+  if (!code) { showErr('Enter the 6-digit code.'); return; }
+  const btn = document.querySelector('#step-code .btn');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  try {
+    const r = await fetch(BACKEND + '/portal/verify', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone, code })
+    });
+    const d = await r.json();
+    if (!d.ok) { showErr(d.error); btn.disabled=false; btn.textContent='Access My Portal'; return; }
+    sessionToken = d.token;
+    try { localStorage.setItem('mg_portal_token', d.token); } catch(e) {}
+    loadPortal();
+  } catch(e) { showErr('Network error. Try again.'); }
+  btn.disabled = false; btn.textContent = 'Access My Portal';
+}
+
+function backToPhone() {
+  clearMsgs();
+  document.getElementById('step-code').style.display = 'none';
+  document.getElementById('step-phone').style.display = '';
+}
+
+async function loadPortal() {
+  try {
+    const r = await fetch(BACKEND + '/portal/data?token=' + encodeURIComponent(sessionToken));
+    const d = await r.json();
+    if (!d.ok) { logout(); return; }
+    renderPortal(d);
+    document.getElementById('view-login').style.display = 'none';
+    document.getElementById('view-portal').style.display = '';
+  } catch(e) { logout(); }
+}
+
+function renderPortal({ lead, activities, appointments }) {
+  // Avatar + name
+  document.getElementById('portal-avatar').textContent = (lead.first||'?')[0].toUpperCase();
+  document.getElementById('portal-name').textContent = `Hi, ${lead.first}!`;
+
+  // Stage bar
+  const currentIdx = STAGES.indexOf(lead.stage || 'new');
+  document.getElementById('portal-stage-bar').innerHTML = `
+    <div class="stages">${STAGES.map((s, i) => {
+      const isDone = i < currentIdx;
+      const isActive = i === currentIdx;
+      return `<div class="stage-step">
+        <div class="stage-dot ${isDone?'done':isActive?'active':''}">
+          ${isDone ? '<i class="ti ti-check"></i>' : isActive ? '<i class="ti ti-circle-dot"></i>' : ''}
+        </div>
+        <div class="stage-lbl ${isDone?'done':isActive?'active':''}">${STAGE_LABELS[s]}</div>
+      </div>`;
+    }).join('')}</div>`;
+
+  // Upcoming appointments
+  const now = new Date().toISOString().split('T')[0];
+  const upcoming = (appointments || []).filter(a => a.date >= now).sort((a,b) => a.date.localeCompare(b.date));
+  if (!upcoming.length) {
+    document.getElementById('portal-appts').innerHTML = '<div class="empty">No upcoming appointments scheduled.</div>';
+  } else {
+    document.getElementById('portal-appts').innerHTML = upcoming.map(a => {
+      const d = new Date(a.date + 'T12:00:00');
+      return `<div class="appt-row">
+        <div class="appt-date-box">
+          <div class="appt-month">${d.toLocaleDateString('en-US',{month:'short'})}</div>
+          <div class="appt-day">${d.getDate()}</div>
+        </div>
+        <div>
+          <div class="appt-title">${a.title || 'Appointment'}</div>
+          <div class="appt-loc">${a.location || a.notes || ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Activities
+  const ACT_ICONS = { call:'ti-phone act-call', email:'ti-mail act-email', text:'ti-message act-text', showing:'ti-key act-showing', offer:'ti-file-text act-offer', note:'ti-note act-note' };
+  if (!activities.length) {
+    document.getElementById('portal-acts').innerHTML = '<div class="empty">No activity recorded yet.</div>';
+  } else {
+    document.getElementById('portal-acts').innerHTML = activities.map(a => {
+      const ic = ACT_ICONS[a.type?.toLowerCase()] || 'ti-activity act-note';
+      return `<div class="act-row">
+        <div class="act-icon ${ic.split(' ')[1]}"><i class="ti ${ic.split(' ')[0]}"></i></div>
+        <div class="act-body">
+          <div class="act-type">${a.type}</div>
+          <div class="act-outcome">${a.outcome || ''}</div>
+        </div>
+        <div class="act-date">${a.date || ''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Notes
+  const notes = lead.notes || '';
+  document.getElementById('portal-notes').innerHTML = notes
+    ? `<div class="notes-box">${notes.replace(/</g,'&lt;')}</div>`
+    : '<div class="empty">No notes yet.</div>';
+}
+
+function logout() {
+  sessionToken = null;
+  try { localStorage.removeItem('mg_portal_token'); } catch(e) {}
+  document.getElementById('view-portal').style.display = 'none';
+  document.getElementById('view-login').style.display = 'flex';
+  document.getElementById('inp-phone').value = '';
+  document.getElementById('inp-code').value = '';
+  document.getElementById('step-code').style.display = 'none';
+  document.getElementById('step-phone').style.display = '';
+  clearMsgs();
+}
+
+// Auto-login from saved token
+(async () => {
+  try {
+    const saved = localStorage.getItem('mg_portal_token');
+    if (saved) { sessionToken = saved; await loadPortal(); }
+  } catch(e) {}
+})();
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('step-code').style.display !== 'none') verifyCode();
+  else if (document.getElementById('inp-phone').value) requestCode();
+});
+</script>
+</body>
+</html>

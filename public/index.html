@@ -1895,6 +1895,7 @@ function openLeadDetail(id){
     <button class="btn" onclick="getAiSuggestion('${id}')" title="AI next-action suggestion" style="background:var(--amber-bg);border-color:var(--amber);color:var(--amber)"><i class="ti ti-sparkles"></i> AI Suggest</button>
     ${l.email?`<button class="btn btn-green" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Sequence</button>`:''}
     <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
+    <button class="btn" onclick="sendPortalLink('${id}')" title="Send client portal link via SMS" style="background:rgba(52,152,219,.12);border-color:var(--blue);color:var(--blue)"><i class="ti ti-link"></i> Portal Link</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
 
   document.getElementById('detailPanel').classList.add('open');
@@ -4053,29 +4054,28 @@ function renderGcalEvents() {
     return;
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const LA = 'America/Los_Angeles';
+  const laDateStr = d => new Date(d).toLocaleDateString('en-US',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:LA});
+  const today = laDateStr(new Date());
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  const tomorrowStr = laDateStr(tomorrow);
 
   const fmtTime = dt => {
     if(!dt) return '';
-    const d = new Date(dt);
-    return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/Los_Angeles'});
+    return new Date(dt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:LA});
   };
   const fmtDay = dt => {
     if(!dt) return '';
-    const d = new Date(dt);
-    const ds = d.toISOString().split('T')[0];
+    const ds = laDateStr(new Date(dt));
     if(ds===today) return 'Today';
     if(ds===tomorrowStr) return 'Tomorrow';
-    return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'America/Los_Angeles'});
+    return new Date(dt).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:LA});
   };
 
   // Group by day
   const groups = {};
   gcalEvents.forEach(e => {
-    const dt = e.start ? new Date(e.start) : null;
-    const key = dt ? dt.toLocaleDateString('en-US',{timeZone:'America/Los_Angeles'}) : 'Unknown';
+    const key = e.start ? laDateStr(new Date(e.start)) : 'Unknown';
     if(!groups[key]) groups[key]=[];
     groups[key].push(e);
   });
@@ -4415,6 +4415,23 @@ function deleteLeaseDoc(leaseId, docId) {
   persist();
   if(currentLeaseId===leaseId) renderLeaseDocList(leaseId);
   toast('Document removed');
+}
+
+// ── Client Portal ─────────────────────────────────────────────
+async function sendPortalLink(leadId) {
+  const lead = leads.find(l => l.id === leadId);
+  if (!lead || !lead.phone) { toast('No phone number on file for this lead', 'err'); return; }
+  if (!confirm(`Send portal link to ${lead.first} ${lead.last} at ${lead.phone}?`)) return;
+  try {
+    const r = await fetch(BACKEND + '/sms/send', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ to: lead.phone, body: `Hi ${lead.first}! Here's your MG Realty client portal — check your deal status, appointments, and notes anytime:\n\nhttps://mg-realty-backend.onrender.com/portal\n\nJust enter your mobile number to log in.\n\n— Matt Golden, MG Realty` })
+    });
+    const d = await r.json();
+    if (d.ok) toast(`Portal link sent to ${lead.first} ✓`);
+    else toast(d.error || 'Failed to send', 'err');
+  } catch(e) { toast('Send failed', 'err'); }
 }
 
 // ── Deal Analyzer ─────────────────────────────────────────────

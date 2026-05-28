@@ -1121,6 +1121,65 @@ async function processPostCloseEmails(crm, today) {
 // ── Static page routes ────────────────────────────────────────
 app.get('/contact', (req, res) => res.sendFile(path.join(__dirname, 'public', 'contact.html')));
 app.get('/open-house', (req, res) => res.sendFile(path.join(__dirname, 'public', 'open-house-sign.html')));
+app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal.html')));
+
+// ── Client Portal: OTP + data ────────────────────────────────
+const portalOTPs   = new Map(); // phone → { code, expires, leadId }
+const portalTokens = new Map(); // token → { leadId, expires }
+
+app.post('/portal/request-code', async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ ok: false, error: 'Phone required' });
+    const crm = await readCRM();
+    const normalised = phone.replace(/\D/g, '');
+    const lead = crm.leads.find(l => l.phone && l.phone.replace(/\D/g, '') === normalised);
+    if (!lead) return res.json({ ok: false, error: 'No client record found for that number. Contact Matt directly.' });
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    portalOTPs.set(normalised, { code, expires: Date.now() + 10 * 60 * 1000, leadId: lead.id });
+    await sendSMS(phone, `Your MG Realty portal code is: ${code}\n\nExpires in 10 minutes.`);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('PORTAL OTP ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/portal/verify', async (req, res) => {
+  try {
+    const { phone, code } = req.body;
+    const normalised = phone.replace(/\D/g, '');
+    const entry = portalOTPs.get(normalised);
+    if (!entry || Date.now() > entry.expires) return res.json({ ok: false, error: 'Code expired. Request a new one.' });
+    if (entry.code !== code.trim()) return res.json({ ok: false, error: 'Incorrect code.' });
+    portalOTPs.delete(normalised);
+    const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    portalTokens.set(token, { leadId: entry.leadId, expires: Date.now() + 24 * 60 * 60 * 1000 });
+    res.json({ ok: true, token });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/portal/data', async (req, res) => {
+  try {
+    const { token } = req.query;
+    const session = portalTokens.get(token);
+    if (!session || Date.now() > session.expires) return res.status(401).json({ ok: false, error: 'Session expired. Please log in again.' });
+    const crm = await readCRM();
+    const lead = crm.leads.find(l => l.id === session.leadId);
+    if (!lead) return res.status(404).json({ ok: false, error: 'Record not found.' });
+    const activities = (crm.activities || []).filter(a => a.leadId === lead.id)
+      .sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+    const appointments = (crm.appointments || []).filter(a => a.leadId === lead.id);
+    const deals = (crm.deals || []).filter(d => d.leadId === lead.id);
+    // Scrub internal-only fields
+    const { notes, temp, stage, source, ...publicLead } = lead;
+    res.json({ ok: true, lead: { ...publicLead, stage, notes }, activities, appointments, deals });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 // ── Instagram Bio Link Page ───────────────────────────────────
 app.get('/link', async (req, res) => {
