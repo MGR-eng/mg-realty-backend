@@ -318,6 +318,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
             <i class="ti ti-phone-call" style="color:var(--green);font-size:15px"></i> Who to Call Today
             <span id="cl-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
           </div>
+          <button class="btn btn-sm" id="briefing-btn" onclick="sendMorningBriefing()" title="Send morning briefing to your inbox" style="background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)"><i class="ti ti-mail-forward" style="font-size:11px"></i> Briefing</button>
           <button class="btn btn-sm btn-primary" id="cl-refresh-btn" onclick="refreshCallList()"><i class="ti ti-refresh" style="font-size:11px"></i> Refresh</button>
         </div>
         <div id="cl-body">
@@ -2281,6 +2282,24 @@ function renderCallList(items, ts) {
 function refreshCallList() {
   try { localStorage.removeItem(CL_KEY); } catch(e) {}
   fetchCallList();
+}
+
+async function sendMorningBriefing() {
+  const btn = document.getElementById('briefing-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="ce-spinner" style="width:10px;height:10px;border-width:1.5px;display:inline-block;vertical-align:middle;margin-right:4px"></div> Sending…';
+  try {
+    const res = await fetch(BACKEND + '/api/morning-briefing', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    toast('☀️ Morning briefing sent to your inbox!', 'success');
+  } catch(e) {
+    toast('Briefing failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-mail-forward" style="font-size:11px"></i> Briefing';
+  }
 }
 
 function quickLogCall(leadId) {

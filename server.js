@@ -1608,5 +1608,230 @@ Return 6 leads maximum. If fewer than 6 active leads exist, return all of them.`
   }
 });
 
+// ── Morning Briefing ─────────────────────────────────────────
+app.post('/api/morning-briefing', async (req, res) => {
+  try {
+    const crm   = await readCRM();
+    const now   = new Date();
+    const today = now.toISOString().split('T')[0];
+    const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    // ── Prioritized call list ──────────────────────────────
+    const activeLeads = crm.leads.filter(l => l.temp !== 'done');
+    const overdue = activeLeads
+      .filter(l => l.followup && l.followup <= today)
+      .sort((a, b) => {
+        const urgency = t => ({ hot: 3, warm: 2, cool: 1, cold: 0 }[t] || 0);
+        if (a.followup !== b.followup) return a.followup < b.followup ? -1 : 1;
+        return urgency(b.temp) - urgency(a.temp);
+      })
+      .slice(0, 6);
+
+    const hotNoContact = activeLeads
+      .filter(l => l.temp === 'hot' && (!l.lastcontact || (now - new Date(l.lastcontact)) > 3 * 86400000))
+      .filter(l => !overdue.find(o => o.id === l.id))
+      .slice(0, 3);
+
+    const callList = [...overdue, ...hotNoContact].slice(0, 6);
+
+    // ── Today's appointments ───────────────────────────────
+    const appts = (crm.appointments || []).filter(a => a.date === today);
+
+    // ── Pipeline snapshot ──────────────────────────────────
+    const stages = { new: 0, contacted: 0, showing: 0, offer: 0, closed: 0 };
+    activeLeads.forEach(l => { const s = l.stage || 'new'; if (stages[s] !== undefined) stages[s]++; });
+    const totalActive = activeLeads.length;
+    const totalOverdue = activeLeads.filter(l => l.followup && l.followup < today).length;
+    const hotCount = activeLeads.filter(l => l.temp === 'hot').length;
+
+    // ── AI-written summary paragraph ──────────────────────
+    const aiPrompt = `You are Matt Golden's AI assistant at MG Realty, Los Angeles.
+Write a 2–3 sentence punchy morning summary for his daily briefing email. Be direct, no fluff.
+Focus on the most important thing he needs to act on today.
+
+Data:
+- ${callList.length} leads need calls (${overdue.length} overdue follow-ups, ${hotNoContact.length} hot with no recent contact)
+- ${hotCount} hot leads total, ${totalActive} active leads
+- ${appts.length} appointment(s) today${appts.length ? ': ' + appts.map(a => a.type + ' with ' + a.leadName + ' at ' + a.time).join(', ') : ''}
+- ${totalOverdue} follow-ups overdue total
+- Pipeline: ${stages.new} new, ${stages.contacted} contacted, ${stages.showing} showing, ${stages.offer} offer, ${stages.closed} closed this period
+
+Write the summary in 2nd person ("You have…", "Your top priority…"). Sound like a sharp assistant, not a robot. No greeting needed.`;
+
+    let aiSummary = `You have ${callList.length} calls to make today and ${totalOverdue} overdue follow-ups. Focus on your hottest leads first.`;
+    try {
+      const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content: aiPrompt }] })
+      });
+      const aiData = await aiRes.json();
+      if (aiData.content?.[0]?.text) aiSummary = aiData.content[0].text.trim();
+    } catch (e) { console.warn('AI summary failed, using fallback:', e.message); }
+
+    // ── Build HTML email ───────────────────────────────────
+    const tempBadge = t => {
+      const map = { hot: '#dc2626', warm: '#f59e0b', cool: '#3b82f6', cold: '#6b7280' };
+      return `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;color:white;background:${map[t]||'#6b7280'};text-transform:uppercase;letter-spacing:0.04em">${t||'?'}</span>`;
+    };
+    const daysSince = l => l.lastcontact
+      ? Math.floor((now - new Date(l.lastcontact)) / 86400000)
+      : null;
+    const overdueStr = l => {
+      if (!l.followup) return 'No follow-up set';
+      const d = Math.floor((now - new Date(l.followup)) / 86400000);
+      return d >= 0 ? `${d === 0 ? 'Due today' : d + 'd overdue'}` : `Due in ${Math.abs(d)}d`;
+    };
+
+    const callRows = callList.length
+      ? callList.map(l => `
+          <tr>
+            <td style="padding:10px 14px;border-bottom:1px solid #f0ede6">
+              <div style="font-weight:600;font-size:14px">${l.first} ${l.last} ${tempBadge(l.temp)}</div>
+              <div style="color:#6b7280;font-size:12px;margin-top:3px">${l.prop || l.type || ''}${l.phone ? ' · ' + l.phone : ''}</div>
+            </td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f0ede6;color:#dc2626;font-size:12px;font-weight:600;white-space:nowrap">${overdueStr(l)}</td>
+            <td style="padding:10px 14px;border-bottom:1px solid #f0ede6;color:#9ca3af;font-size:12px;white-space:nowrap">${daysSince(l) !== null ? daysSince(l) + 'd ago' : 'Never'}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="3" style="padding:14px;color:#9ca3af;text-align:center;font-size:13px">No urgent calls — you're all caught up 🎉</td></tr>`;
+
+    const apptRows = appts.length
+      ? appts.map(a => `
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0ede6">
+            <div style="background:#1A1914;color:white;border-radius:8px;padding:8px 12px;text-align:center;min-width:48px">
+              <div style="font-size:16px;font-weight:700;line-height:1">${a.time.split(':')[0]}</div>
+              <div style="font-size:9px;text-transform:uppercase;opacity:0.7">${a.time.includes('PM') ? 'PM' : 'AM'}</div>
+            </div>
+            <div>
+              <div style="font-weight:600;font-size:14px">${a.leadName}</div>
+              <div style="color:#6b7280;font-size:12px">${a.type}${a.address ? ' · ' + a.address : ''}</div>
+            </div>
+          </div>`).join('')
+      : '<div style="color:#9ca3af;font-size:13px;padding:10px 0">No appointments today</div>';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f7f6f2;font-family:Arial,sans-serif">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px">
+
+    <!-- Header -->
+    <div style="background:#1A1914;border-radius:12px 12px 0 0;padding:20px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="color:#C9A84C;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Morning Briefing</div>
+        <div style="color:white;font-size:20px;font-weight:700;margin-top:2px">${dayName}, ${dateStr}</div>
+      </div>
+      <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="height:40px;width:auto;object-fit:contain">
+    </div>
+
+    <!-- AI Summary -->
+    <div style="background:#fff;padding:18px 24px;border-left:1px solid #e5e1d8;border-right:1px solid #e5e1d8;border-top:3px solid #C9A84C">
+      <p style="margin:0;font-size:14px;line-height:1.7;color:#374151">${aiSummary}</p>
+    </div>
+
+    <!-- Stats row -->
+    <div style="background:#fff;padding:14px 24px;border-left:1px solid #e5e1d8;border-right:1px solid #e5e1d8;border-bottom:1px solid #e5e1d8;display:flex;gap:0">
+      ${[
+        ['Calls Today', callList.length, '#C9A84C'],
+        ['Hot Leads', hotCount, '#dc2626'],
+        ['Overdue', totalOverdue, totalOverdue > 0 ? '#dc2626' : '#10b981'],
+        ['Active', totalActive, '#374151']
+      ].map(([label, val, color]) => `
+        <div style="flex:1;text-align:center;padding:10px 8px;border-right:1px solid #f0ede6">
+          <div style="font-size:24px;font-weight:700;color:${color}">${val}</div>
+          <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">${label}</div>
+        </div>`).join('')}
+      <div style="flex:1;text-align:center;padding:10px 8px">
+        <div style="font-size:24px;font-weight:700;color:#374151">${appts.length}</div>
+        <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Appts</div>
+      </div>
+    </div>
+
+    <!-- Priority Calls -->
+    <div style="background:#fff;margin-top:12px;border-radius:8px;border:1px solid #e5e1d8;overflow:hidden">
+      <div style="padding:12px 16px;background:#fafaf8;border-bottom:1px solid #e5e1d8">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.07em">📞 Priority Calls</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#fafaf8">
+            <th style="padding:8px 14px;text-align:left;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Lead</th>
+            <th style="padding:8px 14px;text-align:left;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Follow-up</th>
+            <th style="padding:8px 14px;text-align:left;font-size:10px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Last Contact</th>
+          </tr>
+        </thead>
+        <tbody>${callRows}</tbody>
+      </table>
+    </div>
+
+    <!-- Appointments -->
+    <div style="background:#fff;margin-top:12px;border-radius:8px;border:1px solid #e5e1d8;overflow:hidden">
+      <div style="padding:12px 16px;background:#fafaf8;border-bottom:1px solid #e5e1d8">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.07em">📅 Today's Schedule</div>
+      </div>
+      <div style="padding:4px 16px 10px">${apptRows}</div>
+    </div>
+
+    <!-- Pipeline -->
+    <div style="background:#fff;margin-top:12px;border-radius:8px;border:1px solid #e5e1d8;overflow:hidden">
+      <div style="padding:12px 16px;background:#fafaf8;border-bottom:1px solid #e5e1d8">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.07em">🏡 Pipeline Snapshot</div>
+      </div>
+      <div style="padding:14px 24px;display:flex;justify-content:space-between">
+        ${Object.entries(stages).map(([stage, count]) => `
+          <div style="text-align:center">
+            <div style="font-size:20px;font-weight:700;color:#1A1914">${count}</div>
+            <div style="font-size:10px;color:#9ca3af;text-transform:capitalize;margin-top:2px">${stage}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="margin-top:16px;text-align:center;padding:12px">
+      <a href="https://mg-realty-backend.onrender.com" style="display:inline-block;background:#C9A84C;color:white;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600">Open CRM →</a>
+      <div style="margin-top:12px;font-size:11px;color:#9ca3af">MG Realty · Los Angeles · Sent by your AI assistant</div>
+    </div>
+
+  </div>
+</body>
+</html>`;
+
+    // ── Send via Gmail API ─────────────────────────────────
+    const subject = `☀️ Morning Briefing — ${dayName}, ${dateStr}`;
+    const rawMessage = [
+      `From: Matt Golden | MG Realty <goldenmb@gmail.com>`,
+      `To: goldenmb@gmail.com`,
+      `Subject: ${subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=utf-8`,
+      ``,
+      html,
+    ].join('\r\n');
+
+    const encoded = Buffer.from(rawMessage).toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    const token = await googleToken();
+    const gmailRes = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: encoded })
+      }
+    );
+    const gmailData = await gmailRes.json();
+    if (gmailData.error) throw new Error('Gmail API: ' + gmailData.error.message);
+
+    console.log(`Morning briefing sent for ${today}`);
+    res.json({ ok: true, callCount: callList.length, apptCount: appts.length });
+
+  } catch (e) {
+    console.error('BRIEFING ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
