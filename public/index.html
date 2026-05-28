@@ -868,7 +868,7 @@ async function api(path,body){
   return r.json();
 }
 
-function du(s){if(!s)return null;const t=new Date();t.setHours(0,0,0,0);const d=new Date(s);d.setHours(0,0,0,0);return Math.round((d-t)/86400000);}
+function du(s){if(!s)return null;const t=new Date();t.setHours(0,0,0,0);const[y,m,d]=s.split('-').map(Number);const dt=new Date(y,m-1,d);return Math.round((dt-t)/86400000);}
 function rel(s){if(!s)return'—';const d=du(s);if(d===0)return'Today';if(d===-1)return'Yesterday';if(d<0)return Math.abs(d)+'d ago';if(d===1)return'Tomorrow';return'In '+d+'d';}
 function ffu(s,m){
   if(!s)return'<span class="due-ok">—</span>';
@@ -1426,7 +1426,7 @@ function autoLogActivity(leadId, type, direction, outcome, notes, subject) {
     id: 'a'+Date.now(),
     leadId,
     leadName: `${l.first} ${l.last}`,
-    date: now.toISOString().split('T')[0],
+    date: [now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-'),
     time: now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
     type,
     direction,
