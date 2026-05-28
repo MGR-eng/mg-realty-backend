@@ -356,7 +356,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <main class="main">
 
 <div id="pane-dashboard" class="pane active">
-  <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
+  <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn" onclick="openCommCalc()" style="background:var(--surface2);border-color:var(--green);color:var(--green)"><i class="ti ti-calculator"></i> Calc</button><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
   <div class="content">
     <div class="stats-grid" id="statsGrid"></div>
 
@@ -630,6 +630,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 
   </div>
 </div>
+
+<!-- Commission Calculator Modal -->
+<div class="modal-overlay" id="mCommCalc"><div class="modal" style="max-width:460px">
+  <div class="modal-title">💰 Commission Calculator</div>
+  <div class="fgg-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 4px">
+    <div class="fgg full" style="grid-column:1/-1"><label>Sale price</label><input id="cc1" type="text" placeholder="$1,500,000" oninput="calcComm()" style="font-size:16px;font-weight:700"></div>
+    <div class="fgg"><label>Total commission %</label><input id="cc2" type="number" value="2.5" step="0.1" min="0" max="10" oninput="calcComm()"></div>
+    <div class="fgg"><label>Your side</label><select id="cc3" onchange="calcComm()"><option value="1">Full (both sides)</option><option value="0.5" selected>Buyer side only</option><option value="0.5">Seller side only</option></select></div>
+    <div class="fgg"><label>Compass split %</label><input id="cc4" type="number" value="20" step="1" min="0" max="100" oninput="calcComm()"></div>
+    <div class="fgg"><label>Other deductions ($)</label><input id="cc5" type="number" value="0" step="100" min="0" oninput="calcComm()"></div>
+  </div>
+  <div id="cc-result" style="margin:12px 20px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px"></div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mCommCalc')">Close</button><button class="btn btn-green" onclick="saveCommCalcAsDeal()"><i class="ti ti-coin"></i> Save as deal</button></div>
+</div></div>
 
 <!-- Stats input modal -->
 <div class="stats-modal-overlay" id="statsModalOverlay" onclick="if(event.target===this)closeStatsModal()">
@@ -1864,6 +1878,52 @@ function saveDeal(){
   persist();closeModal('mDeal');renderCommission();renderLeads();renderPipeline();toast('Deal logged — commission tracked!');
 }
 function delDeal(id){if(confirm('Delete this deal?')){deals=deals.filter(d=>d.id!==id);persist();renderCommission();}}
+
+// ── Commission Calculator ──────────────────────────────────────
+function openCommCalc(){
+  document.getElementById('cc1').value='';
+  document.getElementById('cc2').value='2.5';
+  document.getElementById('cc3').value='0.5';
+  document.getElementById('cc4').value='20';
+  document.getElementById('cc5').value='0';
+  calcComm();
+  openModal('mCommCalc');
+}
+function parseMoney(s){return parseFloat(String(s).replace(/[$,\s]/g,''))||0;}
+function calcComm(){
+  const price=parseMoney(document.getElementById('cc1').value);
+  const commPct=parseFloat(document.getElementById('cc2').value)||0;
+  const side=parseFloat(document.getElementById('cc3').value)||0.5;
+  const compassSplit=parseFloat(document.getElementById('cc4').value)||0;
+  const otherDeduct=parseFloat(document.getElementById('cc5').value)||0;
+  const fmt=n=>n>=1000000?`$${(n/1000000).toFixed(3)}M`:`$${Math.round(n).toLocaleString()}`;
+  const pct=n=>`${n.toFixed(1)}%`;
+  if(!price){document.getElementById('cc-result').innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:8px">Enter a sale price to calculate</div>';return;}
+  const grossComm=price*(commPct/100);
+  const yourSideGross=grossComm*side;
+  const compassTake=yourSideGross*(compassSplit/100);
+  const afterCompass=yourSideGross-compassTake;
+  const netToMatt=afterCompass-otherDeduct;
+  const row=(label,val,style='')=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${style}"><span style="font-size:12px;color:var(--text2)">${label}</span><span style="font-size:14px;font-weight:700">${val}</span></div>`;
+  document.getElementById('cc-result').innerHTML=`
+    ${row(`Gross commission (${pct(commPct)})`,fmt(grossComm))}
+    ${row(`Your side (${side===1?'both sides':'one side'})`,fmt(yourSideGross))}
+    ${compassSplit>0?row(`Compass split (${pct(compassSplit)})`,`−${fmt(compassTake)}`,'color:var(--red)'):''}
+    ${otherDeduct>0?row('Other deductions',`−${fmt(otherDeduct)}`,'color:var(--red)'):''}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 2px">
+      <span style="font-size:13px;font-weight:700;color:var(--text)">💰 Net to you</span>
+      <span style="font-size:20px;font-weight:800;color:var(--green)">${fmt(netToMatt)}</span>
+    </div>`;
+}
+function saveCommCalcAsDeal(){
+  const price=parseMoney(document.getElementById('cc1').value);
+  if(!price){alert('Enter a sale price first');return;}
+  document.getElementById('df3').value=document.getElementById('cc1').value||price;
+  document.getElementById('df4').value=document.getElementById('cc2').value;
+  document.getElementById('df6').value=parseFloat(document.getElementById('cc3').value)===1?'Both':'Buyer';
+  document.getElementById('df7').value=`Calc: Compass split ${document.getElementById('cc4').value}%`;
+  closeModal('mCommCalc');openModal('mDeal');
+}
 
 // ── Instagram Content Engine ──────────────────────────────────
 const LISTING_TYPES = new Set(['new_listing','price_drop','open_house','just_sold','neighborhood','testimonial']);
