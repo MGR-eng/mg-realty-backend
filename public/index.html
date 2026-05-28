@@ -699,6 +699,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div id="emailLeadCard" class="lead-card-sm"></div>
   <div class="fg">
     <div class="fgg full"><label>Template</label><select id="ef0" onchange="applyEmailTemplate()"><option value="openhouse">Open House Thank-You</option><option value="followup">Follow-Up Check-In</option><option value="showing">Showing Follow-Up</option><option value="pricedrop">Price Reduction Alert</option><option value="listing">Listing Presentation Request</option><option value="custom">— Custom / Blank —</option></select></div>
+    <div class="fgg full"><label>From</label><select id="ef-from"><option value="personal">Matt Golden | MG Realty &lt;goldenmb@gmail.com&gt;</option><option value="compass">Matt Golden | MG Realty &lt;matthewgolden@compass.com&gt;</option></select></div>
     <div class="fgg full"><label>To</label><input id="ef1" placeholder="recipient@email.com"></div>
     <div class="fgg full"><label>Subject</label><input id="ef2"></div>
     <div class="fgg full"><label>Message</label><textarea id="ef3" style="min-height:200px"></textarea></div>
@@ -1493,6 +1494,7 @@ async function sendEmailTemplate() {
   const to      = document.getElementById('ef1').value.trim();
   const subject = document.getElementById('ef2').value.trim();
   const text    = document.getElementById('ef3').value.trim();
+  const from    = document.getElementById('ef-from')?.value || 'personal';
   if (!to) { toast('Please enter a recipient email', 'error'); return; }
   if (!to.includes('@')) { toast('Invalid email address', 'error'); return; }
   const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
@@ -1508,9 +1510,10 @@ async function sendEmailTemplate() {
   </div>`;
   setSyncStatus('busy', 'Sending email…');
   try {
-    await api('/email/send', { to, subject, html });
+    await api('/email/send', { to, subject, html, from });
     closeModal('mEmail');
-    toast(`✉️ Email sent to ${to}`, 'success');
+    const fromLabel = from === 'compass' ? 'matthewgolden@compass.com' : 'goldenmb@gmail.com';
+    toast(`✉️ Email sent from ${fromLabel}`, 'success');
     setSyncStatus('ok', 'Ready');
   } catch(e) {
     toast('Email failed — check logs', 'error');

@@ -348,14 +348,42 @@ app.post('/gmail/digest', async (req, res) => {
 // ── Email: send template ─────────────────────────────────────
 app.post('/email/send', async (req, res) => {
   try {
-    const { to, subject, html } = req.body;
+    const { to, subject, html, from = 'personal' } = req.body;
     if (!to) throw new Error('No recipient email address');
-    const { error: resendErr } = await resend.emails.send({
-      from: 'MG Realty <onboarding@resend.dev>',
-      to, subject, html
-    });
-    if (resendErr) throw new Error('Resend: ' + resendErr.message);
-    console.log(`Email sent to ${to}`);
+
+    const fromAddress = from === 'compass'
+      ? 'Matt Golden | MG Realty <matthewgolden@compass.com>'
+      : 'Matt Golden | MG Realty <goldenmb@gmail.com>';
+
+    // Build RFC 2822 raw email message
+    const boundary = `boundary_${Date.now()}`;
+    const rawMessage = [
+      `From: ${fromAddress}`,
+      `To: ${to}`,
+      `Subject: ${subject || '(no subject)'}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=utf-8`,
+      ``,
+      html || '',
+    ].join('\r\n');
+
+    // Base64url encode for Gmail API
+    const encoded = Buffer.from(rawMessage).toString('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    const token = await googleToken();
+    const gmailRes = await fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: encoded })
+      }
+    );
+    const gmailData = await gmailRes.json();
+    if (gmailData.error) throw new Error('Gmail API: ' + gmailData.error.message);
+
+    console.log(`Email sent via Gmail API from ${from} to ${to}`);
     res.json({ ok: true });
   } catch (e) {
     console.error('EMAIL ERROR:', e.message);
