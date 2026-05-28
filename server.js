@@ -57,25 +57,40 @@ async function writeCRM(data) {
 // Google OAuth — auto-refresh using refresh token
 let cachedToken = null;
 let tokenExpiry = 0;
+let cachedTokenCompass = null;
+let tokenExpiryCompass = 0;
 
-async function googleToken() {
-  if (cachedToken && Date.now() < tokenExpiry - 60000) return cachedToken;
+async function refreshGoogleToken(refreshToken) {
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id:     process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      refresh_token: refreshToken,
       grant_type:    'refresh_token'
     })
   });
   const data = await r.json();
   if (!data.access_token) throw new Error('Token refresh failed: ' + JSON.stringify(data));
-  cachedToken = data.access_token;
-  tokenExpiry = Date.now() + (data.expires_in || 3600) * 1000;
+  return { token: data.access_token, expiry: Date.now() + (data.expires_in || 3600) * 1000 };
+}
+
+async function googleToken() {
+  if (cachedToken && Date.now() < tokenExpiry - 60000) return cachedToken;
+  const { token, expiry } = await refreshGoogleToken(process.env.GOOGLE_REFRESH_TOKEN);
+  cachedToken = token; tokenExpiry = expiry;
   console.log('Google token refreshed');
   return cachedToken;
+}
+
+async function googleTokenCompass() {
+  if (!process.env.GOOGLE_REFRESH_TOKEN_COMPASS) return null;
+  if (cachedTokenCompass && Date.now() < tokenExpiryCompass - 60000) return cachedTokenCompass;
+  const { token, expiry } = await refreshGoogleToken(process.env.GOOGLE_REFRESH_TOKEN_COMPASS);
+  cachedTokenCompass = token; tokenExpiryCompass = expiry;
+  console.log('Compass token refreshed');
+  return cachedTokenCompass;
 }
 
 const GMAIL_MCP  = async () => ({ type: 'url', url: 'https://gmailmcp.googleapis.com/mcp/v1',   name: 'gmail',  authorization_token: await googleToken() });
@@ -160,6 +175,56 @@ app.get('/auth/google/callback', async (req, res) => {
         <p style="margin-top:16px;color:#666;font-size:13px">
           1. Go to <a href="https://render.com" target="_blank">render.com</a> → your service → Environment<br>
           2. Update <strong>GOOGLE_REFRESH_TOKEN</strong> with the value above<br>
+          3. Save — Render redeploys automatically
+        </p>
+      </body></html>
+    `);
+  } catch(e) {
+    res.send(`<h2 style="color:red">Error: ${e.message}</h2>`);
+  }
+});
+
+// Compass account auth flow (separate redirect URI)
+app.get('/auth/google/compass', (req, res) => {
+  const params = new URLSearchParams({
+    client_id:     process.env.GOOGLE_CLIENT_ID,
+    redirect_uri:  `https://mg-realty-backend.onrender.com/auth/google/compass/callback`,
+    response_type: 'code',
+    scope:         'https://www.googleapis.com/auth/gmail.modify',
+    access_type:   'offline',
+    prompt:        'consent',
+    login_hint:    'matthewgolden@compass.com',
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+app.get('/auth/google/compass/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error) return res.send(`<h2>Auth error: ${error}</h2>`);
+  try {
+    const r = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id:     process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri:  `https://mg-realty-backend.onrender.com/auth/google/compass/callback`,
+        grant_type:    'authorization_code',
+      })
+    });
+    const data = await r.json();
+    if (!data.refresh_token) {
+      return res.send(`<h2 style="color:red">No refresh token returned.</h2><pre>${JSON.stringify(data,null,2)}</pre>`);
+    }
+    res.send(`
+      <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:60px auto;padding:20px">
+        <h2 style="color:#27ae60">✅ Compass account authorized!</h2>
+        <p>Copy this and add it to Render as <strong>GOOGLE_REFRESH_TOKEN_COMPASS</strong>:</p>
+        <textarea style="width:100%;height:80px;font-family:monospace;font-size:13px;padding:10px;border:2px solid #27ae60;border-radius:6px">${data.refresh_token}</textarea>
+        <p style="margin-top:16px;color:#666;font-size:13px">
+          1. Go to <a href="https://render.com" target="_blank">render.com</a> → your service → Environment<br>
+          2. Add new variable: <strong>GOOGLE_REFRESH_TOKEN_COMPASS</strong><br>
           3. Save — Render redeploys automatically
         </p>
       </body></html>
@@ -1218,92 +1283,85 @@ Return only valid JSON, no markdown code blocks, no extra text.`;
 });
 
 // ── Gmail Inbox: lead email threads ──────────────────────────
-app.post('/api/inbox', async (req, res) => {
-  try {
-    const { emails } = req.body; // array of lead email addresses
-    if (!emails || !emails.length) return res.json({ ok: true, threads: [] });
+const MATT_EMAILS = ['goldenmb@gmail.com', 'matthewgolden@compass.com'];
 
-    const MATT = 'goldenmb@gmail.com';
-    const token = await googleToken();
-    const headers = { Authorization: `Bearer ${token}` };
+const getHeader = (msg, name) => {
+  const h = (msg?.payload?.headers || []).find(h => h.name.toLowerCase() === name.toLowerCase());
+  return h ? h.value : '';
+};
+const extractEmail = (str) => {
+  const m = (str||'').match(/<([^>]+)>/);
+  return m ? m[1].toLowerCase() : (str||'').toLowerCase().trim();
+};
 
-    // Build search query — threads to/from any lead email, last 60 days
-    const validEmails = emails.filter(e => e && e.includes('@')).slice(0, 30);
-    if (!validEmails.length) return res.json({ ok: true, threads: [] });
+async function fetchThreadsForAccount(token, validEmails, accountEmail) {
+  const headers = { Authorization: `Bearer ${token}` };
+  const orClause = validEmails.map(e => `(from:${e} OR to:${e})`).join(' OR ');
+  const q = encodeURIComponent(`(${orClause}) newer_than:60d -in:drafts`);
 
-    const orClause = validEmails.map(e => `(from:${e} OR to:${e})`).join(' OR ');
-    const q = encodeURIComponent(`(${orClause}) newer_than:60d -in:drafts`);
+  const listRes = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${q}&maxResults=20`,
+    { headers }
+  );
+  const listData = await listRes.json();
+  if (!listData.threads?.length) return [];
 
-    const listRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${q}&maxResults=25`,
-      { headers }
-    );
-    const listData = await listRes.json();
-    if (!listData.threads || !listData.threads.length) return res.json({ ok: true, threads: [] });
-
-    // Fetch metadata for each thread in parallel (cap at 20)
-    const threadIds = listData.threads.slice(0, 20).map(t => t.id);
-    const threadDetails = await Promise.all(threadIds.map(async id => {
+  const threadDetails = await Promise.all(
+    listData.threads.slice(0, 15).map(async t => {
       try {
         const r = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/threads/${id}?format=metadata&metadataHeaders=Subject,From,To,Date`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/threads/${t.id}?format=metadata&metadataHeaders=Subject,From,To,Date`,
           { headers }
         );
         return await r.json();
       } catch(e) { return null; }
-    }));
+    })
+  );
 
-    const getHeader = (msg, name) => {
-      const h = (msg.payload?.headers || []).find(h => h.name.toLowerCase() === name.toLowerCase());
-      return h ? h.value : '';
-    };
+  return threadDetails.filter(Boolean).map(thread => {
+    const messages = thread.messages || [];
+    if (!messages.length) return null;
+    const firstMsg = messages[0];
+    const lastMsg  = messages[messages.length - 1];
+    const subject  = getHeader(firstMsg, 'Subject') || '(no subject)';
+    const lastFrom = extractEmail(getHeader(lastMsg, 'From') || '');
+    const dateStr  = getHeader(lastMsg, 'Date') || '';
+    const isUnread = messages.some(m => (m.labelIds || []).includes('UNREAD'));
+    const needsReply = !MATT_EMAILS.includes(lastFrom) && validEmails.some(e => e.toLowerCase() === lastFrom);
+    const snippet  = (lastMsg.snippet || '').substring(0, 160);
+    const matchedEmail = validEmails.find(e => {
+      const from = extractEmail(getHeader(lastMsg, 'From') || '');
+      const to   = getHeader(lastMsg, 'To') || '';
+      return e.toLowerCase() === from || to.toLowerCase().includes(e.toLowerCase());
+    }) || validEmails.find(e =>
+      messages.some(m => (getHeader(m, 'From') || '').toLowerCase().includes(e.toLowerCase()))
+    ) || '';
+    return { threadId: thread.id, subject, snippet, lastFrom, date: dateStr,
+             messageCount: messages.length, isUnread, needsReply, leadEmail: matchedEmail,
+             account: accountEmail };
+  }).filter(Boolean);
+}
 
-    const extractEmail = (str) => {
-      const m = str.match(/<([^>]+)>/);
-      return m ? m[1].toLowerCase() : str.toLowerCase().trim();
-    };
+app.post('/api/inbox', async (req, res) => {
+  try {
+    const { emails } = req.body;
+    if (!emails?.length) return res.json({ ok: true, threads: [] });
+    const validEmails = emails.filter(e => e && e.includes('@')).slice(0, 30);
+    if (!validEmails.length) return res.json({ ok: true, threads: [] });
 
-    const threads = threadDetails
-      .filter(Boolean)
-      .map(thread => {
-        const messages = thread.messages || [];
-        if (!messages.length) return null;
+    // Fetch from both accounts in parallel
+    const promises = [fetchThreadsForAccount(await googleToken(), validEmails, 'goldenmb@gmail.com')];
+    const compassToken = await googleTokenCompass().catch(() => null);
+    if (compassToken) promises.push(fetchThreadsForAccount(compassToken, validEmails, 'matthewgolden@compass.com'));
 
-        const firstMsg  = messages[0];
-        const lastMsg   = messages[messages.length - 1];
-        const subject   = getHeader(firstMsg, 'Subject') || '(no subject)';
-        const lastFrom  = extractEmail(getHeader(lastMsg, 'From') || '');
-        const dateStr   = getHeader(lastMsg, 'Date') || '';
-        const isUnread  = (thread.messages || []).some(m => (m.labelIds || []).includes('UNREAD'));
-        const needsReply = lastFrom !== MATT.toLowerCase() && validEmails.some(e => e.toLowerCase() === lastFrom);
-        const snippet   = lastMsg.snippet || '';
-        const matchedEmail = validEmails.find(e => {
-          const from = extractEmail(getHeader(lastMsg, 'From') || '');
-          const to   = getHeader(lastMsg, 'To') || '';
-          return e.toLowerCase() === from || to.toLowerCase().includes(e.toLowerCase());
-        }) || validEmails.find(e => {
-          // fallback: check any message in thread
-          return messages.some(m => {
-            const f = getHeader(m, 'From') || '';
-            return f.toLowerCase().includes(e.toLowerCase());
-          });
-        }) || '';
+    const results = await Promise.allSettled(promises);
+    const allThreads = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
 
-        return {
-          threadId:    thread.id,
-          subject,
-          snippet:     snippet.substring(0, 160),
-          lastFrom,
-          date:        dateStr,
-          messageCount: messages.length,
-          isUnread,
-          needsReply,
-          leadEmail:   matchedEmail,
-        };
-      })
-      .filter(Boolean)
+    // Deduplicate by subject+leadEmail (same conversation may appear in both inboxes)
+    const seen = new Set();
+    const threads = allThreads
+      .filter(t => { const key = `${t.subject}|${t.leadEmail}`; if (seen.has(key)) return false; seen.add(key); return true; })
       .sort((a, b) => {
-        // Sort: needs reply first, then unread, then by date
         if (a.needsReply !== b.needsReply) return a.needsReply ? -1 : 1;
         if (a.isUnread   !== b.isUnread)   return a.isUnread   ? -1 : 1;
         return new Date(b.date) - new Date(a.date);
