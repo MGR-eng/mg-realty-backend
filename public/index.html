@@ -250,6 +250,37 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .cal-status.posted{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
 .cal-add-btn{width:100%;padding:6px 4px;border:1px dashed var(--border);border-radius:6px;background:none;color:var(--text3);font-size:10px;cursor:pointer;transition:all 0.15s;font-family:var(--font)}
 .cal-add-btn:hover{border-color:var(--amber);color:var(--amber);background:var(--amber-bg)}
+/* ── Content Performance ── */
+.perf-empty{padding:32px 20px;text-align:center;color:var(--text3);font-size:13px}
+.perf-section{margin-bottom:22px}
+.perf-section-hd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.perf-post-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;margin-bottom:8px}
+.perf-post-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.perf-post-type{font-size:10px;font-weight:700;color:var(--amber);margin-bottom:3px}
+.perf-post-caption{font-size:12px;color:var(--text2);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.perf-post-date{font-size:10px;color:var(--text3);white-space:nowrap;flex-shrink:0}
+.perf-stats-row{display:flex;gap:10px}
+.perf-stat{flex:1;background:var(--surface);border-radius:6px;padding:7px 8px;text-align:center}
+.perf-stat-val{font-size:14px;font-weight:800;color:var(--text)}
+.perf-stat-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-top:1px}
+.perf-eng-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:8px}
+.perf-eng-fill{height:100%;background:linear-gradient(90deg,var(--amber),#f97316);border-radius:3px;transition:width 0.4s}
+.perf-type-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.perf-type-label{font-size:12px;font-weight:500;flex:1}
+.perf-type-bar-wrap{flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.perf-type-bar{height:100%;background:var(--amber);border-radius:3px;transition:width 0.4s}
+.perf-type-val{font-size:11px;color:var(--text2);font-family:var(--mono);min-width:36px;text-align:right}
+/* Stats modal */
+.stats-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:none;align-items:flex-end;justify-content:center}
+.stats-modal-overlay.open{display:flex}
+.stats-modal{background:var(--surface);border-radius:var(--rl) var(--rl) 0 0;padding:20px;width:100%;max-width:480px;border-top:1px solid var(--border)}
+.stats-modal-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.stats-modal-sub{font-size:11px;color:var(--text3);margin-bottom:16px}
+.stats-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stats-input-group{display:flex;flex-direction:column;gap:5px}
+.stats-input-group label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em}
+.stats-input-group input{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font);font-size:14px;padding:9px 11px;outline:none;transition:border-color 0.15s;text-align:center}
+.stats-input-group input:focus{border-color:var(--amber)}
 .ce-output-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
 .ce-output-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;background:var(--surface2);border-bottom:1px solid var(--border)}
 .ce-output-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);display:flex;align-items:center;gap:6px}
@@ -515,6 +546,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="ce-tabs">
       <div class="ce-tab active" data-tab="generate" onclick="showCeTab('generate')"><i class="ti ti-sparkles" style="font-size:12px"></i> Generate</div>
       <div class="ce-tab" data-tab="calendar" onclick="showCeTab('calendar')"><i class="ti ti-calendar-week" style="font-size:12px"></i> Calendar</div>
+      <div class="ce-tab" data-tab="performance" onclick="showCeTab('performance')"><i class="ti ti-chart-bar" style="font-size:12px"></i> Performance</div>
     </div>
 
     <!-- GENERATE VIEW -->
@@ -630,6 +662,29 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       </div>
     </div>
 
+    <!-- PERFORMANCE VIEW -->
+    <div id="ce-performance-view" style="display:none">
+      <div id="ce-perf-body"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Stats input modal -->
+<div class="stats-modal-overlay" id="statsModalOverlay" onclick="if(event.target===this)closeStatsModal()">
+  <div class="stats-modal">
+    <div class="stats-modal-title">Log Post Stats</div>
+    <div class="stats-modal-sub" id="statsModalSub">Enter your latest numbers from Instagram</div>
+    <div class="stats-inputs">
+      <div class="stats-input-group"><label>👁 Views</label><input type="number" id="stat-views" placeholder="0" min="0"></div>
+      <div class="stats-input-group"><label>❤️ Likes</label><input type="number" id="stat-likes" placeholder="0" min="0"></div>
+      <div class="stats-input-group"><label>💬 Comments</label><input type="number" id="stat-comments" placeholder="0" min="0"></div>
+      <div class="stats-input-group"><label>🔖 Saves</label><input type="number" id="stat-saves" placeholder="0" min="0"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="closeStatsModal()" style="flex:1">Cancel</button>
+      <button class="btn btn-gold" onclick="saveStats()" style="flex:2"><i class="ti ti-check"></i> Save Stats</button>
+    </div>
   </div>
 </div>
 
@@ -2543,10 +2598,12 @@ function getWeekStart(d) {
 }
 
 function showCeTab(tab) {
-  document.getElementById('ce-generate-view').style.display = tab === 'generate' ? '' : 'none';
-  document.getElementById('ce-calendar-view').style.display  = tab === 'calendar'  ? '' : 'none';
+  document.getElementById('ce-generate-view').style.display     = tab === 'generate'    ? '' : 'none';
+  document.getElementById('ce-calendar-view').style.display     = tab === 'calendar'    ? '' : 'none';
+  document.getElementById('ce-performance-view').style.display  = tab === 'performance' ? '' : 'none';
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  if (tab === 'calendar') { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
+  if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
+  if (tab === 'performance') { renderPerformance(); }
 }
 
 function renderCalendar() {
@@ -2566,6 +2623,7 @@ function renderCalendar() {
         <div class="cal-post-actions">
           <span class="cal-status ${p.status}" onclick="cycleCalStatus('${p.id}')" title="Click to change">${p.status}</span>
           <span style="flex:1"></span>
+          ${p.status==='posted'?`<button class="btn btn-sm" onclick="openStatsModal('${p.id}')" title="Log stats" style="padding:2px 5px;font-size:10px;color:var(--amber)"><i class="ti ti-chart-bar" style="font-size:9px"></i></button>`:''}
           <button class="btn btn-sm" onclick="loadCalPost('${p.id}')" title="Edit" style="padding:2px 5px;font-size:10px"><i class="ti ti-edit" style="font-size:9px"></i></button>
           <button class="btn btn-sm btn-red" onclick="removeCalPost('${p.id}')" title="Remove" style="padding:2px 5px;font-size:10px"><i class="ti ti-x" style="font-size:9px"></i></button>
         </div>
@@ -2634,6 +2692,146 @@ function loadCalPost(id) {
   if (p.type && document.getElementById('ce-type')) document.getElementById('ce-type').value = p.type;
   showCeTab('generate');
   toast('Post loaded into editor');
+}
+
+// ── Content Performance Tracker ───────────────────────────────
+let _statsPostId = null;
+
+function openStatsModal(postId) {
+  const p = calPosts.find(x => x.id === postId);
+  if (!p) return;
+  _statsPostId = postId;
+  document.getElementById('statsModalSub').textContent = (CAL_TYPE_LABELS[p.type] || p.type) + ' · ' + (p.date || '');
+  document.getElementById('stat-views').value    = p.stats?.views    || '';
+  document.getElementById('stat-likes').value    = p.stats?.likes    || '';
+  document.getElementById('stat-comments').value = p.stats?.comments || '';
+  document.getElementById('stat-saves').value    = p.stats?.saves    || '';
+  document.getElementById('statsModalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('stat-views').focus(), 100);
+}
+
+function closeStatsModal() {
+  document.getElementById('statsModalOverlay').classList.remove('open');
+  _statsPostId = null;
+}
+
+function saveStats() {
+  if (!_statsPostId) return;
+  const views    = parseInt(document.getElementById('stat-views').value)    || 0;
+  const likes    = parseInt(document.getElementById('stat-likes').value)    || 0;
+  const comments = parseInt(document.getElementById('stat-comments').value) || 0;
+  const saves    = parseInt(document.getElementById('stat-saves').value)    || 0;
+  calPosts = calPosts.map(p => p.id !== _statsPostId ? p : { ...p, stats: { views, likes, comments, saves, updatedAt: new Date().toISOString() } });
+  saveCalendar();
+  renderCalendar();
+  closeStatsModal();
+  toast('Stats saved ✓', 'success');
+}
+
+function renderPerformance() {
+  const el = document.getElementById('ce-perf-body');
+  if (!el) return;
+
+  const posted = calPosts.filter(p => p.status === 'posted');
+  const withStats = posted.filter(p => p.stats && (p.stats.views || p.stats.likes));
+
+  if (!withStats.length) {
+    el.innerHTML = `<div class="perf-empty">
+      <div style="font-size:32px;margin-bottom:10px">📊</div>
+      <div style="font-weight:600;margin-bottom:6px">No stats yet</div>
+      <div style="font-size:12px;line-height:1.6">Mark a post as <strong>posted</strong> in the Calendar tab, then tap the 📊 icon to log your views, likes, comments and saves.</div>
+    </div>`;
+    return;
+  }
+
+  // Calc engagement rate = (likes + comments + saves) / views * 100
+  const engRate = p => {
+    const s = p.stats;
+    if (!s || !s.views) return 0;
+    return ((s.likes + s.comments + s.saves) / s.views * 100);
+  };
+
+  const sorted = [...withStats].sort((a, b) => engRate(b) - engRate(a));
+  const maxEng = engRate(sorted[0]) || 1;
+  const maxViews = Math.max(...withStats.map(p => p.stats.views || 0)) || 1;
+
+  // Totals
+  const totViews    = withStats.reduce((s, p) => s + (p.stats.views    || 0), 0);
+  const totLikes    = withStats.reduce((s, p) => s + (p.stats.likes    || 0), 0);
+  const totComments = withStats.reduce((s, p) => s + (p.stats.comments || 0), 0);
+  const totSaves    = withStats.reduce((s, p) => s + (p.stats.saves    || 0), 0);
+  const avgEng      = withStats.reduce((s, p) => s + engRate(p), 0) / withStats.length;
+
+  // By content type
+  const typeStats = {};
+  withStats.forEach(p => {
+    const t = p.type || 'other';
+    if (!typeStats[t]) typeStats[t] = { count: 0, totalEng: 0, totalViews: 0 };
+    typeStats[t].count++;
+    typeStats[t].totalEng   += engRate(p);
+    typeStats[t].totalViews += p.stats.views || 0;
+  });
+  const typeSorted = Object.entries(typeStats).sort((a, b) => (b[1].totalEng/b[1].count) - (a[1].totalEng/a[1].count));
+  const maxTypeEng = typeSorted.length ? typeSorted[0][1].totalEng / typeSorted[0][1].count : 1;
+
+  const fmt = n => n >= 1000 ? (n/1000).toFixed(1) + 'K' : n;
+
+  el.innerHTML = `
+    <div class="perf-section">
+      <div class="perf-section-hd">Overall — ${withStats.length} post${withStats.length>1?'s':''} tracked</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px">
+        <div class="perf-stat"><div class="perf-stat-val">${fmt(totViews)}</div><div class="perf-stat-lbl">Views</div></div>
+        <div class="perf-stat"><div class="perf-stat-val">${fmt(totLikes)}</div><div class="perf-stat-lbl">Likes</div></div>
+        <div class="perf-stat"><div class="perf-stat-val">${fmt(totComments)}</div><div class="perf-stat-lbl">Comments</div></div>
+        <div class="perf-stat"><div class="perf-stat-val">${avgEng.toFixed(1)}%</div><div class="perf-stat-lbl">Avg Eng.</div></div>
+      </div>
+    </div>
+
+    <div class="perf-section">
+      <div class="perf-section-hd">By content type</div>
+      ${typeSorted.map(([type, s]) => {
+        const avg = s.totalEng / s.count;
+        const pct = Math.round(avg / maxTypeEng * 100);
+        return `<div class="perf-type-row">
+          <div class="perf-type-label">${CAL_TYPE_LABELS[type] || type}</div>
+          <div class="perf-type-bar-wrap"><div class="perf-type-bar" style="width:${pct}%"></div></div>
+          <div class="perf-type-val">${avg.toFixed(1)}%</div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="perf-section">
+      <div class="perf-section-hd">Top posts by engagement</div>
+      ${sorted.map(p => {
+        const s = p.stats;
+        const eng = engRate(p);
+        const engPct = Math.round(eng / maxEng * 100);
+        const viewPct = Math.round((s.views || 0) / maxViews * 100);
+        return `<div class="perf-post-card">
+          <div class="perf-post-top">
+            <div>
+              <div class="perf-post-type">${CAL_TYPE_LABELS[p.type] || p.type}</div>
+              <div class="perf-post-caption">${(p.caption || '').substring(0, 120)}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <div class="perf-post-date">${p.date || ''}</div>
+              <button class="btn btn-sm" onclick="openStatsModal('${p.id}')" style="font-size:10px;padding:2px 7px;color:var(--amber)"><i class="ti ti-edit" style="font-size:9px"></i> Edit</button>
+            </div>
+          </div>
+          <div class="perf-stats-row">
+            <div class="perf-stat"><div class="perf-stat-val">${fmt(s.views||0)}</div><div class="perf-stat-lbl">Views</div></div>
+            <div class="perf-stat"><div class="perf-stat-val">${fmt(s.likes||0)}</div><div class="perf-stat-lbl">Likes</div></div>
+            <div class="perf-stat"><div class="perf-stat-val">${fmt(s.comments||0)}</div><div class="perf-stat-lbl">Comments</div></div>
+            <div class="perf-stat"><div class="perf-stat-val">${fmt(s.saves||0)}</div><div class="perf-stat-lbl">Saves</div></div>
+          </div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+            <div style="font-size:11px;color:var(--text3)">Engagement</div>
+            <div class="perf-eng-bar" style="flex:1"><div class="perf-eng-fill" style="width:${engPct}%"></div></div>
+            <div style="font-size:11px;font-weight:700;color:var(--amber)">${eng.toFixed(1)}%</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
 
 function escHtml(str) {
