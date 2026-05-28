@@ -170,6 +170,21 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .dp-actions{padding:14px 20px;display:flex;gap:7px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border)}
 .dp-act-mini{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px}
 .dp-act-mini:last-child{border-bottom:none}
+/* ── Activity timeline ── */
+.act-tl{position:relative;padding-left:22px}
+.act-tl::before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:var(--border);border-radius:2px}
+.act-tl-item{position:relative;margin-bottom:12px;font-size:12px;line-height:1.45}
+.act-tl-item:last-child{margin-bottom:0}
+.act-tl-dot{position:absolute;left:-19px;top:3px;width:10px;height:10px;border-radius:50%;border:2px solid var(--surface);flex-shrink:0}
+.act-tl-row{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.act-tl-type{font-weight:600;text-transform:capitalize;color:var(--text)}
+.act-tl-time{color:var(--text3);font-size:10px;white-space:nowrap;flex-shrink:0}
+.act-tl-notes{color:var(--text2);margin-top:2px;word-break:break-word}
+.act-tl-fu{color:var(--amber);margin-top:2px;font-size:11px}
+.act-quick-note{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.act-quick-note textarea{flex:1;font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);resize:none;height:32px;font-family:inherit;transition:height 0.15s}
+.act-quick-note textarea:focus{outline:none;border-color:var(--amber);height:60px}
+.act-section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 /* ── Pipeline ── */
 .pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;align-items:start}
 .pipe-col{background:var(--surface2);border-radius:var(--rl);border:1px solid var(--border)}
@@ -585,7 +600,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="dp-section" id="dp-notes" style="display:none"></div>
   <div class="dp-section" id="dp-sequence" style="display:none"></div>
   <div class="dp-section">
-    <div class="dp-label">Activity history</div>
+    <div class="act-section-hd">
+      <div class="dp-label" style="margin-bottom:0">Activity</div>
+      <button class="btn btn-sm btn-blue" id="dp-log-btn" style="font-size:10px;padding:3px 8px"><i class="ti ti-plus" style="font-size:10px"></i> Log</button>
+    </div>
     <div id="dp-activity"></div>
   </div>
   <div class="dp-section">
@@ -1316,18 +1334,8 @@ function openLeadDetail(id){
     notesSec.innerHTML=`<div class="dp-label">Notes</div><div style="font-size:13px;line-height:1.6;color:var(--text2);white-space:pre-wrap">${l.notes}</div>`;
   } else { notesSec.style.display='none'; }
 
-  // Activity
-  const myActs=[...acts].filter(a=>a.leadId===id).reverse().slice(0,8);
-  const icM={call:'ti-phone',text:'ti-message',email:'ti-mail',showing:'ti-key','open house':'ti-home',offer:'ti-file-text'};
-  document.getElementById('dp-activity').innerHTML=myActs.length
-    ?myActs.map(a=>`<div class="dp-act-mini">
-        <i class="ti ${icM[a.type]||'ti-activity'}" style="font-size:13px;color:var(--text3);margin-top:1px;flex-shrink:0"></i>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:500">${a.type} · ${a.outcome}</div>
-          <div style="color:var(--text3);font-size:11px;margin-top:1px">${a.date}${a.notes?' · '+a.notes.substring(0,60):''}</div>
-        </div>
-      </div>`).join('')
-    :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No activity logged yet</div>';
+  // Activity timeline
+  renderLeadTimeline(id);
 
   // Appointments
   const myAppts=appts.filter(a=>a.leadId===id).sort((a,b)=>a.date>b.date?1:-1).slice(0,5);
@@ -1345,10 +1353,14 @@ function openLeadDetail(id){
       }).join('')
     :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No appointments scheduled</div>';
 
+  // Wire up the Log button in the activity section header
+  const logBtn = document.getElementById('dp-log-btn');
+  if (logBtn) logBtn.onclick = () => openAct(id);
+
   // Actions (including sequence button)
   document.getElementById('dp-actions').innerHTML=`
-    <button class="btn btn-blue" onclick="closeLeadDetail();openAct('${id}')"><i class="ti ti-activity"></i> Log activity</button>
-    <button class="btn btn-gold" onclick="closeLeadDetail();openEmailTemplate('${id}')"><i class="ti ti-mail"></i> Send email</button>
+    <button class="btn btn-gold" onclick="openEmailTemplate('${id}')"><i class="ti ti-mail"></i> Email</button>
+    <button class="btn btn-blue" onclick="openAct('${id}')"><i class="ti ti-activity"></i> Log</button>
     ${l.email?`<button class="btn btn-green" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Sequence</button>`:''}
     <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
@@ -1359,6 +1371,76 @@ function openLeadDetail(id){
 function closeLeadDetail(){
   document.getElementById('detailPanel').classList.remove('open');
   document.getElementById('detailBackdrop').classList.remove('open');
+}
+
+// ── Activity timeline helpers ─────────────────────────────────
+const ACT_TYPE_COLOR = { call:'var(--blue)', text:'var(--green)', email:'#8b5cf6', note:'var(--amber)', showing:'#f97316', offer:'var(--red)', 'open house':'#ec4899' };
+
+function renderLeadTimeline(leadId) {
+  const myActs = [...acts]
+    .filter(a => a.leadId === leadId)
+    .sort((a,b) => new Date(b.date+(b.time?' '+b.time:'')) - new Date(a.date+(a.time?' '+a.time:'')));
+
+  const tl = myActs.length
+    ? `<div class="act-tl">${myActs.map(a => `
+        <div class="act-tl-item">
+          <div class="act-tl-dot" style="background:${ACT_TYPE_COLOR[a.type]||'var(--text3)'}"></div>
+          <div class="act-tl-row">
+            <span class="act-tl-type">${a.type}${a.outcome&&a.outcome!=='n/a'&&a.outcome?' · '+a.outcome:''}</span>
+            <span class="act-tl-time">${rel(a.date)}${a.time?' · '+a.time:''}</span>
+          </div>
+          ${a.notes?`<div class="act-tl-notes">${a.notes}</div>`:''}
+          ${a.fuDate?`<div class="act-tl-fu">↻ Follow-up ${a.fuDate}${a.fuMethod?' via '+a.fuMethod:''}</div>`:''}
+        </div>`).join('')}
+      </div>`
+    : '<div style="font-size:12px;color:var(--text3);padding:4px 0">No activity yet — use Log to record a call, email, or note.</div>';
+
+  document.getElementById('dp-activity').innerHTML = tl + `
+    <div class="act-quick-note">
+      <textarea id="dp-note-ta-${leadId}" placeholder="Quick note…"></textarea>
+      <button class="btn btn-sm" onclick="addQuickNote('${leadId}')" title="Save note" style="padding:5px 9px"><i class="ti ti-check"></i></button>
+    </div>`;
+}
+
+function addQuickNote(leadId) {
+  const ta = document.getElementById('dp-note-ta-'+leadId);
+  if (!ta) return;
+  const text = ta.value.trim();
+  if (!text) return;
+  autoLogActivity(leadId, 'note', 'n/a', 'noted', text);
+  ta.value = '';
+  toast('Note saved');
+}
+
+function autoLogActivity(leadId, type, direction, outcome, notes, subject) {
+  const l = leads.find(x => x.id === leadId);
+  if (!l) return;
+  const now = new Date();
+  const act = {
+    id: 'a'+Date.now(),
+    leadId,
+    leadName: `${l.first} ${l.last}`,
+    date: now.toISOString().split('T')[0],
+    time: now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+    type,
+    direction,
+    outcome,
+    notes: subject ? (subject + (notes ? '\n'+notes : '')) : (notes || ''),
+    fuDate: '',
+    fuMethod: ''
+  };
+  acts.push(act);
+  leads = leads.map(ld => {
+    if (ld.id !== leadId) return ld;
+    return { ...ld, lastcontact: act.date, lcmethod: type };
+  });
+  persist();
+  // Refresh panel if open for this lead
+  const panel = document.getElementById('detailPanel');
+  if (panel && panel.classList.contains('open')) {
+    const nameEl = document.getElementById('dp-name');
+    if (nameEl && nameEl.textContent === `${l.first} ${l.last}`) renderLeadTimeline(leadId);
+  }
 }
 
 // ── Agents ────────────────────────────────────────────────────
@@ -1555,6 +1637,7 @@ async function sendEmailTemplate() {
     const fromLabel = from === 'compass' ? 'matthewgolden@compass.com' : 'goldenmb@gmail.com';
     toast(`✉️ Email sent from ${fromLabel}`, 'success');
     setSyncStatus('ok', 'Ready');
+    if (emailLeadId) autoLogActivity(emailLeadId, 'email', 'outbound', 'sent', null, subject);
   } catch(e) {
     toast('Email failed — check logs', 'error');
     setSyncStatus('ok', 'Ready');
@@ -2349,6 +2432,9 @@ async function sendSmsReply(number) {
       renderSmsInbox();
     }
     toast('Text sent ✓');
+    // Auto-log to activity timeline
+    const smsLead = leadForNumber(number);
+    if (smsLead) autoLogActivity(smsLead.id, 'text', 'outbound', 'sent', body.length > 80 ? body.substring(0,80)+'…' : body);
   } catch(e) {
     toast('Send failed: ' + e.message, 'error');
   } finally {
