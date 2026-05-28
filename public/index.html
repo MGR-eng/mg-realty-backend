@@ -185,6 +185,14 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .act-quick-note textarea{flex:1;font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);resize:none;height:32px;font-family:inherit;transition:height 0.15s}
 .act-quick-note textarea:focus{outline:none;border-color:var(--amber);height:60px}
 .act-section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+/* ── AI Suggestion card ── */
+.ai-suggest-card{background:linear-gradient(135deg,var(--amber-bg) 0%,var(--surface2) 100%);border:1px solid var(--amber);border-radius:var(--rl);padding:13px 15px;margin-bottom:4px}
+.ai-suggest-card.loading{background:var(--surface2);border-color:var(--border);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.ai-suggest-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--amber);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.ai-suggest-action{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.4}
+.ai-suggest-why{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px}
+.ai-suggest-btns{display:flex;gap:6px;flex-wrap:wrap}
 /* ── Pipeline ── */
 .pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;align-items:start}
 .pipe-col{background:var(--surface2);border-radius:var(--rl);border:1px solid var(--border)}
@@ -666,6 +674,9 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="dp-section" id="dp-agent" style="display:none"></div>
   <div class="dp-section" id="dp-notes" style="display:none"></div>
   <div class="dp-section" id="dp-sequence" style="display:none"></div>
+  <div class="dp-section" id="dp-ai-section" style="display:none">
+    <div id="dp-ai-suggest"></div>
+  </div>
   <div class="dp-section">
     <div class="act-section-hd">
       <div class="dp-label" style="margin-bottom:0">Activity</div>
@@ -1429,6 +1440,7 @@ function openLeadDetail(id){
     <button class="btn btn-gold" onclick="openEmailTemplate('${id}')"><i class="ti ti-mail"></i> Email</button>
     <button class="btn btn-blue" onclick="openAct('${id}')"><i class="ti ti-activity"></i> Log</button>
     <button class="btn" onclick="showSnoozeMenu(event,'${id}')" title="Snooze follow-up"><i class="ti ti-alarm-snooze"></i> Snooze</button>
+    <button class="btn" onclick="getAiSuggestion('${id}')" title="AI next-action suggestion" style="background:var(--amber-bg);border-color:var(--amber);color:var(--amber)"><i class="ti ti-sparkles"></i> AI Suggest</button>
     ${l.email?`<button class="btn btn-green" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Sequence</button>`:''}
     <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
@@ -1508,6 +1520,50 @@ function autoLogActivity(leadId, type, direction, outcome, notes, subject) {
   if (panel && panel.classList.contains('open')) {
     const nameEl = document.getElementById('dp-name');
     if (nameEl && nameEl.textContent === `${l.first} ${l.last}`) renderLeadTimeline(leadId);
+  }
+}
+
+// ── AI Follow-up Suggestion ───────────────────────────────────
+async function getAiSuggestion(leadId) {
+  const l = leads.find(x => x.id === leadId); if (!l) return;
+  const sec = document.getElementById('dp-ai-section');
+  const box = document.getElementById('dp-ai-suggest');
+  if (!sec || !box) return;
+  sec.style.display = '';
+  box.innerHTML = `<div class="ai-suggest-card loading"><div class="ai-suggest-label"><i class="ti ti-sparkles"></i> AI thinking…</div><div class="ai-suggest-action" style="color:var(--text3)">Analyzing this lead's history…</div></div>`;
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const myActs = acts.filter(a => a.leadId === leadId).sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+  try {
+    const res = await fetch(`${BASE}/api/ai-suggestion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead: l, activities: myActs })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    const s = data.suggestion;
+    const actionBtns = {
+      call:  `<button class="btn btn-sm btn-blue" onclick="openAct('${leadId}')"><i class="ti ti-phone"></i> Log Call</button>`,
+      email: `<button class="btn btn-sm btn-gold" onclick="openEmailTemplate('${leadId}')"><i class="ti ti-mail"></i> Send Email</button>`,
+      text:  `<button class="btn btn-sm btn-green" onclick="openAct('${leadId}')"><i class="ti ti-message"></i> Log Text</button>`,
+      snooze:`<button class="btn btn-sm" onclick="showSnoozeMenu(event,'${leadId}')"><i class="ti ti-alarm-snooze"></i> Snooze</button>`,
+      wait:  `<button class="btn btn-sm" onclick="showSnoozeMenu(event,'${leadId}')"><i class="ti ti-clock"></i> Snooze</button>`,
+    };
+    const type = s.type || 'call';
+    const btn = actionBtns[type] || actionBtns.call;
+    box.innerHTML = `
+      <div class="ai-suggest-card">
+        <div class="ai-suggest-label"><i class="ti ti-sparkles"></i> AI Suggestion</div>
+        <div class="ai-suggest-action">${s.action}</div>
+        <div class="ai-suggest-why">${s.reason}</div>
+        <div class="ai-suggest-btns">
+          ${btn}
+          <button class="btn btn-sm" onclick="getAiSuggestion('${leadId}')"><i class="ti ti-refresh"></i> Refresh</button>
+          <button class="btn btn-sm" onclick="document.getElementById('dp-ai-section').style.display='none'" style="margin-left:auto"><i class="ti ti-x"></i></button>
+        </div>
+      </div>`;
+  } catch(e) {
+    box.innerHTML = `<div class="ai-suggest-card" style="border-color:var(--red)"><div class="ai-suggest-label" style="color:var(--red)"><i class="ti ti-alert-circle"></i> Error</div><div class="ai-suggest-action" style="color:var(--text2);font-weight:400">${e.message}</div></div>`;
   }
 }
 

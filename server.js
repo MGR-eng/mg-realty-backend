@@ -1276,18 +1276,26 @@ ${toneGuide}
 Generate Instagram content for a "${typeLabels[contentType] || contentType}" post.
 ${listingContext}
 
-Return a JSON object with exactly these three keys:
+Return a JSON object with exactly these four keys:
 {
-  "caption": "Full Instagram caption, 150-220 words. Start with a hook (no generic openers). Use line breaks for readability. Include a clear CTA at the end (DM, link in bio, or call). Sign off as Matt Golden · MG Realty. Use 2-3 relevant emojis naturally placed, not spammy.",
+  "caption": "Full Instagram caption, 150-220 words. Start with a strong hook (no generic openers like 'Exciting news'). Use line breaks for readability. Include a clear CTA at the end (DM, link in bio, or call). Sign off as Matt Golden · MG Realty. Use 2-3 relevant emojis naturally placed, not spammy.",
   "reelsScript": "A Reels/TikTok script, 45-60 seconds spoken. Format as: [HOOK] (first 3 seconds to stop the scroll), [BODY] (main content, 3-4 punchy points), [CTA] (last 5 seconds). Write it as natural spoken words Matt would say on camera. No stage directions, just the words.",
-  "hashtags": "30 relevant hashtags as a single string separated by spaces. Mix: broad real estate tags, LA-specific tags, niche buyer/seller tags, and 2-3 unique MG Realty brand tags. No # symbol, just the words separated by spaces."
+  "hashtags": "30 hashtags as a single space-separated string (no # symbol). Strategic mix for maximum reach.",
+  "hashtagGroups": {
+    "broad": ["6-7 high-volume real estate hashtags, 1M+ posts each, e.g. realestate realtor homesearch"],
+    "local": ["6-7 LA-specific tags that local buyers/sellers actually search, e.g. losangelesrealestate larealestate"],
+    "niche": ["6-7 targeted tags for this specific post type/audience, e.g. incomeproperty firsttimebuyer"],
+    "brand": ["3-4 MG Realty brand tags, e.g. mgrealty mattgoldenrealtor mgrealtylosangeles"]
+  }
 }
+
+For hashtagGroups: return actual hashtag strings (no # symbol) in each array, not descriptions. Total across all groups should be ~25-28 tags.
 
 Return only valid JSON, no markdown code blocks, no extra text.`;
 
     const resp = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 2048,
+      max_tokens: 2500,
       messages: [{ role: 'user', content: prompt }],
     });
 
@@ -1829,6 +1837,72 @@ Write the summary in 2nd person ("You have…", "Your top priority…"). Sound l
 
   } catch (e) {
     console.error('BRIEFING ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── AI Follow-up Suggestion ───────────────────────────────────
+app.post('/api/ai-suggestion', async (req, res) => {
+  try {
+    const { lead, activities = [] } = req.body;
+    if (!lead) return res.status(400).json({ ok: false, error: 'No lead provided' });
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+    const daysSinceContact = (() => {
+      const dates = activities.map(a => a.date).filter(Boolean).sort().reverse();
+      if (!dates.length) return null;
+      const last = new Date(dates[0].split('-').map(Number).reduce((acc, v, i) => { acc.push(v); return acc; }, []));
+      const d = new Date(...dates[0].split('-').map((v,i) => i===1 ? Number(v)-1 : Number(v)));
+      return Math.round((now - d) / 86400000);
+    })();
+
+    const actSummary = activities.slice(0, 8).map(a =>
+      `- ${a.date}: ${a.type} (${a.direction||''}) — ${a.outcome||''} ${a.notes ? '| '+a.notes : ''}`
+    ).join('\n') || 'No activity recorded yet.';
+
+    const prompt = `You are a real estate assistant for Matt Golden at MG Realty in Los Angeles.
+
+Lead profile:
+- Name: ${lead.first} ${lead.last}
+- Status: ${lead.status || 'unknown'}
+- Type: ${lead.type || 'buyer/seller unknown'}
+- Budget: ${lead.budget || 'not specified'}
+- Timeline: ${lead.timeline || 'not specified'}
+- Source: ${lead.source || 'unknown'}
+- Last follow-up date: ${lead.followup || 'none set'}
+- Days since last activity: ${daysSinceContact !== null ? daysSinceContact : 'unknown'}
+- Today: ${todayStr}
+
+Recent activity (newest first):
+${actSummary}
+
+Based on this lead's history and current status, suggest the single best next action Matt should take TODAY to move this deal forward or keep the relationship warm. Be specific — reference their situation.
+
+Respond with ONLY valid JSON (no markdown, no backticks):
+{
+  "action": "one clear sentence — what to do (e.g. 'Call Sarah to follow up on the Culver City showing from 3 days ago')",
+  "reason": "1-2 sentences explaining why this is the right move right now",
+  "type": "call|email|text|snooze|wait"
+}`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    let suggestion;
+    try {
+      suggestion = JSON.parse(msg.content[0].text.trim());
+    } catch {
+      const match = msg.content[0].text.match(/\{[\s\S]*\}/);
+      suggestion = match ? JSON.parse(match[0]) : { action: msg.content[0].text, reason: '', type: 'call' };
+    }
+
+    res.json({ ok: true, suggestion });
+  } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
