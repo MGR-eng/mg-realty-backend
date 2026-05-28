@@ -432,7 +432,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div><div class="tw" id="dashSources"></div></div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Pipeline stages</div><div class="tw" id="dashStages"></div></div>
     </div>
-    <div style="margin-top:16px"><div style="font-size:13px;font-weight:600;margin-bottom:9px">🤝 Referral leaderboard</div><div class="tw" id="dashReferrals"></div></div>
+    <div class="dash2" style="margin-top:16px">
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">🤝 Referral leaderboard</div><div class="tw" id="dashReferrals"></div></div>
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">📬 Post-close sequences</div><div class="tw" id="dashPostClose"></div></div>
+    </div>
   </div>
 </div>
 
@@ -689,6 +692,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="dp-section" id="dp-details"></div>
   <div class="dp-section" id="dp-agent" style="display:none"></div>
   <div class="dp-section" id="dp-notes" style="display:none"></div>
+  <div class="dp-section" id="dp-postclose" style="display:none"></div>
   <div class="dp-section" id="dp-ai-section" style="display:none">
     <div id="dp-ai-suggest"></div>
   </div>
@@ -1141,7 +1145,47 @@ function renderAppts(){
   el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
 }
 
-function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();populatePropSelect();updateBadges();}
+async function renderDashPostClose(){
+  const el=document.getElementById('dashPostClose');if(!el)return;
+  el.innerHTML='<div class="empty" style="font-size:12px;color:var(--text3)">Loading…</div>';
+  try{
+    const r=await fetch(BACKEND+'/api/post-close/active');const d=await r.json();
+    if(!d.ok||!d.sequences.length){el.innerHTML='<div class="empty">No active post-close sequences</div>';return;}
+    const fmt=s=>{if(!s)return '—';const[y,m,day]=s.split('-');return `${m}/${day}`;};
+    el.innerHTML=`<table><thead><tr><th>Client</th><th>Next touch</th><th>Date</th><th></th></tr></thead><tbody>${d.sequences.slice(0,6).map(s=>`<tr>
+      <td><div class="ns">${s.leadName}</div><div class="nsb" style="font-size:10px;color:var(--text3)">${s.property||''}</div></td>
+      <td style="font-size:11px;color:var(--amber)">${s.nextTouch?.label||'Complete'}</td>
+      <td style="font-size:11px;font-family:var(--mono)">${fmt(s.nextTouch?.scheduledDate)}</td>
+      <td><button class="btn btn-sm" style="font-size:9px;padding:2px 5px;color:var(--text3)" onclick="cancelPostClose('${s.leadId}',this)" title="Cancel">✕</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  }catch(e){el.innerHTML='<div class="empty">Could not load</div>';}
+}
+async function cancelPostClose(leadId,btn){
+  if(!confirm('Cancel post-close sequence?'))return;
+  btn.disabled=true;
+  try{await fetch(BACKEND+'/api/post-close/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId})});renderDashPostClose();toast('Sequence cancelled');}
+  catch(e){btn.disabled=false;}
+}
+async function renderDetailPostClose(leadId){
+  const sec=document.getElementById('dp-postclose');if(!sec)return;
+  try{
+    const r=await fetch(BACKEND+'/sequences/status/'+leadId);const d=await r.json();
+    const pcSeq=d.all?.find(s=>s.type==='post_close'&&s.status==='active');
+    if(!pcSeq){sec.style.display='none';return;}
+    sec.style.display='';
+    const fmt=s=>{if(!s)return '—';const[y,m,day]=s.split('-');return `${parseInt(m)}/${parseInt(day)}`;};
+    sec.innerHTML=`<div class="dp-label">📬 Post-Close Sequence</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${pcSeq.touches.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
+          <span style="color:${t.sent?'var(--text3)':'var(--text)'};text-decoration:${t.sent?'line-through':''}">${t.label}</span>
+          <span style="font-size:11px;color:${t.sent?'var(--green)':t.scheduledDate<=new Date().toISOString().split('T')[0]?'var(--amber)':'var(--text3)'}">${t.sent?'✓ Sent '+fmt(t.sentAt):'Due '+fmt(t.scheduledDate)}</span>
+        </div>`).join('')}
+      </div>
+      <button class="btn btn-sm" style="margin-top:10px;color:var(--red);font-size:11px" onclick="cancelPostClose('${leadId}',this)">Cancel sequence</button>`;
+  }catch(e){sec.style.display='none';}
+}
+
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();populatePropSelect();updateBadges();}
 
 async function sendDigest(){
   setSyncStatus('busy','Sending digest…');
@@ -1216,8 +1260,14 @@ function saveLead(){
   if(!g('lf1')){alert('First name required');return;}
   const ex=editLeadId?leads.find(l=>l.id===editLeadId):{};
   const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,agentName:g('lf14'),referredBy:g('lf15'),agentContacts:getAgentContacts(),lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
+  const wasClosedBefore=editLeadId?(leads.find(l=>l.id===editLeadId)?.stage==='closed'):false;
+  const isNowClosed=lead.stage==='closed';
   if(editLeadId){leads=leads.map(l=>l.id===editLeadId?lead:l);}else{leads.push(lead);}
-  editLeadId=null;persist();closeModal('mLead');renderAll();toast(editLeadId?'Lead updated':'Lead added');
+  editLeadId=null;persist();closeModal('mLead');renderAll();toast(isNowClosed&&lead.email?'Lead closed — starting post-close sequence 🎉':'Lead saved');
+  if(isNowClosed&&!wasClosedBefore&&lead.email){
+    fetch(BACKEND+'/api/post-close/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId:lead.id})})
+      .then(r=>r.json()).then(d=>{if(d.ok)toast('✓ 30/60/90 day check-in sequence started!');}).catch(()=>{});
+  }
 }
 function delLead(id){if(confirm('Delete this lead and all activity?')){leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();renderAll();}}
 
@@ -1323,6 +1373,10 @@ function openLeadDetail(id){
         </div>`;
       }).join('')
     :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No appointments scheduled</div>';
+
+  // Post-close sequence status
+  if(l.stage==='closed') renderDetailPostClose(id);
+  else { const pc=document.getElementById('dp-postclose'); if(pc) pc.style.display='none'; }
 
   // Wire up the Log button in the activity section header
   const logBtn = document.getElementById('dp-log-btn');

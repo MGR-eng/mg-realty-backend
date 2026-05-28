@@ -837,8 +837,9 @@ app.all('/sequences/process', async (req, res) => {
       if (seq.touches.every(t => t.sent)) seq.status = 'completed';
     }
 
+    const postCloseSent = await processPostCloseEmails(crm, today);
     await writeCRM(crm);
-    res.json({ ok: true, sent });
+    res.json({ ok: true, sent: sent + postCloseSent, followUp: sent, postClose: postCloseSent });
   } catch(e) {
     console.error('SEQUENCE PROCESS ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -856,6 +857,173 @@ app.get('/sequences/status/:leadId', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// ── Post-Close Check-in Sequences ────────────────────────────
+const POST_CLOSE_TOUCHES = [
+  { day: 30, key: 'pc_30', label: '30-Day Check-in' },
+  { day: 60, key: 'pc_60', label: '60-Day Market Update' },
+  { day: 90, key: 'pc_90', label: '90-Day Referral Ask' },
+];
+
+async function generatePostCloseEmail(touchKey, lead) {
+  const name = lead.first || lead.name?.split(' ')[0] || 'there';
+  const prop = lead.prop || lead.address || 'your new home';
+  const hood = lead.neighborhood || 'your neighborhood';
+
+  const prompts = {
+    pc_30: `Write a warm, casual 3-sentence check-in email from real estate agent Matt Golden to client ${name} who closed on ${prop} about 30 days ago. Ask how they're settling in, mention you loved working with them, and subtly open the door for referrals without being pushy. Sign off as Matt. No subject line, just the email body in plain HTML paragraphs.`,
+    pc_60: `Write a value-add 3-sentence email from Matt Golden (LA real estate agent) to past client ${name} who bought/sold ${prop} 60 days ago. Share that you've been watching ${hood} and wanted to give them a quick market pulse. Keep it conversational and end with an offer to chat. No subject line, just HTML paragraphs.`,
+    pc_90: `Write a friendly 3-sentence email from Matt Golden (LA real estate agent) to past client ${name} who closed on ${prop} 90 days ago. Congratulate them on 3 months in their new situation, ask if they know anyone who could use help buying or selling in LA, and make it feel natural not salesy. No subject line, just HTML paragraphs.`
+  };
+
+  const msg = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 300,
+    messages: [{ role: 'user', content: prompts[touchKey] }]
+  });
+  return msg.content[0].text.trim();
+}
+
+app.post('/api/post-close/start', async (req, res) => {
+  try {
+    const { leadId } = req.body;
+    const crm = await readCRM();
+    const lead = crm.leads.find(l => l.id === leadId);
+    if (!lead) return res.status(404).json({ ok: false, error: 'Lead not found' });
+    if (!lead.email) return res.status(400).json({ ok: false, error: 'Lead has no email — add one first' });
+
+    // Cancel any existing post-close sequence for this lead
+    crm.sequences = (crm.sequences || []).map(s =>
+      s.leadId === leadId && s.type === 'post_close' && s.status === 'active'
+        ? { ...s, status: 'cancelled' }
+        : s
+    );
+
+    const startDate = new Date();
+    const seq = {
+      id: 'pc_' + Date.now(),
+      type: 'post_close',
+      leadId,
+      leadName: `${lead.first} ${lead.last}`,
+      leadEmail: lead.email,
+      property: lead.prop || '',
+      neighborhood: lead.neighborhood || '',
+      startedAt: startDate.toISOString().split('T')[0],
+      status: 'active',
+      touches: POST_CLOSE_TOUCHES.map(t => {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + t.day);
+        return { day: t.day, key: t.key, label: t.label, scheduledDate: d.toISOString().split('T')[0], sent: false };
+      })
+    };
+
+    crm.sequences.push(seq);
+    await writeCRM(crm);
+    console.log(`Post-close sequence started for ${lead.first} ${lead.last}`);
+    res.json({ ok: true, sequenceId: seq.id });
+  } catch(e) {
+    console.error('post-close start error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/post-close/cancel', async (req, res) => {
+  try {
+    const { leadId } = req.body;
+    const crm = await readCRM();
+    crm.sequences = (crm.sequences || []).map(s =>
+      s.leadId === leadId && s.type === 'post_close' && s.status === 'active'
+        ? { ...s, status: 'cancelled' } : s
+    );
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/post-close/active', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const active = (crm.sequences || [])
+      .filter(s => s.type === 'post_close' && s.status === 'active')
+      .map(s => ({
+        id: s.id, leadId: s.leadId, leadName: s.leadName,
+        property: s.property, startedAt: s.startedAt,
+        nextTouch: s.touches.find(t => !t.sent) || null,
+        sentCount: s.touches.filter(t => t.sent).length,
+        totalTouches: s.touches.length
+      }))
+      .sort((a, b) => (a.nextTouch?.scheduledDate || '') < (b.nextTouch?.scheduledDate || '') ? -1 : 1);
+    res.json({ ok: true, sequences: active });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Hook post-close sending into the existing /sequences/process scheduler
+// This runs daily alongside regular follow-up sequences
+async function processPostCloseEmails(crm, today) {
+  let sent = 0;
+  for (const seq of (crm.sequences || [])) {
+    if (seq.type !== 'post_close' || seq.status !== 'active') continue;
+    for (const touch of seq.touches) {
+      if (touch.sent || touch.scheduledDate > today) continue;
+      try {
+        const lead = crm.leads.find(l => l.id === seq.leadId) || {
+          first: seq.leadName.split(' ')[0], last: seq.leadName.split(' ')[1] || '',
+          prop: seq.property, neighborhood: seq.neighborhood
+        };
+        const bodyHtml = await generatePostCloseEmail(touch.key, lead);
+        const subjects = {
+          pc_30: `Checking in — how's ${seq.property || 'the new place'}?`,
+          pc_60: `Quick market update for ${seq.neighborhood || 'your area'}`,
+          pc_90: `3 months in — congrats! 🏡`
+        };
+        const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+          <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+            <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+          </div>
+          <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+            ${bodyHtml}
+            <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br>
+            <span style="color:#888">MG Realty · Los Angeles · (323) 555-0100<br>goldenmb@gmail.com · DRE #02130422</span></p>
+          </div>
+        </div>`;
+
+        const { error } = await resend.emails.send({
+          from: 'Matt Golden <onboarding@resend.dev>',
+          to: seq.leadEmail,
+          subject: encodeSubject(subjects[touch.key] || touch.label),
+          html
+        });
+
+        if (!error) {
+          touch.sent = true;
+          touch.sentAt = today;
+          sent++;
+          console.log(`Post-close email sent: ${touch.key} → ${seq.leadEmail}`);
+          // Notify Matt
+          try {
+            const token = await googleToken();
+            const notifSubject = encodeSubject(`📬 Post-close sent: ${touch.label} → ${seq.leadName}`);
+            const raw = Buffer.from(
+              `From: MG Realty CRM <goldenmb@gmail.com>\r\nTo: goldenmb@gmail.com\r\nSubject: ${notifSubject}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nAuto-sent "${touch.label}" to ${seq.leadName} (${seq.leadEmail}) re: ${seq.property || 'their property'}.\n\n— MG Realty CRM`
+            ).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+            await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+              method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ raw })
+            });
+          } catch(e) { console.error('Post-close notify failed:', e.message); }
+        }
+      } catch(e) {
+        console.error(`Post-close email failed (${touch.key}):`, e.message);
+      }
+    }
+    if (seq.touches.every(t => t.sent)) seq.status = 'completed';
+  }
+  return sent;
+}
 
 // ── Static page routes ────────────────────────────────────────
 app.get('/contact', (req, res) => res.sendFile(path.join(__dirname, 'public', 'contact.html')));
