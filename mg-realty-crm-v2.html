@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MG Realty CRM</title>
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1A1914">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MG Realty">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -25,7 +32,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 .sidebar{background:#1A1914;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
 .logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px}
-.logo-icon{width:32px;height:32px;background:#E8681A;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:600;color:#fff;flex-shrink:0;font-size:13px}
+.logo-icon{width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0}
 .logo-text{font-size:14px;font-weight:600;color:#fff}.logo-sub{font-size:10px;color:rgba(255,255,255,0.35);font-family:var(--mono)}
 .nav{padding:14px 10px;flex:1}
 .nav-lbl{font-size:10px;font-weight:600;color:rgba(255,255,255,0.28);letter-spacing:0.1em;text-transform:uppercase;padding:0 8px;margin:12px 0 5px}
@@ -113,7 +120,38 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .ibox{background:var(--purple-bg);border-radius:var(--r);padding:9px 12px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:7px;margin-top:10px}
 .sw{position:relative}.sw input{padding-left:31px}.sw i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
 .dash2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-@media(max-width:700px){.shell{grid-template-columns:1fr}.sidebar{height:auto;position:relative}.nav{display:flex;flex-wrap:wrap;padding:8px}.nav-lbl{display:none}.nav-item span{display:none}.content{padding:14px}.topbar{padding:11px 14px}.dash2{grid-template-columns:1fr}}
+/* ── Mobile left icon rail ── */
+.mobile-tabs{display:none}
+.rail-logo{display:none}
+@media(max-width:700px){
+  .sidebar{display:none}
+  .shell{grid-template-columns:1fr}
+  .main{margin-left:60px}
+  .content{padding:14px}
+  .topbar{padding:11px 14px}
+  .dash2{grid-template-columns:1fr}
+  .pipeline{grid-template-columns:repeat(5,80vw);overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px}
+  .pipe-col{scroll-snap-align:start}
+  .modal{padding:16px}
+  .fg{grid-template-columns:1fr}
+  .fgg.full{grid-column:1}
+  .mobile-tabs{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:60px;background:#1A1914;border-right:1px solid rgba(255,255,255,0.1);z-index:80;align-items:center;padding-top:calc(env(safe-area-inset-top) + 10px);padding-bottom:env(safe-area-inset-bottom);gap:2px;overflow-y:auto}
+  .rail-logo{display:block;width:36px;height:36px;border-radius:8px;object-fit:cover;margin-bottom:10px;flex-shrink:0}
+  .tab-item{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:rgba(255,255,255,0.4);font-size:0;cursor:pointer;border-radius:10px;position:relative;transition:all 0.15s;flex-shrink:0}
+  .tab-item i{font-size:22px}
+  .tab-item.active{color:#E8681A;background:rgba(232,104,26,0.15)}
+  .tab-item:active{background:rgba(255,255,255,0.08)}
+  .tab-badge{background:#E8681A;color:#fff;font-size:9px;font-weight:700;padding:0 4px;border-radius:8px;min-width:14px;text-align:center;position:absolute;top:6px;right:4px}
+  .more-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:81}
+  .more-backdrop.open{display:block}
+  .more-sheet{position:fixed;bottom:0;left:60px;right:0;background:#1A1914;border-top:1px solid rgba(255,255,255,0.1);border-radius:16px 16px 0 0;z-index:82;transform:translateY(100%);transition:transform 0.25s ease;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .more-sheet.open{transform:translateY(0)}
+  .more-sheet-hd{font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;padding:0 4px}
+  .more-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .more-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border-radius:10px;background:rgba(255,255,255,0.07);border:none;color:rgba(255,255,255,0.75);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;cursor:pointer;font-family:var(--font)}
+  .more-btn i{font-size:20px;color:rgba(255,255,255,0.5)}
+  .more-btn:active{background:rgba(255,255,255,0.14)}
+}
 /* ── Lead detail panel ── */
 .detail-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:89;display:none}
 .detail-backdrop.open{display:block}
@@ -187,10 +225,12 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .ct-label{font-size:11px;color:var(--green);font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
 .ct-val{font-size:22px;font-weight:300;color:var(--green)}
 /* ── Content Engine ── */
+/* ── Content Engine tabs ── */
 .ce-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:18px}
 .ce-tab{padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);margin-bottom:-2px;display:flex;align-items:center;gap:5px;transition:color 0.15s}
 .ce-tab:hover{color:var(--text)}
 .ce-tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+/* ── Content calendar ── */
 .cal-week-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .cal-week-label{font-size:13px;font-weight:600;flex:1;text-align:center}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
@@ -230,6 +270,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .perf-type-bar-wrap{flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
 .perf-type-bar{height:100%;background:var(--amber);border-radius:3px;transition:width 0.4s}
 .perf-type-val{font-size:11px;color:var(--text2);font-family:var(--mono);min-width:36px;text-align:right}
+/* Stats modal */
 .stats-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;display:none;align-items:flex-end;justify-content:center}
 .stats-modal-overlay.open{display:flex}
 .stats-modal{background:var(--surface);border-radius:var(--rl) var(--rl) 0 0;padding:20px;width:100%;max-width:480px;border-top:1px solid var(--border)}
@@ -320,6 +361,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .cl-reason{font-size:11px;color:var(--text2);margin-top:2px;font-style:italic}
 .cl-phone{font-size:11px;color:var(--text2);margin-top:1px;font-family:var(--mono)}
 .cl-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-bottom:1px solid var(--border)}
+.cl-meta{font-size:10px;color:var(--text3);margin-top:1px}
 .cl-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:28px;color:var(--text2);font-size:13px}
 </style>
 </head>
@@ -329,7 +371,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 
 <aside class="sidebar">
   <div class="logo">
-    <div class="logo-icon">MG</div>
+    <img src="/icons/mg-logo.jpg" class="logo-icon" alt="MG Realty">
     <div><div class="logo-text">MG Realty</div><div class="logo-sub">CRM v2.0</div></div>
   </div>
   <nav class="nav">
@@ -346,6 +388,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('content',this)"><i class="ti ti-brand-instagram"></i><span>Content</span></button>
     <div class="nav-lbl">Tools</div>
     <button class="nav-item" onclick="openCommCalc()"><i class="ti ti-calculator"></i><span>Comm. Calc</span></button>
+    <button class="nav-item" onclick="openMarketReport()"><i class="ti ti-chart-bar"></i><span>Market Report</span></button>
     <div class="nav-lbl">Automate</div>
     <button class="nav-item" onclick="sendDigest()"><i class="ti ti-mail"></i><span>Send digest</span></button>
     <button class="nav-item" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
@@ -358,7 +401,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <main class="main">
 
 <div id="pane-dashboard" class="pane active">
-  <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn" onclick="openCommCalc()" style="background:var(--surface2);border-color:var(--green);color:var(--green)"><i class="ti ti-calculator"></i> Calc</button><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
+  <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
   <div class="content">
     <div class="stats-grid" id="statsGrid"></div>
 
@@ -446,6 +489,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div class="sw"><i class="ti ti-search"></i><input type="text" id="srch" placeholder="Search…" style="width:150px" oninput="renderLeads()"></div>
       <select id="ftemp" onchange="renderLeads()" style="width:auto"><option value="">All temps</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select>
       <select id="ftype" onchange="renderLeads()" style="width:auto"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
+      <button class="btn" onclick="openImportCSV()"><i class="ti ti-upload"></i> Import CSV</button>
       <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
   </div>
@@ -657,6 +701,24 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="mfoot"><button class="btn" onclick="closeModal('mCommCalc')">Close</button><button class="btn btn-green" onclick="saveCommCalcAsDeal()"><i class="ti ti-coin"></i> Save as deal</button></div>
 </div></div>
 
+<!-- Market Report Modal -->
+<div class="modal-overlay" id="mMarketReport"><div class="modal" style="max-width:480px">
+  <div class="modal-title">📊 Neighborhood Market Report</div>
+  <div class="form-grid" style="padding:0 20px 8px">
+    <div class="fgg full"><label>Neighborhood *</label><input id="mr1" type="text" placeholder="e.g. Silver Lake, Echo Park, Beverly Hills"></div>
+    <div class="fgg"><label>Property Type</label><select id="mr2"><option>Single Family</option><option>Condo / Townhome</option><option>Multi-Family</option><option>All Types</option></select></div>
+    <div class="fgg"><label>Min Price</label><input id="mr3" type="text" placeholder="e.g. 800000"></div>
+    <div class="fgg"><label>Max Price</label><input id="mr4" type="text" placeholder="e.g. 2000000"></div>
+  </div>
+  <div id="mr-status" style="display:none;text-align:center;padding:10px 20px;font-size:12px;color:var(--amber)"></div>
+  <div id="mr-preview" style="display:none;margin:0 20px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;line-height:1.6"></div>
+  <div class="mfoot">
+    <button class="btn" onclick="closeModal('mMarketReport')">Close</button>
+    <button class="btn btn-gold" id="mr-gen-btn" onclick="generateMarketReport()"><i class="ti ti-chart-bar"></i> Generate Report</button>
+    <button class="btn btn-green" id="mr-dl-btn" style="display:none" onclick="downloadMarketReport()"><i class="ti ti-download"></i> Download PDF</button>
+  </div>
+</div></div>
+
 <!-- Stats input modal -->
 <div class="stats-modal-overlay" id="statsModalOverlay" onclick="if(event.target===this)closeStatsModal()">
   <div class="stats-modal">
@@ -678,6 +740,46 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 </main>
 </div>
 
+<!-- Mobile left icon rail -->
+<nav class="mobile-tabs">
+  <img src="/icons/mg-logo.jpg" class="rail-logo" alt="MG Realty">
+  <button class="tab-item active" data-pane="dashboard" onclick="showPane('dashboard',this)" title="Dashboard">
+    <i class="ti ti-layout-dashboard"></i>
+  </button>
+  <button class="tab-item" data-pane="leads" onclick="showPane('leads',this)" title="Leads">
+    <i class="ti ti-users"></i>
+    <span id="nb-leads-mobile" class="tab-badge" style="display:none"></span>
+  </button>
+  <button class="tab-item" data-pane="pipeline" onclick="showPane('pipeline',this)" title="Pipeline">
+    <i class="ti ti-layout-kanban"></i>
+  </button>
+  <button class="tab-item" data-pane="tasks" onclick="showPane('tasks',this)" title="Tasks">
+    <i class="ti ti-checkbox"></i>
+    <span id="nb-tasks-mobile" class="tab-badge" style="display:none"></span>
+  </button>
+  <button class="tab-item" onclick="toggleMoreSheet()" title="More">
+    <i class="ti ti-dots-vertical"></i>
+  </button>
+</nav>
+
+<!-- More sheet -->
+<div class="more-backdrop" id="moreBackdrop" onclick="toggleMoreSheet()"></div>
+<div class="more-sheet" id="moreSheet">
+  <div class="more-sheet-hd">More</div>
+  <div class="more-grid">
+    <button class="more-btn" onclick="showPane('activity',null);toggleMoreSheet()"><i class="ti ti-activity"></i>Activity</button>
+    <button class="more-btn" onclick="showPane('appointments',null);toggleMoreSheet()"><i class="ti ti-calendar"></i>Appts</button>
+    <button class="more-btn" onclick="showPane('properties',null);toggleMoreSheet()"><i class="ti ti-building"></i>Props</button>
+    <button class="more-btn" onclick="showPane('commission',null);toggleMoreSheet()"><i class="ti ti-coin"></i>Commission</button>
+    <button class="more-btn" onclick="showPane('agents',null);toggleMoreSheet()"><i class="ti ti-id-badge"></i>Agents</button>
+    <button class="more-btn" onclick="openCommCalc();toggleMoreSheet()"><i class="ti ti-calculator"></i>Calc</button>
+    <button class="more-btn" onclick="openMarketReport();toggleMoreSheet()"><i class="ti ti-chart-bar"></i>Mkt Report</button>
+    <button class="more-btn" onclick="sendDigest();toggleMoreSheet()"><i class="ti ti-mail"></i>Digest</button>
+    <button class="more-btn" onclick="backupToSheet();toggleMoreSheet()"><i class="ti ti-cloud-upload"></i>Backup</button>
+    <button class="more-btn" onclick="showPane('leads',document.querySelector('[data-pane=leads]'));setTimeout(openAddLead,50);toggleMoreSheet()"><i class="ti ti-user-plus"></i>Add Lead</button>
+  </div>
+</div>
+
 <!-- Lead detail panel -->
 <div class="detail-backdrop" id="detailBackdrop" onclick="closeLeadDetail()"></div>
 <div class="detail-panel" id="detailPanel">
@@ -692,6 +794,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="dp-section" id="dp-details"></div>
   <div class="dp-section" id="dp-agent" style="display:none"></div>
   <div class="dp-section" id="dp-notes" style="display:none"></div>
+  <div class="dp-section" id="dp-sequence" style="display:none"></div>
   <div class="dp-section" id="dp-postclose" style="display:none"></div>
   <div class="dp-section" id="dp-ai-section" style="display:none">
     <div id="dp-ai-suggest"></div>
@@ -812,6 +915,49 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="fgg full"><label>Notes</label><textarea id="lf11" placeholder="Pre-approval, motivation, timeline…"></textarea></div>
   </div>
   <div class="mfoot"><button class="btn" onclick="closeModal('mLead')">Cancel</button><button class="btn btn-gold" onclick="saveLead()">Save lead</button></div>
+</div></div>
+
+<!-- CSV Import Modal -->
+<div class="modal-overlay" id="mImport"><div class="modal" style="width:min(680px,100%)">
+  <div class="modal-title">Import Leads from CSV</div>
+
+  <!-- Step 1: Upload -->
+  <div id="importStep1">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Upload a CSV file with your leads. First row should be column headers.</p>
+    <div id="csvDropZone" onclick="document.getElementById('csvFileInput').click()"
+      style="border:2px dashed var(--border);border-radius:var(--rl);padding:32px;text-align:center;cursor:pointer;transition:border-color 0.15s;background:var(--surface2)">
+      <i class="ti ti-file-upload" style="font-size:32px;color:var(--text3);display:block;margin-bottom:8px"></i>
+      <p style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:4px">Click to choose a CSV file</p>
+      <p style="font-size:12px;color:var(--text3)">or drag and drop here</p>
+    </div>
+    <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none" onchange="handleCSVFile(this.files[0])">
+    <p style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Need a template? <a id="csvTemplateLink" href="#" onclick="downloadCSVTemplate();return false" style="color:var(--blue)">Download sample CSV</a></p>
+  </div>
+
+  <!-- Step 2: Map columns -->
+  <div id="importStep2" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <p style="font-size:13px;color:var(--text2)">Map your CSV columns to CRM fields.</p>
+      <span id="importRowCount" style="font-size:12px;font-weight:600;color:var(--text2)"></span>
+    </div>
+    <div id="colMapGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"></div>
+    <div style="background:var(--surface2);border-radius:var(--r);padding:10px 13px;font-size:12px;color:var(--text2)">
+      <strong>Preview</strong> — first 3 rows:
+      <div id="csvPreview" style="margin-top:8px;overflow-x:auto"></div>
+    </div>
+  </div>
+
+  <!-- Step 3: Done -->
+  <div id="importStep3" style="display:none;text-align:center;padding:20px 0">
+    <i class="ti ti-circle-check" style="font-size:40px;color:#27ae60;display:block;margin-bottom:12px"></i>
+    <p style="font-size:16px;font-weight:600;margin-bottom:6px" id="importDoneMsg"></p>
+    <p style="font-size:13px;color:var(--text2)">Your new leads are now in the CRM.</p>
+  </div>
+
+  <div class="mfoot" id="importFooter">
+    <button class="btn" onclick="closeModal('mImport')">Cancel</button>
+    <button class="btn btn-gold" id="importRunBtn" onclick="runCSVImport()" style="display:none"><i class="ti ti-upload"></i> Import leads</button>
+  </div>
 </div></div>
 
 <!-- Email Template Modal -->
@@ -954,9 +1100,16 @@ function tyb(t){
 function showPane(id,el){
   document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('pane-'+id).classList.add('active');
   if(el)el.classList.add('active');
+  const mTab=document.querySelector(`.tab-item[data-pane="${id}"]`);
+  if(mTab)mTab.classList.add('active');
   renderAll();
+}
+function toggleMoreSheet(){
+  document.getElementById('moreSheet').classList.toggle('open');
+  document.getElementById('moreBackdrop').classList.toggle('open');
 }
 
 function updateBadges(){
@@ -967,6 +1120,11 @@ function updateBadges(){
   const openTasks=tasks.filter(t=>!t.done).length;
   document.getElementById('nb-tasks').textContent=openTasks;
   document.getElementById('nb-tasks').className='nb'+(openTasks?' red':'');
+  // Mobile badges
+  const mlBadge=document.getElementById('nb-leads-mobile');
+  if(mlBadge){mlBadge.textContent=ov;mlBadge.style.display=ov?'':'none';}
+  const mtBadge=document.getElementById('nb-tasks-mobile');
+  if(mtBadge){mtBadge.textContent=openTasks;mtBadge.style.display=openTasks?'':'none';}
 }
 
 function renderStats(){
@@ -1001,18 +1159,6 @@ function renderDashAppts(){
   el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Date</th><th>Time</th></tr></thead><tbody>${up.map(a=>`<tr><td class="ns">${a.leadName}</td><td><span class="badge b-showing">${a.type}</span></td><td style="font-size:12px;font-family:var(--mono)">${a.date}</td><td style="font-size:12px;color:var(--text2)">${a.time}</td></tr>`).join('')}</tbody></table>`;
 }
 
-async function renderDashTours(){
-  const el=document.getElementById('dashTours');if(!el)return;
-  el.innerHTML='<div class="empty" style="color:var(--text3);font-size:12px">Loading…</div>';
-  try{
-    const r=await fetch('/api/tours');const d=await r.json();
-    if(!d.ok||!d.tours.length){el.innerHTML='<div class="empty">No tours scheduled</div>';return;}
-    const fmt=t=>{const[y,m,day]=t.date.split('-');return `${m}/${day}`;};
-    const fmtTime=t=>{ if(!t.time)return ''; const[h,mi]=t.time.split(':'); const hr=+h; return `${hr>12?hr-12:hr||12}:${mi}${hr>=12?'pm':'am'}`; };
-    el.innerHTML=`<table><thead><tr><th>Who</th><th>Property</th><th>Date</th><th>Time</th></tr></thead><tbody>${d.tours.slice(0,5).map(t=>`<tr><td class="ns">${t.leadName}</td><td style="font-size:12px;color:var(--text2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.address}</td><td style="font-size:12px;font-family:var(--mono)">${fmt(t)}</td><td style="font-size:12px;color:var(--amber)">${fmtTime(t)}</td></tr>`).join('')}</tbody></table>`;
-  }catch(e){el.innerHTML='<div class="empty">Could not load tours</div>';}
-}
-
 function renderDashReferrals(){
   const el=document.getElementById('dashReferrals');if(!el)return;
   const withRef=leads.filter(l=>l.referredBy&&l.referredBy.trim());
@@ -1041,6 +1187,18 @@ function renderDashReferrals(){
   }).join('')}</div>`;
 }
 
+async function renderDashTours(){
+  const el=document.getElementById('dashTours');if(!el)return;
+  el.innerHTML='<div class="empty" style="color:var(--text3);font-size:12px">Loading…</div>';
+  try{
+    const r=await fetch('/api/tours');const d=await r.json();
+    if(!d.ok||!d.tours.length){el.innerHTML='<div class="empty">No tours scheduled</div>';return;}
+    const fmt=t=>{const[y,m,day]=t.date.split('-');return `${m}/${day}`;};
+    const fmtTime=t=>{ if(!t.time)return ''; const[h,mi]=t.time.split(':'); const hr=+h; return `${hr>12?hr-12:hr||12}:${mi}${hr>=12?'pm':'am'}`; };
+    el.innerHTML=`<table><thead><tr><th>Who</th><th>Property</th><th>Date</th><th>Time</th></tr></thead><tbody>${d.tours.slice(0,5).map(t=>`<tr><td class="ns">${t.leadName}</td><td style="font-size:12px;color:var(--text2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.address}</td><td style="font-size:12px;font-family:var(--mono)">${fmt(t)}</td><td style="font-size:12px;color:var(--amber)">${fmtTime(t)}</td></tr>`).join('')}</tbody></table>`;
+  }catch(e){el.innerHTML='<div class="empty">Could not load tours</div>';}
+}
+
 function renderDashSources(){
   const el=document.getElementById('dashSources');if(!el)return;
   const active=leads.filter(l=>l.temp!=='done');
@@ -1049,7 +1207,10 @@ function renderDashSources(){
   active.forEach(l=>{const s=l.source||'Unknown';counts[s]=(counts[s]||0)+1;});
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   const total=active.length;
+  const SRC_COLORS={'Instagram':'#E1306C','Referral':'#27AE60','Zillow':'#006AFF','Open House':'#E8681A','Website':'#3C3489','Cold Call':'#7B7B7B','Walk-in':'#C0842A','Other':'#999'};
   const getColor=(src,i)=>SRC_COLORS[src]||['#E8681A','#185FA5','#27500A','#3C3489','#633806','#791F1F','#085041'][i%7];
+
+  // Build SVG donut
   const r=54,cx=70,cy=70,stroke=18;
   const circ=2*Math.PI*r;
   let offset=0;
@@ -1061,6 +1222,7 @@ function renderDashSources(){
     offset+=pct;
     return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${getColor(src,i)}" stroke-width="${stroke}" stroke-dasharray="${dash}" stroke-dashoffset="${-circ*0}" transform="rotate(${rot-90} ${cx} ${cy})" style="transition:stroke-dasharray 0.4s"/>`;
   }).join('');
+
   el.innerHTML=`<div style="padding:14px 16px">
     <div style="display:flex;align-items:center;gap:18px">
       <div style="flex-shrink:0">
@@ -1149,31 +1311,37 @@ async function renderDashPostClose(){
   const el=document.getElementById('dashPostClose');if(!el)return;
   el.innerHTML='<div class="empty" style="font-size:12px;color:var(--text3)">Loading…</div>';
   try{
-    const r=await fetch(BACKEND+'/api/post-close/active');const d=await r.json();
+    const r=await fetch(BACKEND+'/api/post-close/active');
+    const d=await r.json();
     if(!d.ok||!d.sequences.length){el.innerHTML='<div class="empty">No active post-close sequences</div>';return;}
-    const fmt=s=>{if(!s)return '—';const[y,m,day]=s.split('-');return `${m}/${day}`;};
+    const fmt=s=>{ if(!s)return '—'; const[y,m,day]=s.split('-');return `${m}/${day}`; };
     el.innerHTML=`<table><thead><tr><th>Client</th><th>Next touch</th><th>Date</th><th></th></tr></thead><tbody>${d.sequences.slice(0,6).map(s=>`<tr>
       <td><div class="ns">${s.leadName}</div><div class="nsb" style="font-size:10px;color:var(--text3)">${s.property||''}</div></td>
       <td style="font-size:11px;color:var(--amber)">${s.nextTouch?.label||'Complete'}</td>
       <td style="font-size:11px;font-family:var(--mono)">${fmt(s.nextTouch?.scheduledDate)}</td>
-      <td><button class="btn btn-sm" style="font-size:9px;padding:2px 5px;color:var(--text3)" onclick="cancelPostClose('${s.leadId}',this)" title="Cancel">✕</button></td>
+      <td><button class="btn btn-sm" style="font-size:9px;padding:2px 5px;color:var(--text3)" onclick="cancelPostClose('${s.leadId}',this)" title="Cancel sequence">✕</button></td>
     </tr>`).join('')}</tbody></table>`;
   }catch(e){el.innerHTML='<div class="empty">Could not load</div>';}
 }
-async function cancelPostClose(leadId,btn){
-  if(!confirm('Cancel post-close sequence?'))return;
+
+async function cancelPostClose(leadId, btn){
+  if(!confirm('Cancel post-close sequence for this client?'))return;
   btn.disabled=true;
-  try{await fetch(BACKEND+'/api/post-close/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId})});renderDashPostClose();toast('Sequence cancelled');}
-  catch(e){btn.disabled=false;}
+  try{
+    await fetch(BACKEND+'/api/post-close/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId})});
+    renderDashPostClose();toast('Post-close sequence cancelled');
+  }catch(e){btn.disabled=false;}
 }
+
 async function renderDetailPostClose(leadId){
   const sec=document.getElementById('dp-postclose');if(!sec)return;
   try{
-    const r=await fetch(BACKEND+'/sequences/status/'+leadId);const d=await r.json();
+    const r=await fetch(BACKEND+'/sequences/status/'+leadId);
+    const d=await r.json();
     const pcSeq=d.all?.find(s=>s.type==='post_close'&&s.status==='active');
     if(!pcSeq){sec.style.display='none';return;}
     sec.style.display='';
-    const fmt=s=>{if(!s)return '—';const[y,m,day]=s.split('-');return `${parseInt(m)}/${parseInt(day)}`;};
+    const fmt=s=>{ if(!s)return '—'; const[y,m,day]=s.split('-');return `${parseInt(m)}/${parseInt(day)}`; };
     sec.innerHTML=`<div class="dp-label">📬 Post-Close Sequence</div>
       <div style="display:flex;flex-direction:column;gap:4px">
         ${pcSeq.touches.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">
@@ -1236,6 +1404,152 @@ async function backupToSheet(){
   }catch(e){setSyncStatus('err','Backup failed');toast('Backup failed: '+e.message,'err');}
 }
 
+// ── CSV Import ────────────────────────────────────────────────
+let csvRows=[], csvHeaders=[];
+const CSV_FIELDS=[
+  {key:'first',label:'First Name',required:true},
+  {key:'last',label:'Last Name',required:true},
+  {key:'phone',label:'Phone'},
+  {key:'email',label:'Email'},
+  {key:'temp',label:'Temperature (hot/warm/cold)'},
+  {key:'source',label:'Lead Source'},
+  {key:'stage',label:'Pipeline Stage'},
+  {key:'prop',label:'Property Interest'},
+  {key:'notes',label:'Notes'},
+  {key:'followup',label:'Follow-up Date'},
+  {key:'type',label:'Type (buyer/seller)'},
+];
+
+function openImportCSV(){
+  csvRows=[];csvHeaders=[];
+  document.getElementById('importStep1').style.display='';
+  document.getElementById('importStep2').style.display='none';
+  document.getElementById('importStep3').style.display='none';
+  document.getElementById('importRunBtn').style.display='none';
+  document.getElementById('csvFileInput').value='';
+  openModal('mImport');
+}
+
+function downloadCSVTemplate(){
+  const header='First Name,Last Name,Phone,Email,Temperature,Lead Source,Pipeline Stage,Property Interest,Notes,Follow-up Date,Type\n';
+  const example='Jane,Smith,(310) 555-0123,jane@email.com,warm,Instagram,new,Silver Lake 800k,Pre-approved,2026-06-01,buyer\n';
+  const blob=new Blob([header+example],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mg-realty-leads-template.csv';a.click();
+}
+
+function handleCSVFile(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    const parsed=parseCSV(text);
+    if(parsed.length<2){alert('CSV appears empty or invalid.');return;}
+    csvHeaders=parsed[0].map(h=>h.trim());
+    csvRows=parsed.slice(1).filter(r=>r.some(c=>c.trim()));
+    document.getElementById('importRowCount').textContent=csvRows.length+' rows found';
+    buildColMapper();
+    buildPreview();
+    document.getElementById('importStep1').style.display='none';
+    document.getElementById('importStep2').style.display='';
+    document.getElementById('importRunBtn').style.display='';
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text){
+  const rows=[];let row=[],cell='',inQ=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"'&&!inQ){inQ=true;}
+    else if(ch==='"'&&inQ&&text[i+1]==='"'){cell+='"';i++;}
+    else if(ch==='"'&&inQ){inQ=false;}
+    else if(ch===','&&!inQ){row.push(cell);cell='';}
+    else if((ch==='\n'||ch==='\r')&&!inQ){
+      if(ch==='\r'&&text[i+1]==='\n')i++;
+      row.push(cell);rows.push(row);row=[];cell='';
+    }else{cell+=ch;}
+  }
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  return rows;
+}
+
+function guessMapping(header){
+  const h=header.toLowerCase().replace(/[^a-z]/g,'');
+  if(h.includes('first'))return'first';
+  if(h.includes('last'))return'last';
+  if(h.includes('phone')||h.includes('mobile')||h.includes('cell'))return'phone';
+  if(h.includes('email'))return'email';
+  if(h.includes('temp')||h.includes('heat')||h.includes('status'))return'temp';
+  if(h.includes('source')||h.includes('referral')||h.includes('channel'))return'source';
+  if(h.includes('stage')||h.includes('pipeline'))return'stage';
+  if(h.includes('prop')||h.includes('address')||h.includes('interest'))return'prop';
+  if(h.includes('note')||h.includes('comment'))return'notes';
+  if(h.includes('followup')||h.includes('follow')||h.includes('date'))return'followup';
+  if(h.includes('type')||h.includes('buyer')||h.includes('seller'))return'type';
+  return'';
+}
+
+function buildColMapper(){
+  const grid=document.getElementById('colMapGrid');
+  grid.innerHTML=csvHeaders.map((h,i)=>`
+    <div class="fgg">
+      <label style="font-size:10px">${h}</label>
+      <select id="cmap_${i}" style="font-size:12px">
+        <option value="">— skip —</option>
+        ${CSV_FIELDS.map(f=>`<option value="${f.key}" ${guessMapping(h)===f.key?'selected':''}>${f.label}</option>`).join('')}
+      </select>
+    </div>`).join('');
+}
+
+function buildPreview(){
+  const preview=document.getElementById('csvPreview');
+  const show=csvRows.slice(0,3);
+  preview.innerHTML=`<table style="border-collapse:collapse;font-size:11px;width:100%">
+    <tr>${csvHeaders.map(h=>`<th style="padding:4px 8px;background:#eee;border:1px solid #ddd;white-space:nowrap">${h}</th>`).join('')}</tr>
+    ${show.map(r=>`<tr>${csvHeaders.map((_,i)=>`<td style="padding:4px 8px;border:1px solid #eee;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r[i]||''}</td>`).join('')}</tr>`).join('')}
+  </table>`;
+}
+
+function runCSVImport(){
+  const mapping={};
+  csvHeaders.forEach((_,i)=>{
+    const val=document.getElementById('cmap_'+i)?.value;
+    if(val)mapping[i]=val;
+  });
+  if(!Object.values(mapping).includes('first')&&!Object.values(mapping).includes('last')){
+    alert('Please map at least First Name or Last Name.');return;
+  }
+  const today=new Date().toISOString().split('T')[0];
+  let imported=0;
+  csvRows.forEach(row=>{
+    const lead={id:'l'+Date.now()+Math.random().toString(36).slice(2),temp:'warm',stage:'new',added:today,method:'call'};
+    Object.entries(mapping).forEach(([i,field])=>{
+      const val=(row[i]||'').trim();
+      if(val)lead[field]=val;
+    });
+    if(!lead.first&&!lead.last)return;
+    lead.first=lead.first||'';
+    lead.last=lead.last||'';
+    leads.push(lead);
+    imported++;
+  });
+  persist();pushToBackend();renderAll();
+  document.getElementById('importStep2').style.display='none';
+  document.getElementById('importRunBtn').style.display='none';
+  document.getElementById('importDoneMsg').textContent=`${imported} lead${imported!==1?'s':''} imported successfully!`;
+  document.getElementById('importStep3').style.display='';
+  document.getElementById('importFooter').innerHTML='<button class="btn btn-gold" onclick="closeModal(\'mImport\')">Done</button>';
+}
+
+// Drop zone drag support
+document.addEventListener('DOMContentLoaded',()=>{
+  const dz=document.getElementById('csvDropZone');
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.borderColor='#E8681A';});
+  dz.addEventListener('dragleave',()=>{dz.style.borderColor='';});
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.style.borderColor='';const f=e.dataTransfer.files[0];if(f)handleCSVFile(f);});
+});
+
 function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';document.getElementById('lf12').value='new';document.getElementById('lf13').value='Open House';document.getElementById('lf14').value='';document.getElementById('agentContactRows').innerHTML='';addAgentContactRow();openModal('mLead');}
 function openEdit(id){
   editLeadId=id;const l=leads.find(x=>x.id===id);
@@ -1260,13 +1574,15 @@ function saveLead(){
   if(!g('lf1')){alert('First name required');return;}
   const ex=editLeadId?leads.find(l=>l.id===editLeadId):{};
   const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,agentName:g('lf14'),referredBy:g('lf15'),agentContacts:getAgentContacts(),lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
-  const wasClosedBefore=editLeadId?(leads.find(l=>l.id===editLeadId)?.stage==='closed'):false;
-  const isNowClosed=lead.stage==='closed';
+  const wasClosedBefore = editLeadId ? (leads.find(l=>l.id===editLeadId)?.stage==='closed') : false;
+  const isNowClosed = lead.stage === 'closed';
   if(editLeadId){leads=leads.map(l=>l.id===editLeadId?lead:l);}else{leads.push(lead);}
   editLeadId=null;persist();closeModal('mLead');renderAll();toast(isNowClosed&&lead.email?'Lead closed — starting post-close sequence 🎉':'Lead saved');
-  if(isNowClosed&&!wasClosedBefore&&lead.email){
+  // Auto-start post-close sequence when stage changes to closed (and has email)
+  if(isNowClosed && !wasClosedBefore && lead.email){
     fetch(BACKEND+'/api/post-close/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId:lead.id})})
-      .then(r=>r.json()).then(d=>{if(d.ok)toast('✓ 30/60/90 day check-in sequence started!');}).catch(()=>{});
+      .then(r=>r.json()).then(d=>{ if(d.ok) toast('✓ 30/60/90 day check-in sequence started!'); })
+      .catch(()=>{});
   }
 }
 function delLead(id){if(confirm('Delete this lead and all activity?')){leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();renderAll();}}
@@ -1305,7 +1621,7 @@ function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-load();renderAll();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadInbox,600);
+load();renderAll();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadSmsInbox,500);setTimeout(loadInbox,800);loadCalendar();
 
 // ── Lead detail panel ─────────────────────────────────────────
 function openLeadDetail(id){
@@ -1374,7 +1690,7 @@ function openLeadDetail(id){
       }).join('')
     :'<div style="font-size:12px;color:var(--text3);padding:6px 0">No appointments scheduled</div>';
 
-  // Post-close sequence status
+  // Post-close sequence status (for closed leads)
   if(l.stage==='closed') renderDetailPostClose(id);
   else { const pc=document.getElementById('dp-postclose'); if(pc) pc.style.display='none'; }
 
@@ -1382,12 +1698,13 @@ function openLeadDetail(id){
   const logBtn = document.getElementById('dp-log-btn');
   if (logBtn) logBtn.onclick = () => openAct(id);
 
-  // Actions
+  // Actions (including sequence button)
   document.getElementById('dp-actions').innerHTML=`
     <button class="btn btn-gold" onclick="openEmailTemplate('${id}')"><i class="ti ti-mail"></i> Email</button>
     <button class="btn btn-blue" onclick="openAct('${id}')"><i class="ti ti-activity"></i> Log</button>
     <button class="btn" onclick="showSnoozeMenu(event,'${id}')" title="Snooze follow-up"><i class="ti ti-alarm-snooze"></i> Snooze</button>
     <button class="btn" onclick="getAiSuggestion('${id}')" title="AI next-action suggestion" style="background:var(--amber-bg);border-color:var(--amber);color:var(--amber)"><i class="ti ti-sparkles"></i> AI Suggest</button>
+    ${l.email?`<button class="btn btn-green" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Sequence</button>`:''}
     <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
 
@@ -1718,21 +2035,33 @@ async function draftWithAI() {
   const btn = document.getElementById('ai-draft-btn');
   const ta  = document.getElementById('ef3');
   if (!btn || !ta) return;
+
+  // Get lead context
   const lead = leads.find(l => l.id === emailLeadId);
   const templateType = document.getElementById('ef0')?.value || 'custom';
   const subject      = document.getElementById('ef2')?.value || '';
   const fromAccount  = document.getElementById('ef-from')?.value || 'personal';
+
+  // Get last activity for this lead
   const leadActs = acts.filter(a => a.leadId === emailLeadId).sort((a,b) => new Date(b.date)-new Date(a.date));
   const lastActivity = leadActs[0] ? `${leadActs[0].type} — ${leadActs[0].outcome} (${leadActs[0].date})` : null;
+
   btn.disabled = true;
   btn.innerHTML = '<div class="ce-spinner" style="width:11px;height:11px;border-width:1.5px;display:inline-block;vertical-align:middle;margin-right:5px"></div> Drafting…';
+
   try {
     const res = await fetch(BACKEND + '/api/draft-email', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        leadName: lead ? `${lead.first} ${lead.last}` : '',
-        temp: lead?.temp || '', type: lead?.type || '', stage: lead?.stage || '',
-        lastActivity, notes: lead?.notes || '', templateType, subject, fromAccount,
+        leadName:     lead ? `${lead.first} ${lead.last}` : '',
+        temp:         lead?.temp || '',
+        type:         lead?.type || '',
+        stage:        lead?.stage || '',
+        lastActivity: lastActivity,
+        notes:        lead?.notes || '',
+        templateType,
+        subject,
+        fromAccount,
       })
     });
     const data = await res.json();
@@ -1852,19 +2181,34 @@ function saveProp(){
 function delProp(id){if(confirm('Delete this property?')){props=props.filter(p=>p.id!==id);persist();renderProperties();}}
 
 // ── Property Documents ────────────────────────────────────────
-let propDocsId=null;
-function openPropDocs(propId){
-  propDocsId=propId;const p=props.find(x=>x.id===propId);if(!p)return;
-  document.getElementById('propDocsTitle').textContent=`📎 ${p.address}`;
-  document.getElementById('propDocStatus').style.display='none';
-  renderPropDocList(p);openModal('mPropDocs');
+let propDocsId = null;
+
+function openPropDocs(propId) {
+  propDocsId = propId;
+  const p = props.find(x => x.id === propId);
+  if (!p) return;
+  document.getElementById('propDocsTitle').textContent = `📎 ${p.address}`;
+  document.getElementById('propDocStatus').style.display = 'none';
+  renderPropDocList(p);
+  openModal('mPropDocs');
 }
-function renderPropDocList(p){
-  const el=document.getElementById('propDocList');const docs=p.docs||[];
-  if(!docs.length){el.innerHTML='<div class="empty" style="padding:20px 0">No documents yet — upload an RLA, inspection report, or any contract</div>';return;}
-  const iconFor=name=>{const ext=name.split('.').pop().toLowerCase();if(ext==='pdf')return 'ti-file-type-pdf';if(['doc','docx'].includes(ext))return 'ti-file-type-doc';if(['jpg','jpeg','png'].includes(ext))return 'ti-photo';return 'ti-file';};
-  const fmtSize=b=>b>1048576?`${(b/1048576).toFixed(1)} MB`:`${Math.round(b/1024)} KB`;
-  el.innerHTML=docs.map(d=>`
+
+function renderPropDocList(p) {
+  const el = document.getElementById('propDocList');
+  const docs = p.docs || [];
+  if (!docs.length) {
+    el.innerHTML = '<div class="empty" style="padding:20px 0">No documents yet — upload an RLA, inspection report, or any contract</div>';
+    return;
+  }
+  const iconFor = name => {
+    const ext = name.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'ti-file-type-pdf';
+    if (['doc','docx'].includes(ext)) return 'ti-file-type-doc';
+    if (['jpg','jpeg','png'].includes(ext)) return 'ti-photo';
+    return 'ti-file';
+  };
+  const fmtSize = b => b > 1048576 ? `${(b/1048576).toFixed(1)} MB` : `${Math.round(b/1024)} KB`;
+  el.innerHTML = docs.map(d => `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
       <i class="ti ${iconFor(d.name)}" style="font-size:20px;color:var(--amber);flex-shrink:0"></i>
       <div style="flex:1;min-width:0">
@@ -1873,52 +2217,103 @@ function renderPropDocList(p){
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0">
         <button class="btn btn-sm" onclick="downloadPropDoc('${p.id}','${d.id}')" title="Download"><i class="ti ti-download" style="font-size:11px"></i></button>
-        ${d.name.toLowerCase().endsWith('.pdf')?`<button class="btn btn-sm" style="color:var(--amber)" onclick="parseDocToCalc('${p.id}','${d.id}')" title="Parse into Calc"><i class="ti ti-calculator" style="font-size:11px"></i></button>`:''}
+        ${d.name.toLowerCase().endsWith('.pdf') ? `<button class="btn btn-sm" style="color:var(--amber)" onclick="parseDocToCalc('${p.id}','${d.id}')" title="Parse into Calc"><i class="ti ti-calculator" style="font-size:11px"></i></button>` : ''}
         <button class="btn btn-red btn-sm" onclick="deletePropDoc('${p.id}','${d.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
       </div>
     </div>`).join('');
 }
-async function uploadPropDocs(input){
-  const files=Array.from(input.files);if(!files.length)return;
-  const statusEl=document.getElementById('propDocStatus');const btnEl=document.getElementById('propDocUploadBtn');
-  statusEl.style.display='block';statusEl.style.color='var(--amber)';statusEl.textContent=`Uploading ${files.length} file${files.length>1?'s':''}…`;btnEl.disabled=true;
-  try{
-    const p=props.find(x=>x.id===propDocsId);if(!p)throw new Error('Property not found');if(!p.docs)p.docs=[];
-    for(const file of files){
-      const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>resolve(e.target.result);reader.onerror=reject;reader.readAsDataURL(file);});
-      p.docs.push({id:'doc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),name:file.name,size:file.size,data,uploadedAt:new Date().toISOString()});
+
+async function uploadPropDocs(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const statusEl = document.getElementById('propDocStatus');
+  const btnEl = document.getElementById('propDocUploadBtn');
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--amber)';
+  statusEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}…`;
+  btnEl.disabled = true;
+  try {
+    const p = props.find(x => x.id === propDocsId);
+    if (!p) throw new Error('Property not found');
+    if (!p.docs) p.docs = [];
+    for (const file of files) {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      p.docs.push({ id: 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name: file.name, size: file.size, data, uploadedAt: new Date().toISOString() });
     }
-    await persist();renderPropDocList(p);renderProperties();
-    statusEl.style.color='var(--green)';statusEl.textContent=`✓ ${files.length} file${files.length>1?'s':''} uploaded`;
-  }catch(e){statusEl.style.color='var(--red)';statusEl.textContent='✗ Upload failed: '+e.message;}
-  finally{btnEl.disabled=false;input.value='';}
-}
-function downloadPropDoc(propId,docId){const p=props.find(x=>x.id===propId);const d=p?.docs?.find(x=>x.id===docId);if(!d)return;const a=document.createElement('a');a.href=d.data;a.download=d.name;a.click();}
-async function deletePropDoc(propId,docId){
-  if(!confirm('Remove this document?'))return;
-  const p=props.find(x=>x.id===propId);if(!p)return;
-  p.docs=(p.docs||[]).filter(d=>d.id!==docId);await persist();renderPropDocList(p);renderProperties();
-}
-async function parseDocToCalc(propId,docId){
-  const p=props.find(x=>x.id===propId);const d=p?.docs?.find(x=>x.id===docId);if(!d)return;
-  closeModal('mPropDocs');openCommCalc();
-  const statusEl=document.getElementById('cc-parse-status');const btnEl=document.getElementById('cc-upload-btn');
-  statusEl.style.display='block';statusEl.style.color='var(--amber)';statusEl.textContent=`✦ Parsing ${d.name}…`;btnEl.disabled=true;
-  try{
-    const res=await fetch('/api/parse-rla-stored',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({propId,docId})});
-    const data=await res.json();if(!data.ok)throw new Error(data.error||'Parse failed');
-    const f=data.fields;let filled=[];
-    if(f.listPrice){document.getElementById('cc1').value=f.listPrice.toLocaleString();filled.push('price');}
-    if(f.commissionPct){document.getElementById('cc2').value=f.commissionPct;filled.push('commission');}
-    if(f.side){const m={both:'1',buyer:'0.5',seller:'0.5'};if(m[f.side])document.getElementById('cc3').value=m[f.side];filled.push('side');}
-    if(f.compassSplit){document.getElementById('cc4').value=f.compassSplit;filled.push('Compass split');}
-    calcComm();
-    statusEl.textContent=filled.length?`✓ Pulled from ${d.name}: ${filled.join(', ')}`:'⚠️ No commission details found';
-    statusEl.style.color=filled.length?'var(--green)':'var(--amber)';
-  }catch(e){statusEl.textContent='✗ '+e.message;statusEl.style.color='var(--red)';}
-  finally{btnEl.disabled=false;}
+    await persist();
+    renderPropDocList(p);
+    renderProperties();
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = `✓ ${files.length} file${files.length > 1 ? 's' : ''} uploaded`;
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '✗ Upload failed: ' + e.message;
+  } finally {
+    btnEl.disabled = false;
+    input.value = '';
+  }
 }
 
+function downloadPropDoc(propId, docId) {
+  const p = props.find(x => x.id === propId);
+  const d = p?.docs?.find(x => x.id === docId);
+  if (!d) return;
+  const a = document.createElement('a');
+  a.href = d.data;
+  a.download = d.name;
+  a.click();
+}
+
+async function deletePropDoc(propId, docId) {
+  if (!confirm('Remove this document?')) return;
+  const p = props.find(x => x.id === propId);
+  if (!p) return;
+  p.docs = (p.docs || []).filter(d => d.id !== docId);
+  await persist();
+  renderPropDocList(p);
+  renderProperties();
+}
+
+async function parseDocToCalc(propId, docId) {
+  const p = props.find(x => x.id === propId);
+  const d = p?.docs?.find(x => x.id === docId);
+  if (!d) return;
+  closeModal('mPropDocs');
+  openCommCalc();
+  const statusEl = document.getElementById('cc-parse-status');
+  const btnEl = document.getElementById('cc-upload-btn');
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--amber)';
+  statusEl.textContent = `✦ Parsing ${d.name}…`;
+  btnEl.disabled = true;
+  try {
+    // Server fetches from Supabase — no large payload
+    const res = await fetch('/api/parse-rla-stored', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ propId, docId })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Parse failed');
+    const f = data.fields; let filled = [];
+    if (f.listPrice) { document.getElementById('cc1').value = f.listPrice.toLocaleString(); filled.push('price'); }
+    if (f.commissionPct) { document.getElementById('cc2').value = f.commissionPct; filled.push('commission'); }
+    if (f.side) { const m = {both:'1',buyer:'0.5',seller:'0.5'}; if(m[f.side]) document.getElementById('cc3').value = m[f.side]; filled.push('side'); }
+    if (f.compassSplit) { document.getElementById('cc4').value = f.compassSplit; filled.push('Compass split'); }
+    calcComm();
+    statusEl.textContent = filled.length ? `✓ Pulled from ${d.name}: ${filled.join(', ')}` : '⚠️ No commission details found — fill in manually';
+    statusEl.style.color = filled.length ? 'var(--green)' : 'var(--amber)';
+  } catch(e) {
+    statusEl.textContent = '✗ ' + e.message;
+    statusEl.style.color = 'var(--red)';
+  } finally {
+    btnEl.disabled = false;
+  }
+}
 
 // ── Tasks ─────────────────────────────────────────────────────
 function renderTasks(){
@@ -2040,71 +2435,107 @@ function openCommCalc(){
   calcComm();
   openModal('mCommCalc');
 }
+
 function parseMoney(s){return parseFloat(String(s).replace(/[$,\s]/g,''))||0;}
+
 function calcComm(){
-  const price=parseMoney(document.getElementById('cc1').value);
-  const commPct=parseFloat(document.getElementById('cc2').value)||0;
-  const side=parseFloat(document.getElementById('cc3').value)||0.5;
-  const compassSplit=parseFloat(document.getElementById('cc4').value)||0;
-  const otherDeduct=parseFloat(document.getElementById('cc5').value)||0;
-  const fmt=n=>n>=1000000?`$${(n/1000000).toFixed(3)}M`:`$${Math.round(n).toLocaleString()}`;
-  const pct=n=>`${n.toFixed(1)}%`;
-  if(!price){document.getElementById('cc-result').innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:8px">Enter a sale price to calculate</div>';return;}
-  const grossComm=price*(commPct/100);
-  const yourSideGross=grossComm*side;
-  const compassTake=yourSideGross*(compassSplit/100);
-  const afterCompass=yourSideGross-compassTake;
-  const netToMatt=afterCompass-otherDeduct;
-  const row=(label,val,style='')=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${style}"><span style="font-size:12px;color:var(--text2)">${label}</span><span style="font-size:14px;font-weight:700">${val}</span></div>`;
+  const price = parseMoney(document.getElementById('cc1').value);
+  const commPct = parseFloat(document.getElementById('cc2').value)||0;
+  const side = parseFloat(document.getElementById('cc3').value)||0.5;
+  const compassSplit = parseFloat(document.getElementById('cc4').value)||0;
+  const otherDeduct = parseFloat(document.getElementById('cc5').value)||0;
+
+  const fmt = n => n >= 1000000 ? `$${(n/1000000).toFixed(3)}M` : `$${Math.round(n).toLocaleString()}`;
+  const pct = n => `${n.toFixed(1)}%`;
+
+  if(!price){
+    document.getElementById('cc-result').innerHTML='<div style="color:var(--text3);font-size:13px;text-align:center;padding:8px">Enter a sale price to calculate</div>';
+    return;
+  }
+
+  const grossComm = price * (commPct / 100);
+  const yourSideGross = grossComm * side;
+  const compassTake = yourSideGross * (compassSplit / 100);
+  const afterCompass = yourSideGross - compassTake;
+  const netToMatt = afterCompass - otherDeduct;
+
+  const row = (label, val, style='') => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${style}"><span style="font-size:12px;color:var(--text2)">${label}</span><span style="font-size:14px;font-weight:700">${val}</span></div>`;
+
   document.getElementById('cc-result').innerHTML=`
-    ${row(`Gross commission (${pct(commPct)})`,fmt(grossComm))}
-    ${row(`Your side (${side===1?'both sides':'one side'})`,fmt(yourSideGross))}
-    ${compassSplit>0?row(`Compass split (${pct(compassSplit)})`,`−${fmt(compassTake)}`,'color:var(--red)'):''}
-    ${otherDeduct>0?row('Other deductions',`−${fmt(otherDeduct)}`,'color:var(--red)'):''}
+    ${price ? row('Sale price', fmt(price)) : ''}
+    ${row(`Gross commission (${pct(commPct)})`, fmt(grossComm))}
+    ${row(`Your side (${side===1?'both sides':side===0.5?'one side':pct(side*100)})`, fmt(yourSideGross))}
+    ${compassSplit > 0 ? row(`Compass split (${pct(compassSplit)})`, `−${fmt(compassTake)}`, 'color:var(--red)') : ''}
+    ${otherDeduct > 0 ? row('Other deductions', `−${fmt(otherDeduct)}`, 'color:var(--red)') : ''}
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 2px">
       <span style="font-size:13px;font-weight:700;color:var(--text)">💰 Net to you</span>
       <span style="font-size:20px;font-weight:800;color:var(--green)">${fmt(netToMatt)}</span>
     </div>`;
 }
+
 function saveCommCalcAsDeal(){
-  const price=parseMoney(document.getElementById('cc1').value);
+  const price = parseMoney(document.getElementById('cc1').value);
   if(!price){alert('Enter a sale price first');return;}
-  document.getElementById('df3').value=document.getElementById('cc1').value||price;
-  document.getElementById('df4').value=document.getElementById('cc2').value;
-  document.getElementById('df6').value=parseFloat(document.getElementById('cc3').value)===1?'Both':'Buyer';
-  document.getElementById('df7').value=`Calc: Compass split ${document.getElementById('cc4').value}%`;
-  closeModal('mCommCalc');openModal('mDeal');
+  document.getElementById('df3').value = document.getElementById('cc1').value || price;
+  document.getElementById('df4').value = document.getElementById('cc2').value;
+  document.getElementById('df6').value = parseFloat(document.getElementById('cc3').value)===1 ? 'Both' : 'Buyer';
+  document.getElementById('df7').value = `Calc: Compass split ${document.getElementById('cc4').value}%`;
+  closeModal('mCommCalc');
+  openModal('mDeal');
 }
 
-async function uploadRLA(input){
-  const file=input.files[0];if(!file)return;
-  const statusEl=document.getElementById('cc-parse-status');
-  const btnEl=document.getElementById('cc-upload-btn');
-  statusEl.style.display='block';statusEl.textContent='✦ Reading contract…';statusEl.style.color='var(--amber)';
-  btnEl.disabled=true;btnEl.innerHTML='<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Parsing RLA…';
-  try{
-    const base64=await new Promise((resolve,reject)=>{
-      const reader=new FileReader();
-      reader.onload=e=>resolve(e.target.result.split(',')[1]);
-      reader.onerror=reject;reader.readAsDataURL(file);
+async function uploadRLA(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('cc-parse-status');
+  const btnEl = document.getElementById('cc-upload-btn');
+  statusEl.style.display = 'block';
+  statusEl.textContent = '✦ Reading contract…';
+  btnEl.disabled = true;
+  btnEl.innerHTML = '<i class="ti ti-loader" style="animation:spin 1s linear infinite"></i> Parsing RLA…';
+  try {
+    // Read PDF as base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
-    const res=await fetch('/api/parse-rla',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdfBase64:base64,filename:file.name})});
-    const data=await res.json();
-    if(!data.ok)throw new Error(data.error||'Parse failed');
-    const f=data.fields;let filled=[];
-    if(f.listPrice){document.getElementById('cc1').value=f.listPrice.toLocaleString();filled.push('price');}
-    if(f.commissionPct){document.getElementById('cc2').value=f.commissionPct;filled.push('commission');}
-    if(f.side){const sideMap={both:'1',buyer:'0.5',seller:'0.5'};if(sideMap[f.side])document.getElementById('cc3').value=sideMap[f.side];filled.push('side');}
-    if(f.compassSplit){document.getElementById('cc4').value=f.compassSplit;filled.push('Compass split');}
+    const res = await fetch('/api/parse-rla', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pdfBase64: base64, filename: file.name })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Parse failed');
+    const f = data.fields;
+    let filled = [];
+    if (f.listPrice) { document.getElementById('cc1').value = f.listPrice.toLocaleString(); filled.push('price'); }
+    if (f.commissionPct) { document.getElementById('cc2').value = f.commissionPct; filled.push('commission'); }
+    if (f.side) {
+      const sideMap = { both: '1', buyer: '0.5', seller: '0.5' };
+      if (sideMap[f.side]) document.getElementById('cc3').value = sideMap[f.side];
+      filled.push('side');
+    }
+    if (f.compassSplit) { document.getElementById('cc4').value = f.compassSplit; filled.push('Compass split'); }
     calcComm();
-    statusEl.textContent=filled.length?`✓ Pulled: ${filled.join(', ')}${f.notes?' — '+f.notes:''}`:'⚠️ Couldn\'t find details — fill in manually';
-    statusEl.style.color=filled.length?'var(--green)':'var(--amber)';
-  }catch(e){statusEl.textContent='✗ Error: '+e.message;statusEl.style.color='var(--red)';}
-  finally{btnEl.disabled=false;btnEl.innerHTML='<i class="ti ti-file-upload"></i> Upload RLA / contract to auto-fill fields';input.value='';}
+    statusEl.textContent = filled.length
+      ? `✓ Pulled from contract: ${filled.join(', ')}${f.notes ? ' — ' + f.notes : ''}`
+      : '⚠️ Couldn\'t find commission details — fill in manually';
+    statusEl.style.color = filled.length ? 'var(--green)' : 'var(--amber)';
+  } catch(e) {
+    statusEl.textContent = '✗ Error: ' + e.message;
+    statusEl.style.color = 'var(--red)';
+  } finally {
+    btnEl.disabled = false;
+    btnEl.innerHTML = '<i class="ti ti-file-upload"></i> Upload RLA / contract to auto-fill fields';
+    input.value = '';
+  }
 }
 
 // ── Instagram Content Engine ──────────────────────────────────
 const LISTING_TYPES = new Set(['new_listing','price_drop','open_house','just_sold','neighborhood','testimonial']);
+
 const CE_TYPE_LABELS = { new_listing:'New Listing', price_drop:'Price Drop', open_house:'Open House', just_sold:'Just Sold', neighborhood:'Neighborhood Spotlight', testimonial:'Client Testimonial', market_tip:'Market Tip', buyer_tip:'Buyer Tip', seller_tip:'Seller Tip' };
 const SCH_CE = 'mg_content_v1';
 let contentTone = 'casual';
@@ -2224,33 +2655,53 @@ function ceEmptyState() {
 
 function buildOutputHTML(caption, reelsScript, hashtags, hashtagGroups) {
   const flatTags = (hashtags||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean).map(t=>t.startsWith('#')?t:'#'+t).join(' ');
+
+  // Build grouped hashtag display
   const groupMeta = {
     broad: { label: 'Broad', reach: 'High reach', color: '#10b981', bg: '#d1fae5' },
     local: { label: 'LA Local', reach: 'Targeted', color: '#3b82f6', bg: '#dbeafe' },
     niche: { label: 'Niche', reach: 'Engaged', color: '#8b5cf6', bg: '#ede9fe' },
     brand: { label: 'Brand', reach: 'Owned', color: '#f59e0b', bg: '#fef3c7' },
   };
+
   const groupsHTML = hashtagGroups
     ? Object.entries(groupMeta).map(([key, meta]) => {
         const tags = (hashtagGroups[key] || []).filter(Boolean);
         if (!tags.length) return '';
-        const pills = tags.map(t => { const tag = t.startsWith('#')?t:'#'+t; return `<span class="htag-pill" onclick="copyTag('${tag}')" title="Click to copy">${tag}</span>`; }).join('');
-        return `<div class="htag-group"><div class="htag-group-hd"><span class="htag-group-label">${meta.label}</span><span class="htag-group-reach" style="background:${meta.bg};color:${meta.color}">${meta.reach} · ${tags.length} tags</span></div><div class="htag-pills">${pills}</div></div>`;
+        const pills = tags.map(t => {
+          const tag = t.startsWith('#') ? t : '#'+t;
+          return `<span class="htag-pill" onclick="copyTag('${tag}')" title="Click to copy">${tag}</span>`;
+        }).join('');
+        return `<div class="htag-group">
+          <div class="htag-group-hd">
+            <span class="htag-group-label">${meta.label}</span>
+            <span class="htag-group-reach" style="background:${meta.bg};color:${meta.color}">${meta.reach} · ${tags.length} tags</span>
+          </div>
+          <div class="htag-pills">${pills}</div>
+        </div>`;
       }).join('')
-    : `<div class="ce-output-body hashtags">${flatTags}</div>`;
-  const tagCount = hashtagGroups ? Object.values(hashtagGroups).reduce((n,a)=>n+(a||[]).length,0) : flatTags.split(' ').length;
+    : `<div class="ce-output-body hashtags" id="out-hashtags">${flatTags}</div>`;
+
+  const tagCount = hashtagGroups
+    ? Object.values(hashtagGroups).reduce((n, arr) => n + (arr||[]).length, 0)
+    : flatTags.split(' ').length;
+
   return `
+    <!-- Copy for Instagram — the star of the show -->
     <div class="ce-output-block" style="border-color:var(--amber-bd);background:var(--amber-bg)">
       <div class="ce-output-hd" style="background:transparent;border-bottom-color:var(--amber-bd)">
         <div class="ce-output-title" style="color:var(--amber)"><i class="ti ti-brand-instagram" style="font-size:14px"></i> Ready to Post</div>
         <span style="font-size:10px;color:var(--amber)">Caption + hashtags in one copy</span>
       </div>
       <div class="ce-copy-all">
-        <button class="btn btn-amber" id="copy-ig-all" onclick="copyForInstagram('copy-ig-all')"><i class="ti ti-copy"></i> Copy Caption + Hashtags</button>
+        <button class="btn btn-amber" id="copy-ig-all" onclick="copyForInstagram('copy-ig-all')">
+          <i class="ti ti-copy"></i> Copy Caption + Hashtags
+        </button>
         <button class="btn btn-sm" onclick="copyContent('caption','copy-caption-only')" id="copy-caption-only" title="Copy caption only" style="flex:0;padding:9px 11px"><i class="ti ti-blockquote" style="font-size:12px"></i></button>
         <button class="btn btn-sm" onclick="promptAddToCalendar()" title="Add to content calendar" style="flex:0;padding:9px 11px"><i class="ti ti-calendar-plus" style="font-size:12px"></i></button>
       </div>
     </div>
+
     <div class="ce-output-block">
       <div class="ce-output-hd">
         <div class="ce-output-title"><i class="ti ti-align-left" style="font-size:14px;color:var(--text2)"></i> Caption</div>
@@ -2327,8 +2778,6 @@ async function generateContent() {
     const fmtHashtags = (data.hashtags||'').replace(/\s+/g,' ').trim().split(' ').map(t=>t.startsWith('#')?t:'#'+t).join(' ');
     window._ceData = { caption: data.caption, reelsScript: data.reelsScript, hashtags: fmtHashtags, hashtagGroups: data.hashtagGroups };
     output.innerHTML = buildOutputHTML(data.caption, data.reelsScript, data.hashtags, data.hashtagGroups);
-
-    // Auto-save to history
     saveToHistory({ type, tone: contentTone, address: payload.address||'', caption: data.caption, reelsScript: data.reelsScript, hashtags: fmtHashtags, hashtagGroups: data.hashtagGroups });
 
     setSyncStatus('ok', 'Content ready');
@@ -2373,6 +2822,7 @@ function copyContent(key, btnId) {
 function copyForInstagram(btnId) {
   const d = window._ceData;
   if (!d?.caption) return;
+  // Format: caption + blank line + blank line + hashtags (Instagram best practice)
   const text = d.caption + '\n\n.\n.\n.\n' + (d.hashtags || '');
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById(btnId);
@@ -2389,16 +2839,16 @@ function copyTag(tag) {
 
 // ── Reels Teleprompter ────────────────────────────────────────
 let _tpPlaying = false;
-let _tpOffset  = 0;
-let _tpSpeed   = 1;
-let _tpFontSz  = 52;
+let _tpOffset  = 0;      // px scrolled so far
+let _tpSpeed   = 1;      // multiplier (0.5 – 3)
+let _tpFontSz  = 52;     // px
 let _tpMirror  = false;
 let _tpRAF     = null;
 let _tpLast    = null;
 let _tpTotalH  = 0;
 
 const TP_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
-let _tpSpeedIdx = 2;
+let _tpSpeedIdx = 2; // start at 1×
 
 function openTeleprompter() {
   const script = window._ceData && window._ceData.reelsScript;
@@ -2416,7 +2866,9 @@ function openTeleprompter() {
   document.getElementById('tp-play-btn').classList.remove('active');
   document.getElementById('tp-play-hint').textContent = '▶';
   overlay.classList.add('open');
+  // Lock orientation to portrait if supported
   try { screen.orientation.lock('portrait'); } catch(e) {}
+  // Calculate total scroll distance after render
   requestAnimationFrame(() => {
     const area  = document.getElementById('tp-scroll-area');
     _tpTotalH = Math.max(0, textEl.scrollHeight - area.clientHeight + 60);
@@ -2455,7 +2907,7 @@ function tpAnimate(ts) {
   if (!_tpPlaying) return;
   if (_tpLast !== null) {
     const delta = ts - _tpLast;
-    const pxPerMs = (_tpSpeed * 60) / 1000;
+    const pxPerMs = (_tpSpeed * 60) / 1000; // base 60px/s
     _tpOffset += delta * pxPerMs;
     if (_tpOffset >= _tpTotalH) {
       _tpOffset = _tpTotalH;
@@ -2498,7 +2950,7 @@ function tpLargerFont() {
   document.getElementById('tp-text').style.fontSize = _tpFontSz + 'px';
   document.getElementById('tp-font-size-display').textContent = _tpFontSz;
   requestAnimationFrame(() => {
-    const area = document.getElementById('tp-scroll-area');
+    const area  = document.getElementById('tp-scroll-area');
     const textEl = document.getElementById('tp-text');
     _tpTotalH = Math.max(0, textEl.scrollHeight - area.clientHeight + 60);
   });
@@ -2508,7 +2960,7 @@ function tpSmallerFont() {
   document.getElementById('tp-text').style.fontSize = _tpFontSz + 'px';
   document.getElementById('tp-font-size-display').textContent = _tpFontSz;
   requestAnimationFrame(() => {
-    const area = document.getElementById('tp-scroll-area');
+    const area  = document.getElementById('tp-scroll-area');
     const textEl = document.getElementById('tp-text');
     _tpTotalH = Math.max(0, textEl.scrollHeight - area.clientHeight + 60);
   });
@@ -2518,7 +2970,9 @@ function tpToggleMirror() {
   document.getElementById('tp-text').classList.toggle('mirror', _tpMirror);
   document.getElementById('tp-mirror-btn').classList.toggle('active', _tpMirror);
 }
+// Tap scroll area to play/pause
 document.addEventListener('click', e => { if (e.target.closest('#tp-scroll-area')) tpTogglePlay(); });
+// Keyboard shortcuts
 document.addEventListener('keydown', e => {
   const overlay = document.getElementById('teleprompterOverlay');
   if (!overlay || !overlay.classList.contains('open')) return;
@@ -2532,92 +2986,137 @@ document.addEventListener('keydown', e => {
 const CAL_KEY = 'mg_cal_v1';
 let calPosts = [];
 let calWeekStart = null;
+
 const CAL_TYPE_LABELS = {
   new_listing:'🏡 New Listing', price_drop:'💰 Price Drop', open_house:'🔑 Open House',
   just_sold:'🏆 Just Sold', neighborhood:'📍 Neighborhood', testimonial:'⭐ Testimonial',
   market_tip:'📊 Market Tip', buyer_tip:'💡 Buyer Tip', seller_tip:'🏠 Seller Tip'
 };
-function loadCalendar() { try { calPosts = JSON.parse(localStorage.getItem(CAL_KEY)||'[]'); } catch(e) { calPosts = []; } }
-function saveCalendar() { try { localStorage.setItem(CAL_KEY, JSON.stringify(calPosts)); } catch(e) {} }
-function localDateStr(d) { return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); }
-function getWeekStart(d) { const dt=new Date(d); dt.setHours(0,0,0,0); const day=dt.getDay(); dt.setDate(dt.getDate()-(day===0?6:day-1)); return dt; }
-function showCeTab(tab) {
-  document.getElementById('ce-generate-view').style.display     = tab==='generate'    ? '' : 'none';
-  document.getElementById('ce-calendar-view').style.display     = tab==='calendar'    ? '' : 'none';
-  document.getElementById('ce-performance-view').style.display  = tab==='performance' ? '' : 'none';
-  document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab===tab));
-  if (tab==='calendar')    { if (!calWeekStart) calWeekStart=getWeekStart(new Date()); renderCalendar(); }
-  if (tab==='performance') { renderPerformance(); }
+
+function loadCalendar() {
+  try { calPosts = JSON.parse(localStorage.getItem(CAL_KEY) || '[]'); } catch(e) { calPosts = []; }
 }
+
+function saveCalendar() {
+  try { localStorage.setItem(CAL_KEY, JSON.stringify(calPosts)); } catch(e) {}
+}
+
+function localDateStr(d) {
+  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+}
+
+function getWeekStart(d) {
+  const dt = new Date(d); dt.setHours(0,0,0,0);
+  const day = dt.getDay();
+  dt.setDate(dt.getDate() - (day === 0 ? 6 : day - 1)); // Monday
+  return dt;
+}
+
+function showCeTab(tab) {
+  document.getElementById('ce-generate-view').style.display     = tab === 'generate'    ? '' : 'none';
+  document.getElementById('ce-calendar-view').style.display     = tab === 'calendar'    ? '' : 'none';
+  document.getElementById('ce-performance-view').style.display  = tab === 'performance' ? '' : 'none';
+  document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
+  if (tab === 'performance') { renderPerformance(); }
+}
+
 function renderCalendar() {
-  const today=new Date(); today.setHours(0,0,0,0);
-  const days=Array.from({length:7},(_,i)=>{ const d=new Date(calWeekStart); d.setDate(d.getDate()+i); return d; });
-  const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  document.getElementById('cal-week-label').textContent=fmt(days[0])+' – '+fmt(days[6])+', '+days[6].getFullYear();
-  const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  document.getElementById('cal-grid').innerHTML=days.map((d,i)=>{
-    const ds=localDateStr(d), isToday=d.getTime()===today.getTime();
-    const posts=calPosts.filter(p=>p.date===ds);
-    const postsHtml=posts.map(p=>`
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = Array.from({length:7}, (_,i) => { const d = new Date(calWeekStart); d.setDate(d.getDate()+i); return d; });
+  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  document.getElementById('cal-week-label').textContent = fmt(days[0]) + ' – ' + fmt(days[6]) + ', ' + days[6].getFullYear();
+  const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  document.getElementById('cal-grid').innerHTML = days.map((d,i) => {
+    const ds = localDateStr(d);
+    const isToday = d.getTime() === today.getTime();
+    const posts = calPosts.filter(p => p.date === ds);
+    const postsHtml = posts.map(p => `
       <div class="cal-post-card">
         <div class="cal-post-type">${CAL_TYPE_LABELS[p.type]||p.type}</div>
         <div class="cal-post-preview">${(p.caption||'').replace(/\n/g,' ').substring(0,90)}…</div>
         <div class="cal-post-actions">
-          <span class="cal-status ${p.status}" onclick="cycleCalStatus('${p.id}')">${p.status}</span>
+          <span class="cal-status ${p.status}" onclick="cycleCalStatus('${p.id}')" title="Click to change">${p.status}</span>
           <span style="flex:1"></span>
           ${p.status==='posted'?`<button class="btn btn-sm" onclick="openStatsModal('${p.id}')" title="Log stats" style="padding:2px 5px;font-size:10px;color:var(--amber)"><i class="ti ti-chart-bar" style="font-size:9px"></i></button>`:''}
-          <button class="btn btn-sm" onclick="loadCalPost('${p.id}')" style="padding:2px 5px;font-size:10px"><i class="ti ti-edit" style="font-size:9px"></i></button>
-          <button class="btn btn-sm btn-red" onclick="removeCalPost('${p.id}')" style="padding:2px 5px;font-size:10px"><i class="ti ti-x" style="font-size:9px"></i></button>
+          <button class="btn btn-sm" onclick="loadCalPost('${p.id}')" title="Edit" style="padding:2px 5px;font-size:10px"><i class="ti ti-edit" style="font-size:9px"></i></button>
+          <button class="btn btn-sm btn-red" onclick="removeCalPost('${p.id}')" title="Remove" style="padding:2px 5px;font-size:10px"><i class="ti ti-x" style="font-size:9px"></i></button>
         </div>
       </div>`).join('');
     return `<div class="cal-day${isToday?' today':''}">
-      <div class="cal-day-hd"><span class="cal-day-name">${DAY_NAMES[i]}</span><span class="cal-day-date" style="${isToday?'color:var(--amber)':''}">${d.getDate()}</span></div>
-      <div class="cal-day-body">${postsHtml}<button class="cal-add-btn" onclick="addCurrentToCalendar('${ds}')">+ Add</button></div>
+      <div class="cal-day-hd">
+        <span class="cal-day-name">${DAY_NAMES[i]}</span>
+        <span class="cal-day-date" style="${isToday?'color:var(--amber)':''}">${d.getDate()}</span>
+      </div>
+      <div class="cal-day-body">
+        ${postsHtml}
+        <button class="cal-add-btn" onclick="addCurrentToCalendar('${ds}')">+ Add</button>
+      </div>
     </div>`;
   }).join('');
 }
+
 function calPrevWeek() { calWeekStart.setDate(calWeekStart.getDate()-7); renderCalendar(); }
 function calNextWeek() { calWeekStart.setDate(calWeekStart.getDate()+7); renderCalendar(); }
-function calThisWeek() { calWeekStart=getWeekStart(new Date()); renderCalendar(); }
+function calThisWeek() { calWeekStart = getWeekStart(new Date()); renderCalendar(); }
+
 function addCurrentToCalendar(dateStr) {
-  const d=window._ceData;
-  if (!d?.caption) { toast('Generate content first, then add it to the calendar','error'); showCeTab('generate'); return; }
-  const type=document.getElementById('ce-type')?.value||'market_tip';
-  calPosts.push({id:'cp'+Date.now(),date:dateStr,type,caption:d.caption,reelsScript:d.reelsScript,hashtags:d.hashtags,hashtagGroups:d.hashtagGroups,status:'draft'});
-  saveCalendar(); toast('Added to calendar ✓','success'); showCeTab('calendar');
+  const d = window._ceData;
+  if (!d?.caption) { toast('Generate content first, then add it to the calendar', 'error'); showCeTab('generate'); return; }
+  const type = document.getElementById('ce-type')?.value || 'market_tip';
+  calPosts.push({ id:'cp'+Date.now(), date:dateStr, type, caption:d.caption, reelsScript:d.reelsScript, hashtags:d.hashtags, hashtagGroups:d.hashtagGroups, status:'draft' });
+  saveCalendar();
+  toast('Added to calendar ✓', 'success');
+  showCeTab('calendar');
 }
+
 function promptAddToCalendar() {
-  const d=window._ceData;
-  if (!d?.caption) { toast('Generate content first','error'); return; }
-  const today=new Date(); today.setHours(0,0,0,0);
-  const postDays=[1,3,5];
-  for (let i=1;i<=14;i++) {
-    const t=new Date(today); t.setDate(today.getDate()+i);
-    if (postDays.includes(t.getDay())) { addCurrentToCalendar(localDateStr(t)); return; }
+  const d = window._ceData;
+  if (!d?.caption) { toast('Generate content first', 'error'); return; }
+  // Default to next Mon/Wed/Fri that doesn't already have a post
+  const today = new Date(); today.setHours(0,0,0,0);
+  const postDays = [1,3,5]; // Mon, Wed, Fri
+  let target = new Date(today);
+  for (let tries = 0; tries < 14; tries++) {
+    target.setDate(today.getDate() + tries + 1);
+    if (postDays.includes(target.getDay())) {
+      const ds = localDateStr(target);
+      addCurrentToCalendar(ds);
+      return;
+    }
   }
-  addCurrentToCalendar(localDateStr(new Date(today.getTime()+86400000)));
+  addCurrentToCalendar(localDateStr(new Date(today.getTime() + 86400000)));
 }
+
 function cycleCalStatus(id) {
-  const order=['draft','scheduled','posted'];
-  calPosts=calPosts.map(p=>p.id!==id?p:{...p,status:order[(order.indexOf(p.status)+1)%order.length]});
+  const order = ['draft','scheduled','posted'];
+  calPosts = calPosts.map(p => p.id!==id ? p : {...p, status: order[(order.indexOf(p.status)+1)%order.length]});
   saveCalendar(); renderCalendar();
 }
-function removeCalPost(id) { calPosts=calPosts.filter(p=>p.id!==id); saveCalendar(); renderCalendar(); }
+
+function removeCalPost(id) {
+  calPosts = calPosts.filter(p => p.id!==id);
+  saveCalendar(); renderCalendar();
+}
+
 function loadCalPost(id) {
-  const p=calPosts.find(x=>x.id===id); if (!p) return;
-  window._ceData={caption:p.caption,reelsScript:p.reelsScript,hashtags:p.hashtags,hashtagGroups:p.hashtagGroups};
-  document.getElementById('ce-output').innerHTML=buildOutputHTML(p.caption,p.reelsScript,p.hashtags,p.hashtagGroups);
-  if (p.type&&document.getElementById('ce-type')) document.getElementById('ce-type').value=p.type;
-  showCeTab('generate'); toast('Post loaded into editor');
+  const p = calPosts.find(x => x.id===id);
+  if (!p) return;
+  window._ceData = { caption:p.caption, reelsScript:p.reelsScript, hashtags:p.hashtags, hashtagGroups:p.hashtagGroups };
+  document.getElementById('ce-output').innerHTML = buildOutputHTML(p.caption, p.reelsScript, p.hashtags, p.hashtagGroups);
+  if (p.type && document.getElementById('ce-type')) document.getElementById('ce-type').value = p.type;
+  showCeTab('generate');
+  toast('Post loaded into editor');
 }
 
 // ── Content Performance Tracker ───────────────────────────────
 let _statsPostId = null;
 
 function openStatsModal(postId) {
-  const p = calPosts.find(x => x.id === postId); if (!p) return;
+  const p = calPosts.find(x => x.id === postId);
+  if (!p) return;
   _statsPostId = postId;
-  document.getElementById('statsModalSub').textContent = (CAL_TYPE_LABELS[p.type]||p.type) + ' · ' + (p.date||'');
+  document.getElementById('statsModalSub').textContent = (CAL_TYPE_LABELS[p.type] || p.type) + ' · ' + (p.date || '');
   document.getElementById('stat-views').value    = p.stats?.views    || '';
   document.getElementById('stat-likes').value    = p.stats?.likes    || '';
   document.getElementById('stat-comments').value = p.stats?.comments || '';
@@ -2638,32 +3137,60 @@ function saveStats() {
   const comments = parseInt(document.getElementById('stat-comments').value) || 0;
   const saves    = parseInt(document.getElementById('stat-saves').value)    || 0;
   calPosts = calPosts.map(p => p.id !== _statsPostId ? p : { ...p, stats: { views, likes, comments, saves, updatedAt: new Date().toISOString() } });
-  saveCalendar(); renderCalendar(); closeStatsModal();
+  saveCalendar();
+  renderCalendar();
+  closeStatsModal();
   toast('Stats saved ✓', 'success');
 }
 
 function renderPerformance() {
-  const el = document.getElementById('ce-perf-body'); if (!el) return;
+  const el = document.getElementById('ce-perf-body');
+  if (!el) return;
+
   const posted = calPosts.filter(p => p.status === 'posted');
   const withStats = posted.filter(p => p.stats && (p.stats.views || p.stats.likes));
+
   if (!withStats.length) {
-    el.innerHTML = `<div class="perf-empty"><div style="font-size:32px;margin-bottom:10px">📊</div><div style="font-weight:600;margin-bottom:6px">No stats yet</div><div style="font-size:12px;line-height:1.6">Mark a post as <strong>posted</strong> in the Calendar tab, then tap the 📊 icon to log your views, likes, comments and saves.</div></div>`;
+    el.innerHTML = `<div class="perf-empty">
+      <div style="font-size:32px;margin-bottom:10px">📊</div>
+      <div style="font-weight:600;margin-bottom:6px">No stats yet</div>
+      <div style="font-size:12px;line-height:1.6">Mark a post as <strong>posted</strong> in the Calendar tab, then tap the 📊 icon to log your views, likes, comments and saves.</div>
+    </div>`;
     return;
   }
-  const engRate = p => { const s=p.stats; if (!s||!s.views) return 0; return ((s.likes+s.comments+s.saves)/s.views*100); };
-  const sorted = [...withStats].sort((a,b) => engRate(b)-engRate(a));
+
+  // Calc engagement rate = (likes + comments + saves) / views * 100
+  const engRate = p => {
+    const s = p.stats;
+    if (!s || !s.views) return 0;
+    return ((s.likes + s.comments + s.saves) / s.views * 100);
+  };
+
+  const sorted = [...withStats].sort((a, b) => engRate(b) - engRate(a));
   const maxEng = engRate(sorted[0]) || 1;
-  const maxViews = Math.max(...withStats.map(p=>p.stats.views||0)) || 1;
-  const totViews    = withStats.reduce((s,p)=>s+(p.stats.views||0),0);
-  const totLikes    = withStats.reduce((s,p)=>s+(p.stats.likes||0),0);
-  const totComments = withStats.reduce((s,p)=>s+(p.stats.comments||0),0);
-  const totSaves    = withStats.reduce((s,p)=>s+(p.stats.saves||0),0);
-  const avgEng      = withStats.reduce((s,p)=>s+engRate(p),0)/withStats.length;
+  const maxViews = Math.max(...withStats.map(p => p.stats.views || 0)) || 1;
+
+  // Totals
+  const totViews    = withStats.reduce((s, p) => s + (p.stats.views    || 0), 0);
+  const totLikes    = withStats.reduce((s, p) => s + (p.stats.likes    || 0), 0);
+  const totComments = withStats.reduce((s, p) => s + (p.stats.comments || 0), 0);
+  const totSaves    = withStats.reduce((s, p) => s + (p.stats.saves    || 0), 0);
+  const avgEng      = withStats.reduce((s, p) => s + engRate(p), 0) / withStats.length;
+
+  // By content type
   const typeStats = {};
-  withStats.forEach(p => { const t=p.type||'other'; if (!typeStats[t]) typeStats[t]={count:0,totalEng:0}; typeStats[t].count++; typeStats[t].totalEng+=engRate(p); });
-  const typeSorted = Object.entries(typeStats).sort((a,b)=>(b[1].totalEng/b[1].count)-(a[1].totalEng/a[1].count));
-  const maxTypeEng = typeSorted.length ? typeSorted[0][1].totalEng/typeSorted[0][1].count : 1;
-  const fmt = n => n>=1000 ? (n/1000).toFixed(1)+'K' : n;
+  withStats.forEach(p => {
+    const t = p.type || 'other';
+    if (!typeStats[t]) typeStats[t] = { count: 0, totalEng: 0, totalViews: 0 };
+    typeStats[t].count++;
+    typeStats[t].totalEng   += engRate(p);
+    typeStats[t].totalViews += p.stats.views || 0;
+  });
+  const typeSorted = Object.entries(typeStats).sort((a, b) => (b[1].totalEng/b[1].count) - (a[1].totalEng/a[1].count));
+  const maxTypeEng = typeSorted.length ? typeSorted[0][1].totalEng / typeSorted[0][1].count : 1;
+
+  const fmt = n => n >= 1000 ? (n/1000).toFixed(1) + 'K' : n;
+
   el.innerHTML = `
     <div class="perf-section">
       <div class="perf-section-hd">Overall — ${withStats.length} post${withStats.length>1?'s':''} tracked</div>
@@ -2674,13 +3201,51 @@ function renderPerformance() {
         <div class="perf-stat"><div class="perf-stat-val">${avgEng.toFixed(1)}%</div><div class="perf-stat-lbl">Avg Eng.</div></div>
       </div>
     </div>
+
     <div class="perf-section">
       <div class="perf-section-hd">By content type</div>
-      ${typeSorted.map(([type,s])=>{const avg=s.totalEng/s.count;const pct=Math.round(avg/maxTypeEng*100);return`<div class="perf-type-row"><div class="perf-type-label">${CAL_TYPE_LABELS[type]||type}</div><div class="perf-type-bar-wrap"><div class="perf-type-bar" style="width:${pct}%"></div></div><div class="perf-type-val">${avg.toFixed(1)}%</div></div>`;}).join('')}
+      ${typeSorted.map(([type, s]) => {
+        const avg = s.totalEng / s.count;
+        const pct = Math.round(avg / maxTypeEng * 100);
+        return `<div class="perf-type-row">
+          <div class="perf-type-label">${CAL_TYPE_LABELS[type] || type}</div>
+          <div class="perf-type-bar-wrap"><div class="perf-type-bar" style="width:${pct}%"></div></div>
+          <div class="perf-type-val">${avg.toFixed(1)}%</div>
+        </div>`;
+      }).join('')}
     </div>
+
     <div class="perf-section">
       <div class="perf-section-hd">Top posts by engagement</div>
-      ${sorted.map(p=>{const s=p.stats;const eng=engRate(p);const engPct=Math.round(eng/maxEng*100);return`<div class="perf-post-card"><div class="perf-post-top"><div><div class="perf-post-type">${CAL_TYPE_LABELS[p.type]||p.type}</div><div class="perf-post-caption">${(p.caption||'').substring(0,120)}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div class="perf-post-date">${p.date||''}</div><button class="btn btn-sm" onclick="openStatsModal('${p.id}')" style="font-size:10px;padding:2px 7px;color:var(--amber)"><i class="ti ti-edit" style="font-size:9px"></i> Edit</button></div></div><div class="perf-stats-row"><div class="perf-stat"><div class="perf-stat-val">${fmt(s.views||0)}</div><div class="perf-stat-lbl">Views</div></div><div class="perf-stat"><div class="perf-stat-val">${fmt(s.likes||0)}</div><div class="perf-stat-lbl">Likes</div></div><div class="perf-stat"><div class="perf-stat-val">${fmt(s.comments||0)}</div><div class="perf-stat-lbl">Comments</div></div><div class="perf-stat"><div class="perf-stat-val">${fmt(s.saves||0)}</div><div class="perf-stat-lbl">Saves</div></div></div><div style="margin-top:8px;display:flex;align-items:center;gap:8px"><div style="font-size:11px;color:var(--text3)">Engagement</div><div class="perf-eng-bar" style="flex:1"><div class="perf-eng-fill" style="width:${engPct}%"></div></div><div style="font-size:11px;font-weight:700;color:var(--amber)">${eng.toFixed(1)}%</div></div></div>`;}).join('')}
+      ${sorted.map(p => {
+        const s = p.stats;
+        const eng = engRate(p);
+        const engPct = Math.round(eng / maxEng * 100);
+        const viewPct = Math.round((s.views || 0) / maxViews * 100);
+        return `<div class="perf-post-card">
+          <div class="perf-post-top">
+            <div>
+              <div class="perf-post-type">${CAL_TYPE_LABELS[p.type] || p.type}</div>
+              <div class="perf-post-caption">${(p.caption || '').substring(0, 120)}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <div class="perf-post-date">${p.date || ''}</div>
+              <button class="btn btn-sm" onclick="openStatsModal('${p.id}')" style="font-size:10px;padding:2px 7px;color:var(--amber)"><i class="ti ti-edit" style="font-size:9px"></i> Edit</button>
+            </div>
+          </div>
+          <div class="perf-stats-row">
+            <div class="perf-stat"><div class="perf-stat-val">${fmt(s.views||0)}</div><div class="perf-stat-lbl">Views</div></div>
+            <div class="perf-stat"><div class="perf-stat-val">${fmt(s.likes||0)}</div><div class="perf-stat-lbl">Likes</div></div>
+            <div class="perf-stat"><div class="perf-stat-val">${fmt(s.comments||0)}</div><div class="perf-stat-lbl">Comments</div></div>
+            <div class="perf-stat"><div class="perf-stat-val">${fmt(s.saves||0)}</div><div class="perf-stat-lbl">Saves</div></div>
+          </div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+            <div style="font-size:11px;color:var(--text3)">Engagement</div>
+            <div class="perf-eng-bar" style="flex:1"><div class="perf-eng-fill" style="width:${engPct}%"></div></div>
+            <div style="font-size:11px;font-weight:700;color:var(--amber)">${eng.toFixed(1)}%</div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>`;
 }
 
@@ -2713,6 +3278,31 @@ function escHtml(str) {
     console.error('Auto digest failed:', e);
   }
 })();
+
+// ── Follow-up sequences ───────────────────────────────────────
+async function startSequence(leadId){
+  const lead=leads.find(l=>l.id===leadId);
+  if(!lead?.email){alert('This lead needs an email address first.');return;}
+  const btn=event.target.closest('button');
+  if(btn){btn.disabled=true;btn.textContent='Starting…';}
+  try{
+    const r=await fetch(BACKEND+'/sequences/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId})});
+    const data=await r.json();
+    if(!data.ok)throw new Error(data.error);
+    openLeadDetail(leadId); // refresh panel
+  }catch(e){
+    alert('Error starting sequence: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='Start sequence';}
+  }
+}
+
+async function cancelSequence(leadId){
+  if(!confirm('Cancel the follow-up sequence for this lead?'))return;
+  try{
+    await fetch(BACKEND+'/sequences/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId})});
+    openLeadDetail(leadId);
+  }catch(e){alert('Error cancelling sequence: '+e.message);}
+}
 
 // ── AI Call List ──────────────────────────────────────────────
 const CL_KEY = 'mg_calllist_v1';
@@ -2862,7 +3452,9 @@ function loadSmsInbox() {
   try {
     const cached = JSON.parse(localStorage.getItem(SMS_KEY) || 'null');
     if (cached && cached.ts && (Date.now() - cached.ts) < 10 * 60 * 1000 && cached.threads) {
-      smsThreads = cached.threads; renderSmsInbox(); return;
+      smsThreads = cached.threads;
+      renderSmsInbox();
+      return;
     }
   } catch(e) {}
   fetchSmsInbox();
@@ -2898,18 +3490,21 @@ function renderSmsInbox() {
   const badge = document.getElementById('sms-needs-badge');
   const upd   = document.getElementById('sms-updated');
   if (!body) return;
+
   const needsCount = smsThreads.filter(t => t.needsReply).length;
   if (badge) { badge.style.display = needsCount ? '' : 'none'; badge.textContent = needsCount; }
   if (upd) upd.textContent = '· just now';
+
   if (!smsThreads.length) {
     body.innerHTML = `<div style="padding:22px;text-align:center;color:var(--text2);font-size:13px"><i class="ti ti-message-off" style="font-size:22px;display:block;margin-bottom:8px;color:var(--border)"></i>No text messages yet.</div>`;
     return;
   }
+
   body.innerHTML = `<div class="sms-thread-list">${smsThreads.map(t => {
     const lead = leadForNumber(t.number);
     const name = lead ? `${lead.first} ${lead.last}`.trim() : t.number;
     const date = t.lastDate ? new Date(t.lastDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-    const preview = (t.lastDirection === 'outbound-api' ? '↑ ' : '↓ ') + (t.lastMessage||'').substring(0,80);
+    const preview = (t.lastDirection === 'outbound-api' ? '↑ ' : '↓ ') + (t.lastMessage || '').substring(0, 80);
     const isOpen = openSmsNumber === t.number;
     return `<div>
       <div class="sms-row${t.needsReply ? ' needs-reply' : ''}" onclick="toggleSmsThread('${t.number}')">
@@ -2953,7 +3548,10 @@ function toggleSmsThread(number) {
   if (openSmsNumber) {
     setTimeout(() => {
       const convo = document.getElementById('sms-convo-' + number.replace(/\+/g,'p'));
-      if (convo) { const msgs = convo.querySelector('.sms-messages'); if (msgs) msgs.scrollTop = msgs.scrollHeight; }
+      if (convo) {
+        const msgs = convo.querySelector('.sms-messages');
+        if (msgs) msgs.scrollTop = msgs.scrollHeight;
+      }
     }, 50);
   }
 }
@@ -2973,24 +3571,33 @@ async function sendSmsReply(number) {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     ta.value = '';
+    // Optimistically add the message to the thread
     const thread = smsThreads.find(t => t.number === number);
     if (thread) {
       thread.messages.push({ body, direction: 'outbound-api', date: new Date().toISOString() });
-      thread.lastMessage = body; thread.lastDirection = 'outbound-api'; thread.needsReply = false;
+      thread.lastMessage = body;
+      thread.lastDirection = 'outbound-api';
+      thread.needsReply = false;
       try { localStorage.setItem(SMS_KEY, JSON.stringify({ ts: Date.now(), threads: smsThreads })); } catch(e) {}
-      openSmsNumber = number; renderSmsInbox();
+      renderSmsInbox();
+      openSmsNumber = number;
+      renderSmsInbox();
     }
     toast('Text sent ✓');
+    // Auto-log to activity timeline
     const smsLead = leadForNumber(number);
     if (smsLead) autoLogActivity(smsLead.id, 'text', 'outbound', 'sent', body.length > 80 ? body.substring(0,80)+'…' : body);
   } catch(e) {
     toast('Send failed: ' + e.message, 'error');
-  } finally { ta.disabled = false; }
+  } finally {
+    ta.disabled = false;
+  }
 }
 
 function refreshSmsInbox() {
   try { localStorage.removeItem(SMS_KEY); } catch(e) {}
-  openSmsNumber = null; fetchSmsInbox();
+  openSmsNumber = null;
+  fetchSmsInbox();
 }
 
 // ── Lead Inbox ────────────────────────────────────────────────
@@ -3111,17 +3718,29 @@ function quickReply(leadId, subject, email) {
       if (toEl) toEl.value = email;
     }, 50);
   }
+  // Override subject after template opens
   setTimeout(() => {
     const subjEl = document.getElementById('ef2');
     if (subjEl) subjEl.value = subj;
+    // Use blank template for replies
     const tmplEl = document.getElementById('ef0');
     if (tmplEl) { tmplEl.value = 'custom'; applyEmailTemplate(); }
+    // Re-set subject since applyEmailTemplate may overwrite it
     setTimeout(() => { const s = document.getElementById('ef2'); if (s) s.value = subj; }, 50);
   }, 150);
 }
 
-// Load content history (must be after Content Engine declarations)
+// ── Load content history (must be after Content Engine declarations) ──
 loadHistory();
+
+// ── PWA service worker registration ──────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('SW registered'))
+      .catch(e => console.warn('SW failed:', e));
+  });
+}
 
 // ── Follow-up Snooze ──────────────────────────────────────────
 let snoozeLeadId = null;
@@ -3131,6 +3750,7 @@ function showSnoozeMenu(e, leadId) {
   snoozeLeadId = leadId;
   const menu = document.getElementById('snoozeMenu');
   const rect = e.currentTarget.getBoundingClientRect();
+  // Position below the button, shift left if near right edge
   let left = rect.left;
   if (left + 140 > window.innerWidth) left = window.innerWidth - 148;
   menu.style.top  = (rect.bottom + 6) + 'px';
@@ -3158,6 +3778,103 @@ document.addEventListener('click', () => {
   const menu = document.getElementById('snoozeMenu');
   if (menu) menu.classList.remove('open');
 });
+
+// ── Market Report ─────────────────────────────────────────────
+let mrPdfBase64 = null;
+let mrFilename = null;
+
+function openMarketReport(){
+  document.getElementById('mr1').value='';
+  document.getElementById('mr2').value='Single Family';
+  document.getElementById('mr3').value='';
+  document.getElementById('mr4').value='';
+  document.getElementById('mr-status').style.display='none';
+  document.getElementById('mr-preview').style.display='none';
+  document.getElementById('mr-dl-btn').style.display='none';
+  document.getElementById('mr-gen-btn').style.display='';
+  mrPdfBase64=null; mrFilename=null;
+  openModal('mMarketReport');
+}
+
+async function generateMarketReport(){
+  const neighborhood = document.getElementById('mr1').value.trim();
+  if(!neighborhood){toast('Enter a neighborhood first','error');return;}
+  const propType = document.getElementById('mr2').value;
+  const minPrice = document.getElementById('mr3').value.replace(/\D/g,'') || null;
+  const maxPrice = document.getElementById('mr4').value.replace(/\D/g,'') || null;
+
+  const status = document.getElementById('mr-status');
+  const preview = document.getElementById('mr-preview');
+  const genBtn = document.getElementById('mr-gen-btn');
+  const dlBtn = document.getElementById('mr-dl-btn');
+
+  status.style.display='block';
+  status.textContent='⏳ Generating AI market analysis + PDF…';
+  genBtn.disabled=true;
+  preview.style.display='none';
+  dlBtn.style.display='none';
+
+  try {
+    const res = await fetch(BACKEND+'/api/market-report',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ neighborhood, propType, minPrice, maxPrice })
+    });
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error||'Report generation failed');
+
+    mrPdfBase64 = data.pdfBase64;
+    mrFilename = data.filename;
+    const d = data.data;
+    const fmtP = n => n>=1000000?`$${(n/1000000).toFixed(2)}M`:`$${Math.round(n/1000)}K`;
+    const fmtC = n => (n>=0?'▲ ':'▼ ')+Math.abs(n).toFixed(1)+'%';
+
+    preview.style.display='block';
+    preview.innerHTML=`
+      <div style="font-weight:700;font-size:14px;margin-bottom:10px">${neighborhood} — ${propType}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Median Price</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text)">${fmtP(d.medianPrice)}</div>
+          <div style="font-size:10px;color:${d.medianPriceChange>=0?'#16a34a':'#dc2626'}">${fmtC(d.medianPriceChange)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">$/Sqft</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text)">$${Math.round(d.pricePerSqft)}</div>
+          <div style="font-size:10px;color:${d.pricePerSqftChange>=0?'#16a34a':'#dc2626'}">${fmtC(d.pricePerSqftChange)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Days on Mkt</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text)">${d.daysOnMarket}</div>
+          <div style="font-size:10px;color:var(--text2)">${d.domChange>=0?'+':''}${d.domChange} days</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:8px">${d.summary||''}</div>
+      <div style="font-size:10px;color:var(--text3);text-align:center">PDF ready — click Download to save</div>
+    `;
+    status.style.display='none';
+    dlBtn.style.display='';
+    genBtn.disabled=false;
+    toast('✓ Market report generated!');
+  } catch(e) {
+    status.textContent='✗ '+e.message;
+    status.style.color='var(--red)';
+    genBtn.disabled=false;
+    console.error(e);
+  }
+}
+
+function downloadMarketReport(){
+  if(!mrPdfBase64){ toast('No PDF ready','error'); return; }
+  const bytes = atob(mrPdfBase64);
+  const arr = new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+  const blob = new Blob([arr],{type:'application/pdf'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=mrFilename||'market-report.pdf';
+  a.click(); URL.revokeObjectURL(url);
+  toast('✓ PDF downloaded!');
+}
 </script>
 
 <!-- Teleprompter overlay -->
@@ -3165,7 +3882,7 @@ document.addEventListener('click', () => {
   <div id="tp-scroll-area">
     <div id="tp-progress"></div>
     <div id="tp-text"></div>
-    <div id="tp-play-hint"></div>
+    <div id="tp-play-hint">⏸</div>
   </div>
   <div id="tp-controls">
     <button class="tp-btn" id="tp-play-btn" onclick="tpTogglePlay()"><i class="ti ti-player-play" style="font-size:14px"></i> <span id="tp-play-label">Start</span></button>

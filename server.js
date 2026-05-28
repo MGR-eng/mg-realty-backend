@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { GoogleAuth } from 'google-auth-library';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import PDFDocument from 'pdfkit';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -2905,6 +2906,229 @@ app.get('/api/tours', async (req, res) => {
       .sort((a, b) => `${a.date}${a.time}` < `${b.date}${b.time}` ? -1 : 1);
     res.json({ ok: true, tours });
   } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Neighborhood Market Report ────────────────────────────────
+app.post('/api/market-report', async (req, res) => {
+  try {
+    const { neighborhood, minPrice, maxPrice, propType = 'Single Family' } = req.body;
+    if (!neighborhood) return res.status(400).json({ ok: false, error: 'Neighborhood required' });
+
+    const today = new Date();
+    const monthYear = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const priceRange = minPrice && maxPrice
+      ? `$${Number(minPrice).toLocaleString()} – $${Number(maxPrice).toLocaleString()}`
+      : minPrice ? `$${Number(minPrice).toLocaleString()}+` : maxPrice ? `Under $${Number(maxPrice).toLocaleString()}` : 'All price ranges';
+
+    // Ask Claude to generate realistic market data + analysis
+    const dataPrompt = `You are a Los Angeles real estate market analyst. Generate a realistic, data-driven neighborhood market report for ${neighborhood}, LA.
+
+Property type: ${propType}
+Price range: ${priceRange}
+Report date: ${monthYear}
+
+Return ONLY valid JSON (no markdown, no explanation):
+{
+  "medianPrice": <number — median sale price in dollars>,
+  "medianPriceChange": <number — % change vs 6 months ago, can be negative>,
+  "pricePerSqft": <number — median $/sqft>,
+  "pricePerSqftChange": <number — % change vs 6 months ago>,
+  "daysOnMarket": <number — median days on market>,
+  "domChange": <number — change in days vs 6 months ago>,
+  "homesForSale": <number — active listings>,
+  "homesSold": <number — sold last 30 days>,
+  "listToSaleRatio": <number — avg list-to-sale price ratio, e.g. 1.03 = 3% over ask>,
+  "monthsOfInventory": <number — months of inventory>,
+  "marketTrend": <"hot" | "balanced" | "cool">,
+  "trendLabel": <string — one phrase like "Strong Seller's Market">,
+  "recentSales": [
+    { "address": <string>, "beds": <number>, "baths": <number>, "sqft": <number>, "price": <number>, "daysOnMarket": <number> },
+    { "address": <string>, "beds": <number>, "baths": <number>, "sqft": <number>, "price": <number>, "daysOnMarket": <number> },
+    { "address": <string>, "beds": <number>, "baths": <number>, "sqft": <number>, "price": <number>, "daysOnMarket": <number> }
+  ],
+  "insights": [
+    <string — key insight 1, 1-2 sentences, specific to this neighborhood>,
+    <string — key insight 2, 1-2 sentences>,
+    <string — key insight 3, 1-2 sentences>
+  ],
+  "summary": <string — 2-3 sentence executive summary of this market>
+}
+
+Make the data realistic for ${neighborhood}, Los Angeles in ${monthYear}. Use actual neighborhood characteristics (price range, density, demographics, trends) to inform the numbers.`;
+
+    const aiMsg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: dataPrompt }]
+    });
+
+    const raw = aiMsg.content[0].text.trim();
+    let data;
+    try {
+      const match = raw.match(/\{[\s\S]*\}/);
+      data = JSON.parse(match ? match[0] : raw);
+    } catch {
+      return res.status(422).json({ ok: false, error: 'AI parse failed', raw });
+    }
+
+    // ── Build PDF with pdfkit ─────────────────────────────────
+    const chunks = [];
+    const doc = new PDFDocument({ size: 'LETTER', margin: 0, info: {
+      Title: `${neighborhood} Market Report — ${monthYear}`,
+      Author: 'MG Realty · Matt Golden',
+      Subject: 'Neighborhood Real Estate Market Report'
+    }});
+    doc.on('data', c => chunks.push(c));
+
+    const pdfBase64 = await new Promise((resolve, reject) => {
+      doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+      doc.on('error', reject);
+
+      const W = 612, H = 792;
+      const GOLD = '#C8973A';
+      const DARK = '#1A1914';
+      const LIGHT = '#F5F5F0';
+      const GRAY = '#888880';
+      const RED = '#dc2626';
+      const GREEN = '#16a34a';
+
+      const fmtPrice = n => n >= 1000000 ? `$${(n/1000000).toFixed(2)}M` : `$${Math.round(n/1000)}K`;
+      const fmtChange = n => (n >= 0 ? '▲ ' : '▼ ') + Math.abs(n).toFixed(1) + '%';
+      const changeColor = n => n >= 0 ? GREEN : RED;
+
+      // ── Header band ───────────────────────────────────────────
+      doc.rect(0, 0, W, 110).fill(DARK);
+      doc.rect(0, 108, W, 3).fill(GOLD);
+
+      // Logo text (no image dependency)
+      doc.fillColor(GOLD).font('Helvetica-Bold').fontSize(22).text('MG REALTY', 40, 28);
+      doc.fillColor('#AAAAAA').font('Helvetica').fontSize(9).text('MATT GOLDEN · DRE #02130422 · LOS ANGELES', 40, 54);
+
+      // Report title right side
+      doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(15)
+        .text(`${neighborhood.toUpperCase()}`, W - 280, 22, { width: 240, align: 'right' });
+      doc.fillColor(GOLD).font('Helvetica-Bold').fontSize(10)
+        .text('MARKET REPORT', W - 280, 42, { width: 240, align: 'right' });
+      doc.fillColor('#AAAAAA').font('Helvetica').fontSize(9)
+        .text(`${propType} · ${monthYear}`, W - 280, 57, { width: 240, align: 'right' });
+      doc.fillColor('#AAAAAA').font('Helvetica').fontSize(9)
+        .text(`Price Range: ${priceRange}`, W - 280, 70, { width: 240, align: 'right' });
+
+      // Trend badge
+      const trendColors = { hot: '#dc2626', balanced: '#d97706', cool: '#2563eb' };
+      const trendBg = trendColors[data.marketTrend] || '#888';
+      doc.roundedRect(40, 75, 130, 22, 4).fill(trendBg);
+      doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(9)
+        .text((data.trendLabel || 'Market Update').toUpperCase(), 40, 81, { width: 130, align: 'center' });
+
+      // ── Stats row ─────────────────────────────────────────────
+      const statY = 125;
+      const stats = [
+        { label: 'MEDIAN PRICE', value: fmtPrice(data.medianPrice), change: data.medianPriceChange, sub: 'vs 6 months ago' },
+        { label: 'PRICE / SQFT', value: `$${Math.round(data.pricePerSqft)}`, change: data.pricePerSqftChange, sub: 'vs 6 months ago' },
+        { label: 'DAYS ON MARKET', value: `${data.daysOnMarket}`, change: null, sub: `${data.domChange >= 0 ? '+' : ''}${data.domChange} days vs prior` },
+        { label: 'HOMES SOLD', value: `${data.homesSold}`, change: null, sub: 'last 30 days' },
+      ];
+
+      const statW = W / 4;
+      stats.forEach((s, i) => {
+        const x = i * statW;
+        // Divider
+        if (i > 0) doc.rect(x, statY, 1, 90).fill('#E0E0D8');
+        doc.rect(x, statY, statW, 90).fill(i % 2 === 0 ? LIGHT : '#FAFAF5');
+        doc.fillColor(GRAY).font('Helvetica-Bold').fontSize(7)
+          .text(s.label, x + 10, statY + 12, { width: statW - 20, align: 'center' });
+        doc.fillColor(DARK).font('Helvetica-Bold').fontSize(22)
+          .text(s.value, x + 10, statY + 24, { width: statW - 20, align: 'center' });
+        if (s.change !== null && s.change !== undefined) {
+          doc.fillColor(changeColor(s.change)).font('Helvetica-Bold').fontSize(10)
+            .text(fmtChange(s.change), x + 10, statY + 52, { width: statW - 20, align: 'center' });
+        }
+        doc.fillColor(GRAY).font('Helvetica').fontSize(7)
+          .text(s.sub, x + 10, s.change !== null && s.change !== undefined ? statY + 66 : statY + 52, { width: statW - 20, align: 'center' });
+      });
+
+      // ── Secondary stats ───────────────────────────────────────
+      const sec2Y = statY + 92;
+      doc.rect(0, sec2Y, W, 36).fill('#F0EFE8');
+      const secStats = [
+        { label: 'Active Listings', value: `${data.homesForSale}` },
+        { label: 'Months of Inventory', value: `${data.monthsOfInventory}` },
+        { label: 'List-to-Sale Ratio', value: `${(data.listToSaleRatio * 100).toFixed(1)}%` },
+        { label: 'Report Generated', value: today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }
+      ];
+      secStats.forEach((s, i) => {
+        const x = (W / 4) * i;
+        if (i > 0) doc.rect(x, sec2Y + 4, 1, 28).fill('#D0CFC8');
+        doc.fillColor(GRAY).font('Helvetica').fontSize(7).text(s.label, x + 8, sec2Y + 8, { width: W/4 - 16, align: 'center' });
+        doc.fillColor(DARK).font('Helvetica-Bold').fontSize(12).text(s.value, x + 8, sec2Y + 18, { width: W/4 - 16, align: 'center' });
+      });
+
+      // ── Summary ───────────────────────────────────────────────
+      const sumY = sec2Y + 48;
+      doc.rect(40, sumY, W - 80, 2).fill(GOLD);
+      doc.fillColor(DARK).font('Helvetica-Bold').fontSize(11).text('MARKET SUMMARY', 40, sumY + 10);
+      doc.fillColor('#333333').font('Helvetica').fontSize(9.5).leading(5)
+        .text(data.summary || '', 40, sumY + 26, { width: W - 80 });
+
+      // ── Insights ─────────────────────────────────────────────
+      const insY = sumY + 80;
+      doc.rect(40, insY, W - 80, 2).fill(GOLD);
+      doc.fillColor(DARK).font('Helvetica-Bold').fontSize(11).text('KEY INSIGHTS', 40, insY + 10);
+
+      const insights = data.insights || [];
+      insights.slice(0, 3).forEach((insight, i) => {
+        const iy = insY + 30 + i * 42;
+        doc.rect(40, iy, 4, 30).fill(GOLD);
+        doc.fillColor('#555').font('Helvetica-Bold').fontSize(8).text(`INSIGHT ${i + 1}`, 52, iy + 2);
+        doc.fillColor(DARK).font('Helvetica').fontSize(9).leading(4)
+          .text(insight, 52, iy + 13, { width: W - 100 });
+      });
+
+      // ── Recent Sales ──────────────────────────────────────────
+      const salesY = insY + 170;
+      doc.rect(40, salesY, W - 80, 2).fill(GOLD);
+      doc.fillColor(DARK).font('Helvetica-Bold').fontSize(11).text('RECENT COMPARABLE SALES', 40, salesY + 10);
+
+      // Table header
+      const tY = salesY + 28;
+      doc.rect(40, tY, W - 80, 18).fill(DARK);
+      const cols = [{ label: 'ADDRESS', x: 48, w: 180 }, { label: 'BED/BATH', x: 235, w: 70 }, { label: 'SQFT', x: 310, w: 60 }, { label: 'PRICE', x: 375, w: 90 }, { label: 'DOM', x: 468, w: 50 }];
+      cols.forEach(c => {
+        doc.fillColor(GOLD).font('Helvetica-Bold').fontSize(7).text(c.label, c.x, tY + 5, { width: c.w });
+      });
+
+      (data.recentSales || []).slice(0, 3).forEach((sale, i) => {
+        const ry = tY + 18 + i * 22;
+        doc.rect(40, ry, W - 80, 22).fill(i % 2 === 0 ? LIGHT : '#FAFAF5');
+        doc.fillColor(DARK).font('Helvetica').fontSize(8.5).text(sale.address || '—', 48, ry + 6, { width: 180 });
+        doc.fillColor(DARK).font('Helvetica').fontSize(8.5).text(`${sale.beds}bd/${sale.baths}ba`, 235, ry + 6, { width: 70 });
+        doc.fillColor(DARK).font('Helvetica').fontSize(8.5).text(sale.sqft ? sale.sqft.toLocaleString() : '—', 310, ry + 6, { width: 60 });
+        doc.fillColor(DARK).font('Helvetica-Bold').fontSize(8.5).text(fmtPrice(sale.price), 375, ry + 6, { width: 90 });
+        doc.fillColor(GRAY).font('Helvetica').fontSize(8.5).text(`${sale.daysOnMarket || '—'} days`, 468, ry + 6, { width: 50 });
+      });
+
+      // ── Footer ────────────────────────────────────────────────
+      doc.rect(0, H - 52, W, 52).fill(DARK);
+      doc.rect(0, H - 52, W, 2).fill(GOLD);
+      doc.fillColor('#AAAAAA').font('Helvetica').fontSize(7.5)
+        .text('Matt Golden · MG Realty · Los Angeles · goldenmb@gmail.com · (323) 555-0100 · DRE #02130422', 40, H - 38, { width: W - 80, align: 'center' });
+      doc.fillColor('#555').font('Helvetica').fontSize(6.5)
+        .text('This report is generated for informational purposes and reflects AI-synthesized market estimates. Data should be verified with MLS sources before making real estate decisions.', 40, H - 22, { width: W - 80, align: 'center' });
+
+      doc.end();
+    });
+
+    res.json({
+      ok: true,
+      pdfBase64,
+      filename: `MG-Realty-${neighborhood.replace(/\s+/g, '-')}-Market-Report-${today.toISOString().split('T')[0]}.pdf`,
+      data
+    });
+  } catch (e) {
+    console.error('MARKET REPORT ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
