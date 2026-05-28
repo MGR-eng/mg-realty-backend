@@ -1145,6 +1145,16 @@ const DIGEST_EMAIL = 'goldenmb@gmail.com';
 
 const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1';
 let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null;
+// ── Early globals (must be declared before init line) ─────────
+const CAL_KEY = 'mg_cal_v1';
+let calPosts = [], calWeekStart = null;
+const SMS_KEY = 'mg_sms_v1';
+let smsThreads = [], openSmsNumber = null;
+const IB_KEY = 'mg_inbox_v1';
+let ibTab = 'reply', ibThreads = [];
+const GCAL_CACHE_KEY = 'mg_gcal_v1';
+let gcalEvents = [];
+let mrPdfBase64 = null, mrFilename = null;
 
 function load(){
   try{leads=JSON.parse(localStorage.getItem(SL)||'null')||seed();}catch(e){leads=seed();}
@@ -3125,9 +3135,6 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Content Calendar ──────────────────────────────────────────
-const CAL_KEY = 'mg_cal_v1';
-let calPosts = [];
-let calWeekStart = null;
 
 const CAL_TYPE_LABELS = {
   new_listing:'🏡 New Listing', price_drop:'💰 Price Drop', open_house:'🔑 Open House',
@@ -3606,9 +3613,6 @@ function quickLogCall(leadId) {
 }
 
 // ── SMS Inbox ─────────────────────────────────────────────────
-const SMS_KEY = 'mg_sms_v1';
-let smsThreads = [];
-let openSmsNumber = null;
 
 function loadSmsInbox() {
   try {
@@ -3763,9 +3767,6 @@ function refreshSmsInbox() {
 }
 
 // ── Lead Inbox ────────────────────────────────────────────────
-const IB_KEY = 'mg_inbox_v1';
-let ibTab = 'reply';
-let ibThreads = [];
 
 function loadInbox() {
   try {
@@ -3970,9 +3971,6 @@ async function syncApptToGcal(apptId) {
     if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-calendar-plus" style="font-size:10px"></i> Sync to Google Cal';}
   }
 }
-
-const GCAL_CACHE_KEY = 'mg_gcal_v1';
-let gcalEvents = [];
 
 async function fetchGcalEvents() {
   const body = document.getElementById('gcal-body');
@@ -4383,9 +4381,6 @@ function deleteLeaseDoc(leaseId, docId) {
 }
 
 // ── Market Report ─────────────────────────────────────────────
-let mrPdfBase64 = null;
-let mrFilename = null;
-
 function openMarketReport(){
   document.getElementById('mr1').value='';
   document.getElementById('mr2').value='Single Family';
