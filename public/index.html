@@ -2200,10 +2200,9 @@ async function deletePropDoc(propId, docId) {
 async function parseDocToCalc(propId, docId) {
   const p = props.find(x => x.id === propId);
   const d = p?.docs?.find(x => x.id === docId);
-  if (!d || !d.data) return;
+  if (!d) return;
   closeModal('mPropDocs');
   openCommCalc();
-  // Trigger parse with the stored base64
   const statusEl = document.getElementById('cc-parse-status');
   const btnEl = document.getElementById('cc-upload-btn');
   statusEl.style.display = 'block';
@@ -2211,10 +2210,10 @@ async function parseDocToCalc(propId, docId) {
   statusEl.textContent = `✦ Parsing ${d.name}…`;
   btnEl.disabled = true;
   try {
-    const base64 = d.data.split(',')[1];
-    const res = await fetch('/api/parse-rla', {
+    // Server fetches from Supabase — no large payload
+    const res = await fetch('/api/parse-rla-stored', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pdfBase64: base64, filename: d.name })
+      body: JSON.stringify({ propId, docId })
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Parse failed');

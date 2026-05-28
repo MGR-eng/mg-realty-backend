@@ -1846,13 +1846,12 @@ async function deletePropDoc(propId,docId){
   p.docs=(p.docs||[]).filter(d=>d.id!==docId);await persist();renderPropDocList(p);renderProperties();
 }
 async function parseDocToCalc(propId,docId){
-  const p=props.find(x=>x.id===propId);const d=p?.docs?.find(x=>x.id===docId);if(!d||!d.data)return;
+  const p=props.find(x=>x.id===propId);const d=p?.docs?.find(x=>x.id===docId);if(!d)return;
   closeModal('mPropDocs');openCommCalc();
   const statusEl=document.getElementById('cc-parse-status');const btnEl=document.getElementById('cc-upload-btn');
   statusEl.style.display='block';statusEl.style.color='var(--amber)';statusEl.textContent=`✦ Parsing ${d.name}…`;btnEl.disabled=true;
   try{
-    const base64=d.data.split(',')[1];
-    const res=await fetch('/api/parse-rla',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdfBase64:base64,filename:d.name})});
+    const res=await fetch('/api/parse-rla-stored',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({propId,docId})});
     const data=await res.json();if(!data.ok)throw new Error(data.error||'Parse failed');
     const f=data.fields;let filled=[];
     if(f.listPrice){document.getElementById('cc1').value=f.listPrice.toLocaleString();filled.push('price');}

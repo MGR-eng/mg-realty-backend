@@ -2523,6 +2523,49 @@ Respond with ONLY valid JSON (no markdown, no backticks):
   }
 });
 
+// ── RLA Parser (from stored property doc — no re-upload needed) ──
+app.post('/api/parse-rla-stored', async (req, res) => {
+  try {
+    const { propId, docId } = req.body;
+    if (!propId || !docId) return res.status(400).json({ ok: false, error: 'propId and docId required' });
+
+    const crm = await readCRM();
+    const prop = (crm.properties || []).find(p => p.id === propId);
+    if (!prop) return res.status(404).json({ ok: false, error: 'Property not found' });
+    const doc = (prop.docs || []).find(d => d.id === docId);
+    if (!doc) return res.status(404).json({ ok: false, error: 'Document not found' });
+    if (!doc.data) return res.status(400).json({ ok: false, error: 'Document has no data' });
+
+    // Strip data URL prefix if present
+    const base64 = doc.data.includes(',') ? doc.data.split(',')[1] : doc.data;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 512,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+          { type: 'text', text: `You are parsing a California Residential Listing Agreement (RLA) or similar real estate contract. Extract these fields and return ONLY valid JSON, no explanation:\n\n{"listPrice":<number or null>,"commissionPct":<number or null>,"side":<"buyer"|"seller"|"both"|null>,"compassSplit":<number or null>,"notes":<string or null>}\n\nlistPrice = raw number (no $ or commas). commissionPct = number only (e.g. 2.5 not "2.5%"). Use null for any field not found.` }
+        ]
+      }]
+    });
+
+    const raw = msg.content[0].text.trim();
+    let parsed;
+    try {
+      const match = raw.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(match ? match[0] : raw);
+    } catch {
+      return res.status(422).json({ ok: false, error: 'Could not parse AI response', raw });
+    }
+    res.json({ ok: true, fields: parsed, docName: doc.name });
+  } catch (e) {
+    console.error('parse-rla-stored error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── RLA Parser ───────────────────────────────────────────────
 app.post('/api/parse-rla', async (req, res) => {
   try {
