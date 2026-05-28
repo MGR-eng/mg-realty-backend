@@ -977,8 +977,8 @@ app.get('/link', async (req, res) => {
 <!-- Social proof -->
 <div class="stats">
   <div class="stat"><div class="stat-val">5+</div><div class="stat-label">Years in LA</div></div>
-  <div class="stat"><div class="stat-val">100+</div><div class="stat-label">Deals Closed</div></div>
-  <div class="stat"><div class="stat-val">$50M+</div><div class="stat-label">Volume Sold</div></div>
+  <div class="stat"><div class="stat-val">20+</div><div class="stat-label">Deals Closed</div></div>
+  <div class="stat"><div class="stat-val">LA</div><div class="stat-label">Based & Local</div></div>
 </div>
 
 <!-- About -->
@@ -1060,7 +1060,7 @@ ${listingCards ? `
   </div>
 </div>
 
-<div class="footer">Matt Golden · MG Realty · Los Angeles<br>DRE #00000000 · goldenmb@gmail.com</div>
+<div class="footer">Matt Golden · MG Realty · Los Angeles<br>DRE #02130422 · goldenmb@gmail.com</div>
 
 <script>
 async function submitForm(e) {
