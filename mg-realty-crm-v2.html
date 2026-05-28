@@ -184,6 +184,16 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .ce-output-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);display:flex;align-items:center;gap:6px}
 .ce-output-body{padding:15px;font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--text)}
 .ce-output-body.hashtags{font-size:12px;color:var(--blue);line-height:1.8;word-break:break-word;white-space:normal}
+.htag-groups{padding:12px 15px;display:flex;flex-direction:column;gap:10px}
+.htag-group{display:flex;flex-direction:column;gap:5px}
+.htag-group-hd{display:flex;align-items:center;justify-content:space-between}
+.htag-group-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3)}
+.htag-group-reach{font-size:9px;padding:1px 6px;border-radius:999px;font-weight:600}
+.htag-pills{display:flex;flex-wrap:wrap;gap:4px}
+.htag-pill{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);color:var(--blue);cursor:pointer;transition:background 0.12s}
+.htag-pill:hover{background:var(--border)}
+.ce-copy-all{margin:0 15px 15px;display:flex;gap:7px}
+.ce-copy-all .btn{flex:1;justify-content:center;padding:9px}
 .ce-copied{color:var(--green)!important;border-color:var(--green-bd)!important}
 .ce-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:32px;color:var(--text2);font-size:13px}
 @keyframes ce-spin{to{transform:rotate(360deg)}}
@@ -1650,8 +1660,8 @@ function renderHistory() {
 function reuseHistory(id) {
   const h = contentHistory.find(x => x.id === id);
   if (!h) return;
-  window._ceData = { caption: h.caption, reelsScript: h.reelsScript, hashtags: h.hashtags };
-  document.getElementById('ce-output').innerHTML = buildOutputHTML(h.caption, h.reelsScript, h.hashtags);
+  window._ceData = { caption: h.caption, reelsScript: h.reelsScript, hashtags: h.hashtags, hashtagGroups: h.hashtagGroups };
+  document.getElementById('ce-output').innerHTML = buildOutputHTML(h.caption, h.reelsScript, h.hashtags, h.hashtagGroups);
   if (h.type) document.getElementById('ce-type').value = h.type;
   if (h.address) document.getElementById('ce-address').value = h.address;
   setTone(h.tone || 'casual');
@@ -1730,12 +1740,37 @@ function ceEmptyState() {
   </div>`;
 }
 
-function buildOutputHTML(caption, reelsScript, hashtags) {
-  const fmtH = (hashtags||'').replace(/\s+/g,' ').trim().split(' ').map(t=>t.startsWith('#')?t:'#'+t).join(' ');
+function buildOutputHTML(caption, reelsScript, hashtags, hashtagGroups) {
+  const flatTags = (hashtags||'').replace(/\s+/g,' ').trim().split(' ').filter(Boolean).map(t=>t.startsWith('#')?t:'#'+t).join(' ');
+  const groupMeta = {
+    broad: { label: 'Broad', reach: 'High reach', color: '#10b981', bg: '#d1fae5' },
+    local: { label: 'LA Local', reach: 'Targeted', color: '#3b82f6', bg: '#dbeafe' },
+    niche: { label: 'Niche', reach: 'Engaged', color: '#8b5cf6', bg: '#ede9fe' },
+    brand: { label: 'Brand', reach: 'Owned', color: '#f59e0b', bg: '#fef3c7' },
+  };
+  const groupsHTML = hashtagGroups
+    ? Object.entries(groupMeta).map(([key, meta]) => {
+        const tags = (hashtagGroups[key] || []).filter(Boolean);
+        if (!tags.length) return '';
+        const pills = tags.map(t => { const tag = t.startsWith('#')?t:'#'+t; return `<span class="htag-pill" onclick="copyTag('${tag}')" title="Click to copy">${tag}</span>`; }).join('');
+        return `<div class="htag-group"><div class="htag-group-hd"><span class="htag-group-label">${meta.label}</span><span class="htag-group-reach" style="background:${meta.bg};color:${meta.color}">${meta.reach} · ${tags.length} tags</span></div><div class="htag-pills">${pills}</div></div>`;
+      }).join('')
+    : `<div class="ce-output-body hashtags">${flatTags}</div>`;
+  const tagCount = hashtagGroups ? Object.values(hashtagGroups).reduce((n,a)=>n+(a||[]).length,0) : flatTags.split(' ').length;
   return `
+    <div class="ce-output-block" style="border-color:var(--amber-bd);background:var(--amber-bg)">
+      <div class="ce-output-hd" style="background:transparent;border-bottom-color:var(--amber-bd)">
+        <div class="ce-output-title" style="color:var(--amber)"><i class="ti ti-brand-instagram" style="font-size:14px"></i> Ready to Post</div>
+        <span style="font-size:10px;color:var(--amber)">Caption + hashtags in one copy</span>
+      </div>
+      <div class="ce-copy-all">
+        <button class="btn btn-amber" id="copy-ig-all" onclick="copyForInstagram('copy-ig-all')"><i class="ti ti-copy"></i> Copy Caption + Hashtags</button>
+        <button class="btn btn-sm" onclick="copyContent('caption','copy-caption-only')" id="copy-caption-only" title="Copy caption only" style="flex:0;padding:9px 11px"><i class="ti ti-blockquote" style="font-size:12px"></i></button>
+      </div>
+    </div>
     <div class="ce-output-block">
       <div class="ce-output-hd">
-        <div class="ce-output-title"><i class="ti ti-brand-instagram" style="font-size:14px;color:#C13584"></i> Instagram Caption</div>
+        <div class="ce-output-title"><i class="ti ti-align-left" style="font-size:14px;color:var(--text2)"></i> Caption</div>
         <button class="btn btn-sm btn-blue" id="copy-caption" onclick="copyContent('caption','copy-caption')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
       </div>
       <div class="ce-output-body" id="out-caption">${escHtml(caption)}</div>
@@ -1749,10 +1784,10 @@ function buildOutputHTML(caption, reelsScript, hashtags) {
     </div>
     <div class="ce-output-block">
       <div class="ce-output-hd">
-        <div class="ce-output-title"><i class="ti ti-hash" style="font-size:14px;color:#185FA5"></i> Hashtags <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0">30 tags</span></div>
-        <button class="btn btn-sm btn-primary" id="copy-hashtags" onclick="copyContent('hashtags','copy-hashtags')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
+        <div class="ce-output-title"><i class="ti ti-hash" style="font-size:14px;color:#185FA5"></i> Hashtags <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0">${tagCount} tags</span></div>
+        <button class="btn btn-sm btn-primary" id="copy-hashtags" onclick="copyContent('hashtags','copy-hashtags')"><i class="ti ti-copy" style="font-size:11px"></i> Copy All</button>
       </div>
-      <div class="ce-output-body hashtags" id="out-hashtags">${fmtH}</div>
+      <div class="htag-groups" id="out-hashtags">${groupsHTML}</div>
     </div>
     <div class="ce-output-block">
       <div class="ce-output-hd">
@@ -1804,11 +1839,11 @@ async function generateContent() {
     if (!data.ok) throw new Error(data.error || 'Generation failed');
 
     const fmtHashtags = (data.hashtags||'').replace(/\s+/g,' ').trim().split(' ').map(t=>t.startsWith('#')?t:'#'+t).join(' ');
-    window._ceData = { caption: data.caption, reelsScript: data.reelsScript, hashtags: fmtHashtags };
-    output.innerHTML = buildOutputHTML(data.caption, data.reelsScript, data.hashtags);
+    window._ceData = { caption: data.caption, reelsScript: data.reelsScript, hashtags: fmtHashtags, hashtagGroups: data.hashtagGroups };
+    output.innerHTML = buildOutputHTML(data.caption, data.reelsScript, data.hashtags, data.hashtagGroups);
 
     // Auto-save to history
-    saveToHistory({ type, tone: contentTone, address: payload.address||'', caption: data.caption, reelsScript: data.reelsScript, hashtags: fmtHashtags });
+    saveToHistory({ type, tone: contentTone, address: payload.address||'', caption: data.caption, reelsScript: data.reelsScript, hashtags: fmtHashtags, hashtagGroups: data.hashtagGroups });
 
     setSyncStatus('ok', 'Content ready');
     toast('Content generated ✓');
@@ -1841,11 +1876,29 @@ function copyContent(key, btnId) {
   if (!text) return;
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById(btnId);
+    if (!btn) return;
     const orig = btn.innerHTML;
     btn.classList.add('ce-copied');
     btn.innerHTML = '<i class="ti ti-check" style="font-size:11px"></i> Copied!';
     setTimeout(() => { btn.classList.remove('ce-copied'); btn.innerHTML = orig; }, 2000);
   });
+}
+
+function copyForInstagram(btnId) {
+  const d = window._ceData;
+  if (!d?.caption) return;
+  const text = d.caption + '\n\n.\n.\n.\n' + (d.hashtags || '');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-check"></i> Copied for Instagram!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2500);
+  });
+}
+
+function copyTag(tag) {
+  navigator.clipboard.writeText(tag).then(() => toast(`Copied ${tag}`, 'success'));
 }
 
 function escHtml(str) {
