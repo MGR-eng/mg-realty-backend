@@ -701,7 +701,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="fgg"><label>Follow-up date</label><input id="lf9" type="date"></div>
     <div class="fgg"><label>Follow-up method</label><select id="lf10"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
     <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select></div>
-    <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Other">Other</option></select></div>
+    <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Website">Website</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Other">Other</option></select></div>
     <div class="fgg full"><label>Agent name</label><input id="lf14" placeholder="First and last name"></div>
     <div class="fgg full">
       <label>Agent contact</label>
@@ -841,6 +841,8 @@ function ffu(s,m){
   return`<span class="${cls}"><i class="ti ${ic}" style="font-size:11px;margin-right:2px"></i>${lbl}</span>`;
 }
 function tb(t){const m={hot:'b-hot',warm:'b-warm',cold:'b-cold',done:'b-done'};return`<span class="badge ${m[t]||'b-cold'}">${t}</span>`;}
+const SRC_COLORS={'Instagram':'#E1306C','Referral':'#27AE60','Zillow':'#006AFF','Open House':'#E8681A','Website':'#3C3489','Cold Call':'#7B7B7B','Walk-in':'#C0842A','Other':'#999'};
+function srcColor(src){return SRC_COLORS[src]||'#999';}
 function tyb(t){
   const k=t.toLowerCase().replace(/\s/g,'');
   const m={call:'b-call',text:'b-text',email:'b-email',showing:'b-showing',openhouse:'b-open',offer:'b-offer'};
@@ -906,20 +908,40 @@ function renderDashSources(){
   active.forEach(l=>{const s=l.source||'Unknown';counts[s]=(counts[s]||0)+1;});
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   const total=active.length;
-  const colors=['#E8681A','#185FA5','#27500A','#3C3489','#633806','#791F1F','#085041'];
-  el.innerHTML=`<div style="padding:14px 16px;display:flex;flex-direction:column;gap:9px">
-    ${sorted.map(([src,cnt],i)=>{
-      const pct=Math.round(cnt/total*100);
-      return`<div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-size:12px;font-weight:500">${src}</span>
-          <span style="font-size:11px;color:var(--text2);font-family:var(--mono)">${cnt} · ${pct}%</span>
-        </div>
-        <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${colors[i%colors.length]};border-radius:3px;transition:width 0.3s"></div>
-        </div>
-      </div>`;
-    }).join('')}
+  const getColor=(src,i)=>SRC_COLORS[src]||['#E8681A','#185FA5','#27500A','#3C3489','#633806','#791F1F','#085041'][i%7];
+  const r=54,cx=70,cy=70,stroke=18;
+  const circ=2*Math.PI*r;
+  let offset=0;
+  const slices=sorted.map(([src,cnt],i)=>{
+    const pct=cnt/total;
+    const len=pct*circ;
+    const dash=`${len} ${circ-len}`;
+    const rot=offset*360;
+    offset+=pct;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${getColor(src,i)}" stroke-width="${stroke}" stroke-dasharray="${dash}" stroke-dashoffset="${-circ*0}" transform="rotate(${rot-90} ${cx} ${cy})" style="transition:stroke-dasharray 0.4s"/>`;
+  }).join('');
+  el.innerHTML=`<div style="padding:14px 16px">
+    <div style="display:flex;align-items:center;gap:18px">
+      <div style="flex-shrink:0">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          ${slices}
+          <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" style="font-size:20px;font-weight:700;fill:var(--text);font-family:var(--font)">${total}</text>
+          <text x="${cx}" y="${cy+18}" text-anchor="middle" dominant-baseline="middle" style="font-size:9px;fill:var(--text3);font-family:var(--font);text-transform:uppercase;letter-spacing:0.05em">leads</text>
+        </svg>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:7px;min-width:0">
+        ${sorted.map(([src,cnt],i)=>{
+          const pct=Math.round(cnt/total*100);
+          const color=getColor(src,i);
+          return`<div style="display:flex;align-items:center;gap:7px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            <div style="font-size:12px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${src}</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text2);font-family:var(--mono)">${cnt}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:var(--mono);min-width:28px;text-align:right">${pct}%</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
   </div>`;
 }
 function renderDashStages(){
@@ -1108,7 +1130,7 @@ function openLeadDetail(id){
     tb(l.temp)+
     `<span class="badge b-neutral" style="text-transform:capitalize">${l.type}</span>`+
     `<span class="badge ${stageCols[l.stage||'new']}">${stageLabels[l.stage||'new']}</span>`+
-    (l.source?`<span class="badge b-neutral">${l.source}</span>`:'');
+    (l.source?`<span class="badge" style="background:${srcColor(l.source)+'22'};color:${srcColor(l.source)};border-color:${srcColor(l.source)+'55'}">${l.source}</span>`:'');
 
   // Contact
   document.getElementById('dp-contact').innerHTML=`
@@ -1559,7 +1581,7 @@ function renderPipeline(){
           </div>
           ${l.notes?`<div style="font-size:11px;color:var(--text3);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${l.notes.substring(0,55)}${l.notes.length>55?'…':''}</div>`:''}
           <div class="pipe-card-footer" style="margin-top:8px">
-            ${l.source?`<span style="font-size:10px;color:var(--text3)">${l.source}</span>`:''}
+            ${l.source?`<span style="font-size:10px;font-weight:600;color:${srcColor(l.source)}">${l.source}</span>`:''}
             <div style="margin-left:auto;display:flex;gap:3px">
               <button class="btn btn-sm" title="Log activity" onclick="event.stopPropagation();openAct('${l.id}')"><i class="ti ti-activity" style="font-size:11px"></i></button>
               <button class="btn btn-sm" title="Edit" onclick="event.stopPropagation();openEdit('${l.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
