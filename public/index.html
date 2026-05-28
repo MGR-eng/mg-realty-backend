@@ -484,6 +484,22 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Upcoming appointments</div><div class="tw" id="dashAppts"></div></div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">🏠 Scheduled tours</div><div class="tw" id="dashTours"></div></div>
     </div>
+    <!-- Google Calendar Widget -->
+    <div style="margin-top:16px;margin-bottom:0">
+      <div class="tw" id="gcal-widget">
+        <div class="cl-hd">
+          <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+            <i class="ti ti-calendar-event" style="color:#4285F4;font-size:15px"></i> Google Calendar
+            <span id="gcal-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+          </div>
+          <button class="btn btn-sm btn-primary" id="gcal-refresh-btn" onclick="fetchGcalEvents()"><i class="ti ti-refresh" style="font-size:11px"></i> Refresh</button>
+        </div>
+        <div id="gcal-body">
+          <div class="cl-loading"><div class="ce-spinner"></div><span>Loading calendar…</span></div>
+        </div>
+      </div>
+    </div>
+
     <div class="dash2" style="margin-top:16px">
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div><div class="tw" id="dashSources"></div></div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Pipeline stages</div><div class="tw" id="dashStages"></div></div>
@@ -1421,7 +1437,10 @@ function renderAppts(){
   const up=sorted.filter(a=>du(a.date)>=0),past=sorted.filter(a=>du(a.date)<0);
   function card(a){
     const d=du(a.date),lbl=d===0?'Today':d===1?'Tomorrow':d<0?Math.abs(d)+'d ago':'In '+d+'d';
-    return`<div class="appt-item"><div class="appt-date-box"><div class="appt-day">${new Date(a.date+'T12:00').getDate()}</div><div class="appt-mo">${new Date(a.date+'T12:00').toLocaleString('default',{month:'short'})}</div></div><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-weight:600">${a.leadName}</span><span class="badge b-showing">${a.type}</span><span class="badge ${d>=0&&d<=1?'b-hot':'b-neutral'}">${lbl}</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px">${a.address||''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${a.time} · ${a.duration} min${a.notes?' · '+a.notes:''}</div><div style="font-size:11px;color:var(--purple);margin-top:3px"><i class="ti ti-calendar-check" style="font-size:11px;margin-right:2px"></i>Google Calendar event created</div></div><button class="btn btn-red btn-sm" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button></div>`;
+    const calStatus = a.gcalEventId
+      ? `<span style="font-size:11px;color:var(--purple)"><i class="ti ti-calendar-check" style="font-size:11px;margin-right:2px"></i>Synced to Google Calendar</span>`
+      : `<button class="btn btn-sm" id="gcal-sync-${a.id}" onclick="syncApptToGcal('${a.id}')" style="font-size:10px;padding:2px 7px;color:#4285F4;border-color:#4285F4;background:transparent"><i class="ti ti-calendar-plus" style="font-size:10px"></i> Sync to Google Cal</button>`;
+    return`<div class="appt-item"><div class="appt-date-box"><div class="appt-day">${new Date(a.date+'T12:00').getDate()}</div><div class="appt-mo">${new Date(a.date+'T12:00').toLocaleString('default',{month:'short'})}</div></div><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-weight:600">${a.leadName}</span><span class="badge b-showing">${a.type}</span><span class="badge ${d>=0&&d<=1?'b-hot':'b-neutral'}">${lbl}</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px">${a.address||''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${a.time} · ${a.duration} min${a.notes?' · '+a.notes:''}</div><div style="margin-top:4px">${calStatus}</div></div><button class="btn btn-red btn-sm" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button></div>`;
   }
   el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
 }
@@ -1730,9 +1749,12 @@ async function saveAppt(){
   setSyncStatus('busy','Creating calendar event…');document.getElementById('apptSaveBtn').disabled=true;
   try{
     const endDt=new Date(`${date}T${time}:00`);endDt.setMinutes(endDt.getMinutes()+parseInt(appt.duration));
-    const res=await api('/calendar/create',{title:`🏡 ${appt.type} — ${l.first} ${l.last}`,start:`${date}T${time}:00`,end:endDt.toISOString().slice(0,19),location:appt.address||'TBD',description:`Lead: ${l.first} ${l.last} | Phone: ${l.phone||'N/A'} | Email: ${l.email||'N/A'} | Property: ${l.prop||'N/A'}${appt.notes?'\nNotes: '+appt.notes:''}`});
-    if(res.ok){setSyncStatus('ok','Calendar event created');toast('Appointment saved + calendar event created');}
-    else throw new Error(res.error||'failed');
+    const res=await api('/calendar/create',{title:`🏡 ${appt.type} — ${l.first} ${l.last}`,start:`${date}T${time}:00`,end:endDt.toISOString().slice(0,19),location:appt.address||'TBD',description:`Lead: ${l.first} ${l.last} | Phone: ${l.phone||'N/A'} | Email: ${l.email||'N/A'} | Property: ${l.prop||'N/A'}${appt.notes?'\nNotes: '+appt.notes:''}`,apptId:appt.id});
+    if(res.ok){
+      appts=appts.map(a=>a.id===appt.id?{...a,gcalEventId:res.eventId,gcalLink:res.htmlLink}:a);
+      persist();renderAppts();
+      setSyncStatus('ok','Calendar event created');toast('✓ Appointment saved + synced to Google Calendar');
+    } else throw new Error(res.error||'failed');
   }catch(e){setSyncStatus('err','Calendar sync failed');toast('Appointment saved — calendar sync failed','err');}
   document.getElementById('apptSaveBtn').disabled=false;
 }
@@ -1741,6 +1763,7 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 load();renderAll();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadSmsInbox,500);setTimeout(loadInbox,800);loadCalendar();
+if(!loadGcalFromCache()) setTimeout(fetchGcalEvents, 1200);
 
 // ── Lead detail panel ─────────────────────────────────────────
 function openLeadDetail(id){
@@ -3917,6 +3940,125 @@ document.addEventListener('click', () => {
   const menu = document.getElementById('snoozeMenu');
   if (menu) menu.classList.remove('open');
 });
+
+// ── Google Calendar ───────────────────────────────────────────
+async function syncApptToGcal(apptId) {
+  const appt = appts.find(a=>a.id===apptId); if(!appt) return;
+  const lead = leads.find(l=>l.id===appt.leadId);
+  const btn = document.getElementById('gcal-sync-'+apptId);
+  if(btn){btn.disabled=true;btn.innerHTML='<div class="ce-spinner" style="width:10px;height:10px;border-width:1.5px;display:inline-block;vertical-align:middle"></div>';}
+  try {
+    const endDt=new Date(`${appt.date}T${appt.time}:00`);
+    endDt.setMinutes(endDt.getMinutes()+parseInt(appt.duration||60));
+    const name = lead ? `${lead.first} ${lead.last}` : appt.leadName;
+    const res = await api('/calendar/create',{
+      title:`🏡 ${appt.type} — ${name}`,
+      start:`${appt.date}T${appt.time}:00`,
+      end:endDt.toISOString().slice(0,19),
+      location:appt.address||'TBD',
+      description:`Lead: ${name} | Phone: ${lead?.phone||'N/A'} | Email: ${lead?.email||'N/A'} | Property: ${lead?.prop||appt.address||'N/A'}${appt.notes?'\nNotes: '+appt.notes:''}`,
+      apptId
+    });
+    if(res.ok){
+      appts=appts.map(a=>a.id===apptId?{...a,gcalEventId:res.eventId,gcalLink:res.htmlLink}:a);
+      persist();renderAppts();
+      toast('✓ Synced to Google Calendar');
+      fetchGcalEvents();
+    } else throw new Error(res.error||'Sync failed');
+  } catch(e){
+    toast('Sync failed: '+e.message,'error');
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-calendar-plus" style="font-size:10px"></i> Sync to Google Cal';}
+  }
+}
+
+const GCAL_CACHE_KEY = 'mg_gcal_v1';
+let gcalEvents = [];
+
+async function fetchGcalEvents() {
+  const body = document.getElementById('gcal-body');
+  const btn  = document.getElementById('gcal-refresh-btn');
+  const upd  = document.getElementById('gcal-updated');
+  if(!body) return;
+  body.innerHTML='<div class="cl-loading"><div class="ce-spinner"></div><span>Loading calendar…</span></div>';
+  if(btn){btn.disabled=true;}
+  try {
+    const res = await fetch(BACKEND+'/calendar/list?days=14');
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error||'Failed');
+    gcalEvents = data.events || [];
+    try{localStorage.setItem(GCAL_CACHE_KEY, JSON.stringify({ts:Date.now(),events:gcalEvents}));}catch(e){}
+    renderGcalEvents();
+    if(upd) upd.textContent='· just now';
+  } catch(e) {
+    body.innerHTML=`<div style="padding:16px;text-align:center;font-size:12px;color:var(--red)">Could not load calendar: ${e.message}</div>`;
+  } finally {
+    if(btn){btn.disabled=false;}
+  }
+}
+
+function loadGcalFromCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(GCAL_CACHE_KEY)||'null');
+    if(cached && (Date.now()-cached.ts) < 15*60*1000) {
+      gcalEvents = cached.events||[];
+      renderGcalEvents();
+      const upd=document.getElementById('gcal-updated');
+      if(upd){const m=Math.round((Date.now()-cached.ts)/60000);upd.textContent=m<2?'· just now':`· ${m}m ago`;}
+      return true;
+    }
+  } catch(e){}
+  return false;
+}
+
+function renderGcalEvents() {
+  const body = document.getElementById('gcal-body');
+  if(!body) return;
+  if(!gcalEvents.length){
+    body.innerHTML='<div class="empty" style="padding:16px;color:var(--text2);font-size:12px;text-align:center">No upcoming events in the next 14 days.</div>';
+    return;
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  const fmtTime = dt => {
+    if(!dt) return '';
+    const d = new Date(dt);
+    return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/Los_Angeles'});
+  };
+  const fmtDay = dt => {
+    if(!dt) return '';
+    const d = new Date(dt);
+    const ds = d.toISOString().split('T')[0];
+    if(ds===today) return 'Today';
+    if(ds===tomorrowStr) return 'Tomorrow';
+    return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'America/Los_Angeles'});
+  };
+
+  // Group by day
+  const groups = {};
+  gcalEvents.forEach(e => {
+    const dt = e.start ? new Date(e.start) : null;
+    const key = dt ? dt.toLocaleDateString('en-US',{timeZone:'America/Los_Angeles'}) : 'Unknown';
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(e);
+  });
+
+  // Check if an event is a CRM appointment
+  const isCrmEvent = e => e.description && e.description.includes('[mgr_appt_id:');
+
+  body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:12px">` +
+    gcalEvents.slice(0,12).map(e => {
+      const crm = isCrmEvent(e);
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;border-left:3px solid ${crm?'var(--purple)':'#4285F4'}">
+        <div style="font-size:11px;font-weight:700;color:${crm?'var(--purple)':'#4285F4'};margin-bottom:4px">${fmtDay(e.start)} ${e.allDay?'':fmtTime(e.start)}</div>
+        <div style="font-size:13px;font-weight:600;line-height:1.3;margin-bottom:${e.location?'4px':'0'}">${e.title}</div>
+        ${e.location?`<div style="font-size:11px;color:var(--text2)"><i class="ti ti-map-pin" style="font-size:10px"></i> ${e.location}</div>`:''}
+        ${crm?`<div style="font-size:10px;color:var(--purple);margin-top:4px">📋 CRM appointment</div>`:''}
+      </div>`;
+    }).join('') + `</div>`;
+}
 
 // ── Leases ────────────────────────────────────────────────────
 function leaseStatus(lease) {

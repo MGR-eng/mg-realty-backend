@@ -282,20 +282,110 @@ app.get('/terms', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG R
 </body></html>`));
 
 // ── Calendar: create event ────────────────────────────────────
+// ── Google Calendar — direct REST API ────────────────────────
+const GCAL_BASE = 'https://www.googleapis.com/calendar/v3';
+const GCAL_ID   = 'primary';
+
 app.post('/calendar/create', async (req, res) => {
   try {
-    const { title, start, end, location, description, duration } = req.body;
-    const prompt = `Create a Google Calendar event:
-Title: "${title}"
-Start: ${start} America/Los_Angeles
-End: ${end} America/Los_Angeles
-Location: ${location || 'TBD'}
-Description: ${description || ''}
-Add reminders: popup 30 minutes before, email 60 minutes before.
-Return only: {"ok":true}`;
-    const result = await callClaude(prompt, [GCAL_MCP()]);
-    res.json({ ok: result.includes('ok'), raw: result });
+    const { title, start, end, location, description, apptId } = req.body;
+    const token = await googleToken();
+
+    // Build ISO8601 with LA timezone offset
+    const toCalDT = (dt) => {
+      // dt is like "2026-05-28T14:00:00" (no tz) — treat as LA time
+      if (dt.includes('Z') || dt.includes('+')) return { dateTime: dt };
+      return { dateTime: dt, timeZone: 'America/Los_Angeles' };
+    };
+
+    const event = {
+      summary: title,
+      location: location || '',
+      description: (description || '') + (apptId ? `\n\n[mgr_appt_id:${apptId}]` : ''),
+      start: toCalDT(start),
+      end:   toCalDT(end),
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: 30 },
+          { method: 'email', minutes: 60 }
+        ]
+      },
+      colorId: '11' // tomato red — stands out
+    };
+
+    const r = await fetch(`${GCAL_BASE}/calendars/${GCAL_ID}/events`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(event)
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error?.message || JSON.stringify(data));
+
+    console.log(`Calendar event created: ${title} (${data.id})`);
+    res.json({ ok: true, eventId: data.id, htmlLink: data.htmlLink });
   } catch (e) {
+    console.error('CALENDAR CREATE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// List upcoming events (next 14 days)
+app.get('/calendar/list', async (req, res) => {
+  try {
+    const token = await googleToken();
+    const days  = parseInt(req.query.days) || 14;
+    const now   = new Date();
+    const later = new Date(now); later.setDate(later.getDate() + days);
+
+    const params = new URLSearchParams({
+      timeMin:      now.toISOString(),
+      timeMax:      later.toISOString(),
+      singleEvents: 'true',
+      orderBy:      'startTime',
+      maxResults:   '50',
+      timeZone:     'America/Los_Angeles'
+    });
+
+    const r = await fetch(`${GCAL_BASE}/calendars/${GCAL_ID}/events?${params}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error?.message || JSON.stringify(data));
+
+    const events = (data.items || []).map(e => ({
+      id:          e.id,
+      title:       e.summary || '(no title)',
+      start:       e.start?.dateTime || e.start?.date,
+      end:         e.end?.dateTime   || e.end?.date,
+      location:    e.location || '',
+      description: e.description || '',
+      htmlLink:    e.htmlLink || '',
+      allDay:      !!e.start?.date
+    }));
+
+    res.json({ ok: true, events });
+  } catch (e) {
+    console.error('CALENDAR LIST ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Delete a calendar event
+app.delete('/calendar/event/:eventId', async (req, res) => {
+  try {
+    const token = await googleToken();
+    const r = await fetch(`${GCAL_BASE}/calendars/${GCAL_ID}/events/${req.params.eventId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!r.ok && r.status !== 404 && r.status !== 410) {
+      const data = await r.json().catch(()=>({}));
+      throw new Error(data.error?.message || `HTTP ${r.status}`);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('CALENDAR DELETE ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
