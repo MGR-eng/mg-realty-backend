@@ -179,6 +179,29 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .ct-label{font-size:11px;color:var(--green);font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
 .ct-val{font-size:22px;font-weight:300;color:var(--green)}
 /* ── Content Engine ── */
+.ce-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:18px}
+.ce-tab{padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text3);margin-bottom:-2px;display:flex;align-items:center;gap:5px;transition:color 0.15s}
+.ce-tab:hover{color:var(--text)}
+.ce-tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+.cal-week-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cal-week-label{font-size:13px;font-weight:600;flex:1;text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.cal-day{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;min-height:130px}
+.cal-day.today{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
+.cal-day-hd{padding:7px 10px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:baseline;justify-content:space-between}
+.cal-day-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text3)}
+.cal-day-date{font-size:12px;font-weight:700}
+.cal-day-body{padding:7px;display:flex;flex-direction:column;gap:5px}
+.cal-post-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px;font-size:11px}
+.cal-post-type{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text3);margin-bottom:3px}
+.cal-post-preview{color:var(--text);line-height:1.35;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cal-post-actions{display:flex;gap:4px;align-items:center}
+.cal-status{font-size:9px;padding:2px 7px;border-radius:999px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;cursor:pointer;user-select:none}
+.cal-status.draft{background:var(--surface);border:1px solid var(--border);color:var(--text3)}
+.cal-status.scheduled{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.cal-status.posted{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7}
+.cal-add-btn{width:100%;padding:6px 4px;border:1px dashed var(--border);border-radius:6px;background:none;color:var(--text3);font-size:10px;cursor:pointer;transition:all 0.15s;font-family:var(--font)}
+.cal-add-btn:hover{border-color:var(--amber);color:var(--amber);background:var(--amber-bg)}
 .ce-output-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
 .ce-output-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;background:var(--surface2);border-bottom:1px solid var(--border)}
 .ce-output-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);display:flex;align-items:center;gap:6px}
@@ -423,6 +446,14 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     </div>
   </div>
   <div class="content">
+    <!-- Sub-tabs -->
+    <div class="ce-tabs">
+      <div class="ce-tab active" data-tab="generate" onclick="showCeTab('generate')"><i class="ti ti-sparkles" style="font-size:12px"></i> Generate</div>
+      <div class="ce-tab" data-tab="calendar" onclick="showCeTab('calendar')"><i class="ti ti-calendar-week" style="font-size:12px"></i> Calendar</div>
+    </div>
+
+    <!-- GENERATE VIEW -->
+    <div id="ce-generate-view">
     <div style="display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start">
 
       <!-- LEFT: input form -->
@@ -513,6 +544,25 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         <button class="btn btn-sm btn-red" onclick="clearHistory()"><i class="ti ti-trash" style="font-size:11px"></i> Clear all</button>
       </div>
       <div id="ce-history-list" class="tw"></div>
+    </div>
+    </div><!-- /ce-generate-view -->
+
+    <!-- CALENDAR VIEW -->
+    <div id="ce-calendar-view" style="display:none">
+      <div class="cal-week-nav">
+        <button class="btn btn-sm" onclick="calPrevWeek()"><i class="ti ti-chevron-left"></i></button>
+        <span class="cal-week-label" id="cal-week-label">Loading…</span>
+        <button class="btn btn-sm" onclick="calThisWeek()">Today</button>
+        <button class="btn btn-sm" onclick="calNextWeek()"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text3)">
+        <span style="display:flex;align-items:center;gap:4px"><span class="cal-status draft">draft</span> Not yet scheduled</span>
+        <span style="display:flex;align-items:center;gap:4px"><span class="cal-status scheduled">scheduled</span> Queued to post</span>
+        <span style="display:flex;align-items:center;gap:4px"><span class="cal-status posted">posted</span> Live on Instagram</span>
+        <span style="flex:1"></span>
+        <span>Click status badge to cycle · Click ✏️ to load into editor</span>
+      </div>
     </div>
 
   </div>
@@ -1766,6 +1816,7 @@ function buildOutputHTML(caption, reelsScript, hashtags, hashtagGroups) {
       <div class="ce-copy-all">
         <button class="btn btn-amber" id="copy-ig-all" onclick="copyForInstagram('copy-ig-all')"><i class="ti ti-copy"></i> Copy Caption + Hashtags</button>
         <button class="btn btn-sm" onclick="copyContent('caption','copy-caption-only')" id="copy-caption-only" title="Copy caption only" style="flex:0;padding:9px 11px"><i class="ti ti-blockquote" style="font-size:12px"></i></button>
+        <button class="btn btn-sm" onclick="promptAddToCalendar()" title="Add to content calendar" style="flex:0;padding:9px 11px"><i class="ti ti-calendar-plus" style="font-size:12px"></i></button>
       </div>
     </div>
     <div class="ce-output-block">
@@ -1899,6 +1950,86 @@ function copyForInstagram(btnId) {
 
 function copyTag(tag) {
   navigator.clipboard.writeText(tag).then(() => toast(`Copied ${tag}`, 'success'));
+}
+
+// ── Content Calendar ──────────────────────────────────────────
+const CAL_KEY = 'mg_cal_v1';
+let calPosts = [];
+let calWeekStart = null;
+const CAL_TYPE_LABELS = {
+  new_listing:'🏡 New Listing', price_drop:'💰 Price Drop', open_house:'🔑 Open House',
+  just_sold:'🏆 Just Sold', neighborhood:'📍 Neighborhood', testimonial:'⭐ Testimonial',
+  market_tip:'📊 Market Tip', buyer_tip:'💡 Buyer Tip', seller_tip:'🏠 Seller Tip'
+};
+function loadCalendar() { try { calPosts = JSON.parse(localStorage.getItem(CAL_KEY)||'[]'); } catch(e) { calPosts = []; } }
+function saveCalendar() { try { localStorage.setItem(CAL_KEY, JSON.stringify(calPosts)); } catch(e) {} }
+function localDateStr(d) { return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); }
+function getWeekStart(d) { const dt=new Date(d); dt.setHours(0,0,0,0); const day=dt.getDay(); dt.setDate(dt.getDate()-(day===0?6:day-1)); return dt; }
+function showCeTab(tab) {
+  document.getElementById('ce-generate-view').style.display = tab==='generate' ? '' : 'none';
+  document.getElementById('ce-calendar-view').style.display  = tab==='calendar'  ? '' : 'none';
+  document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab===tab));
+  if (tab==='calendar') { if (!calWeekStart) calWeekStart=getWeekStart(new Date()); renderCalendar(); }
+}
+function renderCalendar() {
+  const today=new Date(); today.setHours(0,0,0,0);
+  const days=Array.from({length:7},(_,i)=>{ const d=new Date(calWeekStart); d.setDate(d.getDate()+i); return d; });
+  const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  document.getElementById('cal-week-label').textContent=fmt(days[0])+' – '+fmt(days[6])+', '+days[6].getFullYear();
+  const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  document.getElementById('cal-grid').innerHTML=days.map((d,i)=>{
+    const ds=localDateStr(d), isToday=d.getTime()===today.getTime();
+    const posts=calPosts.filter(p=>p.date===ds);
+    const postsHtml=posts.map(p=>`
+      <div class="cal-post-card">
+        <div class="cal-post-type">${CAL_TYPE_LABELS[p.type]||p.type}</div>
+        <div class="cal-post-preview">${(p.caption||'').replace(/\n/g,' ').substring(0,90)}…</div>
+        <div class="cal-post-actions">
+          <span class="cal-status ${p.status}" onclick="cycleCalStatus('${p.id}')">${p.status}</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-sm" onclick="loadCalPost('${p.id}')" style="padding:2px 5px;font-size:10px"><i class="ti ti-edit" style="font-size:9px"></i></button>
+          <button class="btn btn-sm btn-red" onclick="removeCalPost('${p.id}')" style="padding:2px 5px;font-size:10px"><i class="ti ti-x" style="font-size:9px"></i></button>
+        </div>
+      </div>`).join('');
+    return `<div class="cal-day${isToday?' today':''}">
+      <div class="cal-day-hd"><span class="cal-day-name">${DAY_NAMES[i]}</span><span class="cal-day-date" style="${isToday?'color:var(--amber)':''}">${d.getDate()}</span></div>
+      <div class="cal-day-body">${postsHtml}<button class="cal-add-btn" onclick="addCurrentToCalendar('${ds}')">+ Add</button></div>
+    </div>`;
+  }).join('');
+}
+function calPrevWeek() { calWeekStart.setDate(calWeekStart.getDate()-7); renderCalendar(); }
+function calNextWeek() { calWeekStart.setDate(calWeekStart.getDate()+7); renderCalendar(); }
+function calThisWeek() { calWeekStart=getWeekStart(new Date()); renderCalendar(); }
+function addCurrentToCalendar(dateStr) {
+  const d=window._ceData;
+  if (!d?.caption) { toast('Generate content first, then add it to the calendar','error'); showCeTab('generate'); return; }
+  const type=document.getElementById('ce-type')?.value||'market_tip';
+  calPosts.push({id:'cp'+Date.now(),date:dateStr,type,caption:d.caption,reelsScript:d.reelsScript,hashtags:d.hashtags,hashtagGroups:d.hashtagGroups,status:'draft'});
+  saveCalendar(); toast('Added to calendar ✓','success'); showCeTab('calendar');
+}
+function promptAddToCalendar() {
+  const d=window._ceData;
+  if (!d?.caption) { toast('Generate content first','error'); return; }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const postDays=[1,3,5];
+  for (let i=1;i<=14;i++) {
+    const t=new Date(today); t.setDate(today.getDate()+i);
+    if (postDays.includes(t.getDay())) { addCurrentToCalendar(localDateStr(t)); return; }
+  }
+  addCurrentToCalendar(localDateStr(new Date(today.getTime()+86400000)));
+}
+function cycleCalStatus(id) {
+  const order=['draft','scheduled','posted'];
+  calPosts=calPosts.map(p=>p.id!==id?p:{...p,status:order[(order.indexOf(p.status)+1)%order.length]});
+  saveCalendar(); renderCalendar();
+}
+function removeCalPost(id) { calPosts=calPosts.filter(p=>p.id!==id); saveCalendar(); renderCalendar(); }
+function loadCalPost(id) {
+  const p=calPosts.find(x=>x.id===id); if (!p) return;
+  window._ceData={caption:p.caption,reelsScript:p.reelsScript,hashtags:p.hashtags,hashtagGroups:p.hashtagGroups};
+  document.getElementById('ce-output').innerHTML=buildOutputHTML(p.caption,p.reelsScript,p.hashtags,p.hashtagGroups);
+  if (p.type&&document.getElementById('ce-type')) document.getElementById('ce-type').value=p.type;
+  showCeTab('generate'); toast('Post loaded into editor');
 }
 
 function escHtml(str) {
