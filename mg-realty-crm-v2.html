@@ -580,7 +580,13 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="fgg full"><label>From</label><select id="ef-from"><option value="personal">Matt Golden | MG Realty &lt;goldenmb@gmail.com&gt;</option><option value="compass">Matt Golden | MG Realty &lt;matthewgolden@compass.com&gt;</option></select></div>
     <div class="fgg full"><label>To</label><input id="ef1" placeholder="recipient@email.com"></div>
     <div class="fgg full"><label>Subject</label><input id="ef2"></div>
-    <div class="fgg full"><label>Message</label><textarea id="ef3" style="min-height:200px"></textarea></div>
+    <div class="fgg full">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <label style="margin-bottom:0">Message</label>
+        <button class="btn btn-sm btn-purple" id="ai-draft-btn" onclick="draftWithAI()" style="font-size:11px"><i class="ti ti-sparkles" style="font-size:11px"></i> Draft with AI</button>
+      </div>
+      <textarea id="ef3" style="min-height:200px"></textarea>
+    </div>
   </div>
   <div class="mfoot"><button class="btn" onclick="closeModal('mEmail')">Cancel</button><button class="btn btn-gold" onclick="sendEmailTemplate()"><i class="ti ti-send"></i> Send</button></div>
 </div></div>
@@ -1237,6 +1243,40 @@ async function sendEmailTemplate() {
   } catch(e) {
     toast('Email failed — check logs', 'error');
     setSyncStatus('ok', 'Ready');
+  }
+}
+
+async function draftWithAI() {
+  const btn = document.getElementById('ai-draft-btn');
+  const ta  = document.getElementById('ef3');
+  if (!btn || !ta) return;
+  const lead = leads.find(l => l.id === emailLeadId);
+  const templateType = document.getElementById('ef0')?.value || 'custom';
+  const subject      = document.getElementById('ef2')?.value || '';
+  const fromAccount  = document.getElementById('ef-from')?.value || 'personal';
+  const leadActs = acts.filter(a => a.leadId === emailLeadId).sort((a,b) => new Date(b.date)-new Date(a.date));
+  const lastActivity = leadActs[0] ? `${leadActs[0].type} — ${leadActs[0].outcome} (${leadActs[0].date})` : null;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="ce-spinner" style="width:11px;height:11px;border-width:1.5px;display:inline-block;vertical-align:middle;margin-right:5px"></div> Drafting…';
+  try {
+    const res = await fetch(BACKEND + '/api/draft-email', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        leadName: lead ? `${lead.first} ${lead.last}` : '',
+        temp: lead?.temp || '', type: lead?.type || '', stage: lead?.stage || '',
+        lastActivity, notes: lead?.notes || '', templateType, subject, fromAccount,
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    ta.value = data.draft;
+    ta.focus();
+    toast('Draft ready — review and edit before sending', 'success');
+  } catch(e) {
+    toast('Draft failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles" style="font-size:11px"></i> Draft with AI';
   }
 }
 

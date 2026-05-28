@@ -1402,6 +1402,61 @@ app.post('/api/inbox', async (req, res) => {
   }
 });
 
+// ── AI Email Draft ────────────────────────────────────────────
+app.post('/api/draft-email', async (req, res) => {
+  try {
+    const { leadName, temp, type, stage, lastActivity, notes, templateType, subject, fromAccount } = req.body;
+
+    const templateGuides = {
+      openhouse:  'A warm thank-you for attending the open house. Reference the property if known. Ask if they have questions or want to schedule a follow-up showing.',
+      followup:   'A friendly check-in. Keep it short and low pressure. Ask where they are in their search/sale and offer to help.',
+      showing:    'Follow up after a showing. Ask for honest feedback on the property. Gauge interest level and next steps.',
+      pricedrop:  'Alert about a price reduction on a property they may be interested in. Create urgency without being pushy.',
+      listing:    'Request to schedule a listing presentation. Highlight value prop briefly. Suggest a few times to meet.',
+      custom:     'A professional, personalized email based on the lead context provided.',
+    };
+
+    const guide = templateGuides[templateType] || templateGuides.custom;
+    const fromLabel = fromAccount === 'compass' ? 'matthewgolden@compass.com (Compass)' : 'goldenmb@gmail.com (personal)';
+
+    const prompt = `You are Matt Golden, a real estate agent at MG Realty in Los Angeles. Write a personalized email to a lead.
+
+Lead context:
+- Name: ${leadName || 'the lead'}
+- Temperature: ${temp || 'unknown'}
+- Type: ${type || 'Buyer'}
+- Pipeline stage: ${stage || 'New'}
+- Last activity: ${lastActivity || 'none on record'}
+- Notes: ${notes || 'none'}
+- Sending from: ${fromLabel}
+
+Email purpose: ${guide}
+${subject ? `Subject line context: ${subject}` : ''}
+
+Rules:
+- Write ONLY the email body — no subject line, no "Subject:", no headers
+- Use Matt's casual-professional tone: direct, warm, real — not corporate
+- Use the lead's first name if available
+- Keep it under 150 words
+- End with a clear, low-pressure call to action
+- Sign off as: Matt Golden | MG Realty
+
+Write the email body now:`;
+
+    const resp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const draft = resp.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    res.json({ ok: true, draft });
+  } catch (e) {
+    console.error('DRAFT EMAIL ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── AI Lead Prioritizer ───────────────────────────────────────
 app.post('/api/prioritize-leads', async (req, res) => {
   try {
