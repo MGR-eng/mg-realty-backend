@@ -178,6 +178,15 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .tone-btn.active{background:#1A1914;color:#fff}
 .ce-hist-item{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
 .ce-hist-item:last-child{border-bottom:none}
+/* ── Call List Widget ── */
+.cl-item{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.cl-item:last-child{border-bottom:none}
+.cl-name{font-weight:600;font-size:13px;cursor:pointer;color:var(--text)}
+.cl-name:hover{color:var(--blue);text-decoration:underline}
+.cl-reason{font-size:11px;color:var(--text2);margin-top:2px;font-style:italic}
+.cl-phone{font-size:11px;color:var(--text2);margin-top:1px;font-family:var(--mono)}
+.cl-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-bottom:1px solid var(--border)}
+.cl-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:28px;color:var(--text2);font-size:13px}
 </style>
 </head>
 <body>
@@ -216,6 +225,23 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
   <div class="content">
     <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- AI Call List -->
+    <div style="margin-bottom:18px">
+      <div class="tw" id="call-list-widget">
+        <div class="cl-hd">
+          <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+            <i class="ti ti-phone-call" style="color:var(--green);font-size:15px"></i> Who to Call Today
+            <span id="cl-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+          </div>
+          <button class="btn btn-sm btn-primary" id="cl-refresh-btn" onclick="refreshCallList()"><i class="ti ti-refresh" style="font-size:11px"></i> Refresh</button>
+        </div>
+        <div id="cl-body">
+          <div class="cl-loading"><div class="ce-spinner"></div><span>Analyzing your leads…</span></div>
+        </div>
+      </div>
+    </div>
+
     <div class="dash2">
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Overdue + due today</div><div class="tw" id="dashDue"></div></div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Recent activity</div><div class="tw" id="dashActs"></div></div>
@@ -884,7 +910,7 @@ function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-load();renderAll();syncFromBackend();
+load();renderAll();syncFromBackend();setTimeout(loadCallList,300);
 
 // ── Lead detail panel ─────────────────────────────────────────
 function openLeadDetail(id){
@@ -1649,6 +1675,108 @@ function escHtml(str) {
     console.error('Auto digest failed:', e);
   }
 })();
+
+// ── AI Call List ──────────────────────────────────────────────
+const CL_KEY = 'mg_calllist_v1';
+
+function loadCallList() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CL_KEY) || 'null');
+    const today = new Date().toISOString().split('T')[0];
+    if (cached && cached.date === today && cached.items && cached.items.length) {
+      renderCallList(cached.items, cached.ts);
+      return;
+    }
+  } catch(e) {}
+  fetchCallList();
+}
+
+async function fetchCallList() {
+  const body = document.getElementById('cl-body');
+  const btn  = document.getElementById('cl-refresh-btn');
+  if (!body) return;
+  body.innerHTML = `<div class="cl-loading"><div class="ce-spinner"></div><span>Analyzing your leads…</span></div>`;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="ce-spinner" style="width:11px;height:11px;border-width:1.5px"></div>'; }
+
+  const active = leads.filter(l => l.temp !== 'done');
+  if (!active.length) {
+    body.innerHTML = `<div style="padding:22px;text-align:center;color:var(--text2);font-size:13px"><i class="ti ti-users" style="font-size:22px;display:block;margin-bottom:8px;color:var(--border)"></i>No active leads yet.</div>`;
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh" style="font-size:11px"></i> Refresh'; }
+    return;
+  }
+
+  try {
+    const res  = await fetch(BACKEND + '/api/prioritize-leads', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leads: active })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    const ts = Date.now();
+    try { localStorage.setItem(CL_KEY, JSON.stringify({ date: new Date().toISOString().split('T')[0], items: data.prioritized, ts })); } catch(e) {}
+    renderCallList(data.prioritized, ts);
+  } catch(e) {
+    body.innerHTML = `<div style="padding:18px;text-align:center;color:var(--red);font-size:13px">${e.message}</div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh" style="font-size:11px"></i> Refresh'; }
+  }
+}
+
+function renderCallList(items, ts) {
+  const body = document.getElementById('cl-body');
+  const upd  = document.getElementById('cl-updated');
+  if (!body) return;
+
+  if (ts && upd) {
+    const ago = Math.round((Date.now() - ts) / 60000);
+    upd.textContent = ago < 2 ? '· just now' : `· ${ago}m ago`;
+  }
+
+  if (!items || !items.length) {
+    body.innerHTML = `<div style="padding:22px;text-align:center;color:var(--text2);font-size:13px">No prioritized leads found.</div>`;
+    return;
+  }
+
+  const tempColors = { hot:'b-red', warm:'b-amber', cold:'b-blue' };
+  const stageShort = { New:'New', Contacted:'Contacted', Showing:'Showing', Offer:'🔥 Offer', Closed:'Closed' };
+
+  body.innerHTML = items.map(item => {
+    const lead = leads.find(l => l.id === item.id);
+    if (!lead) return '';
+    const tc = tempColors[lead.temp] || 'b-neutral';
+    const stage = stageShort[lead.stage] || lead.stage || '';
+    const phone = lead.phone || '';
+    return `<div class="cl-item">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+          <span class="cl-name" onclick="openLeadDetail('${lead.id}')">${lead.first || ''} ${lead.last || ''}</span>
+          <span class="badge ${tc}" style="font-size:10px">${lead.temp||'cold'}</span>
+          ${stage ? `<span class="badge b-neutral" style="font-size:10px">${stage}</span>` : ''}
+        </div>
+        <div class="cl-reason">${item.reason || ''}</div>
+        ${phone ? `<div class="cl-phone"><a href="tel:${phone}" style="color:var(--text2);text-decoration:none">${phone}</a></div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${phone ? `<a href="tel:${phone}" class="btn btn-sm btn-green"><i class="ti ti-phone" style="font-size:11px"></i></a>` : ''}
+        <button class="btn btn-sm btn-primary" onclick="quickLogCall('${lead.id}')"><i class="ti ti-edit" style="font-size:11px"></i> Log</button>
+      </div>
+    </div>`;
+  }).filter(Boolean).join('');
+}
+
+function refreshCallList() {
+  try { localStorage.removeItem(CL_KEY); } catch(e) {}
+  fetchCallList();
+}
+
+function quickLogCall(leadId) {
+  openAct(leadId);
+  setTimeout(() => {
+    const el = document.getElementById('af1');
+    if (el) el.value = 'call';
+  }, 100);
+}
 
 // Load content history (must be after Content Engine declarations)
 loadHistory();

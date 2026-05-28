@@ -1161,5 +1161,72 @@ Return only valid JSON, no markdown code blocks, no extra text.`;
   }
 });
 
+// ── AI Lead Prioritizer ───────────────────────────────────────
+app.post('/api/prioritize-leads', async (req, res) => {
+  try {
+    const { leads } = req.body;
+    if (!leads || !leads.length) return res.json({ ok: true, prioritized: [] });
+
+    const today = new Date().toISOString().split('T')[0];
+    const active = leads
+      .filter(l => l.temp !== 'done')
+      .slice(0, 40); // cap to keep prompt manageable
+
+    if (!active.length) return res.json({ ok: true, prioritized: [] });
+
+    const leadSummaries = active.map(l => ({
+      id: l.id,
+      name: `${l.first || ''} ${l.last || ''}`.trim(),
+      temp: l.temp || 'cold',
+      type: l.type || 'Buyer',
+      stage: l.stage || 'New',
+      followup: l.followup || null,
+      lastContact: l.lastContact || null,
+      notes: (l.notes || '').substring(0, 120),
+      phone: l.phone || null,
+    }));
+
+    const prompt = `You are a real estate sales coach for MG Realty in Los Angeles. Today is ${today}.
+
+Here are Matt's active leads (JSON):
+${JSON.stringify(leadSummaries, null, 2)}
+
+Your job: Pick the top 6 leads Matt should call or text TODAY. Prioritize by:
+1. Overdue follow-ups (followup date before today)
+2. Hot temperature
+3. Active pipeline stages (Offer, Showing — close to closing)
+4. Leads with no recent contact
+5. Warm leads with upcoming follow-up dates
+
+Ignore any lead with temp "done".
+
+Return ONLY a valid JSON array (no markdown, no explanation) with exactly this shape:
+[{"id":"<lead_id>","reason":"<1 short sentence, max 10 words, why call them today>"},...]
+
+Return 6 leads maximum. If fewer than 6 active leads exist, return all of them.`;
+
+    const resp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const raw = resp.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    let prioritized;
+    try {
+      prioritized = JSON.parse(raw);
+    } catch (e) {
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (match) prioritized = JSON.parse(match[0]);
+      else throw new Error('AI returned non-JSON: ' + raw.substring(0, 200));
+    }
+
+    res.json({ ok: true, prioritized });
+  } catch (e) {
+    console.error('PRIORITIZE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
