@@ -344,6 +344,8 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('commission',this)"><i class="ti ti-coin"></i><span>Commission</span></button>
     <button class="nav-item" onclick="showPane('agents',this)"><i class="ti ti-id-badge"></i><span>Agents</span></button>
     <button class="nav-item" onclick="showPane('content',this)"><i class="ti ti-brand-instagram"></i><span>Content</span></button>
+    <div class="nav-lbl">Tools</div>
+    <button class="nav-item" onclick="openCommCalc()"><i class="ti ti-calculator"></i><span>Comm. Calc</span></button>
     <div class="nav-lbl">Automate</div>
     <button class="nav-item" onclick="sendDigest()"><i class="ti ti-mail"></i><span>Send digest</span></button>
     <button class="nav-item" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
@@ -703,6 +705,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   </div>
   <div class="dp-actions" id="dp-actions"></div>
 </div>
+
+<!-- Property Docs Modal -->
+<div class="modal-overlay" id="mPropDocs"><div class="modal" style="max-width:500px">
+  <div class="modal-title" id="propDocsTitle">📎 Property Documents</div>
+  <div style="padding:0 20px 8px">
+    <input type="file" id="propDocFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadPropDocs(this)">
+    <button class="btn" id="propDocUploadBtn" onclick="document.getElementById('propDocFile').click()" style="width:100%;border:1.5px dashed var(--border);background:var(--surface2);color:var(--text2);font-size:12px;padding:10px;gap:6px;margin-bottom:8px">
+      <i class="ti ti-cloud-upload"></i> Upload documents (PDF, Word, images)
+    </button>
+    <div id="propDocStatus" style="display:none;font-size:11px;text-align:center;margin-bottom:8px;color:var(--amber)"></div>
+  </div>
+  <div id="propDocList" style="padding:0 20px;max-height:320px;overflow-y:auto;min-height:60px"></div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mPropDocs')">Done</button></div>
+</div></div>
 
 <!-- Property Modal -->
 <div class="modal-overlay" id="mProp"><div class="modal">
@@ -1731,6 +1747,10 @@ function renderProperties(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
         <span class="badge ${statBadge(p.status)}">${p.status}</span>
         <div style="display:flex;gap:4px">
+          <button class="btn btn-sm" onclick="openPropDocs('${p.id}')" title="Documents" style="position:relative">
+            <i class="ti ti-paperclip" style="font-size:11px"></i>
+            ${(p.docs||[]).length?`<span style="position:absolute;top:-4px;right:-4px;background:var(--amber);color:#000;font-size:8px;font-weight:800;border-radius:999px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 2px">${(p.docs||[]).length}</span>`:''}
+          </button>
           <button class="btn btn-sm" onclick="openEditProp('${p.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
           <button class="btn btn-red btn-sm" onclick="delProp('${p.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
         </div>
@@ -1770,11 +1790,82 @@ function openEditProp(id){
 function saveProp(){
   const g=id=>document.getElementById(id).value.trim();
   if(!g('pf1')){alert('Address required');return;}
-  const prop={id:editPropId||'p'+Date.now(),address:g('pf1'),price:g('pf2').replace(/[$,]/g,''),status:document.getElementById('pf3').value,beds:g('pf4'),baths:g('pf5'),sqft:g('pf6'),type:document.getElementById('pf7').value,leadId:document.getElementById('pf8').value,notes:g('pf9')};
+  const existing=editPropId?props.find(p=>p.id===editPropId):{};
+  const prop={id:editPropId||'p'+Date.now(),address:g('pf1'),price:g('pf2').replace(/[$,]/g,''),status:document.getElementById('pf3').value,beds:g('pf4'),baths:g('pf5'),sqft:g('pf6'),type:document.getElementById('pf7').value,leadId:document.getElementById('pf8').value,notes:g('pf9'),docs:existing.docs||[]};
   if(editPropId){props=props.map(p=>p.id===editPropId?prop:p);}else{props.push(prop);}
   editPropId=null;persist();closeModal('mProp');renderProperties();toast(prop.id&&editPropId?'Property updated':'Property added');
 }
 function delProp(id){if(confirm('Delete this property?')){props=props.filter(p=>p.id!==id);persist();renderProperties();}}
+
+// ── Property Documents ────────────────────────────────────────
+let propDocsId=null;
+function openPropDocs(propId){
+  propDocsId=propId;const p=props.find(x=>x.id===propId);if(!p)return;
+  document.getElementById('propDocsTitle').textContent=`📎 ${p.address}`;
+  document.getElementById('propDocStatus').style.display='none';
+  renderPropDocList(p);openModal('mPropDocs');
+}
+function renderPropDocList(p){
+  const el=document.getElementById('propDocList');const docs=p.docs||[];
+  if(!docs.length){el.innerHTML='<div class="empty" style="padding:20px 0">No documents yet — upload an RLA, inspection report, or any contract</div>';return;}
+  const iconFor=name=>{const ext=name.split('.').pop().toLowerCase();if(ext==='pdf')return 'ti-file-type-pdf';if(['doc','docx'].includes(ext))return 'ti-file-type-doc';if(['jpg','jpeg','png'].includes(ext))return 'ti-photo';return 'ti-file';};
+  const fmtSize=b=>b>1048576?`${(b/1048576).toFixed(1)} MB`:`${Math.round(b/1024)} KB`;
+  el.innerHTML=docs.map(d=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <i class="ti ${iconFor(d.name)}" style="font-size:20px;color:var(--amber);flex-shrink:0"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.name}</div>
+        <div style="font-size:11px;color:var(--text2)">${fmtSize(d.size)} · ${new Date(d.uploadedAt).toLocaleDateString()}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn btn-sm" onclick="downloadPropDoc('${p.id}','${d.id}')" title="Download"><i class="ti ti-download" style="font-size:11px"></i></button>
+        ${d.name.toLowerCase().endsWith('.pdf')?`<button class="btn btn-sm" style="color:var(--amber)" onclick="parseDocToCalc('${p.id}','${d.id}')" title="Parse into Calc"><i class="ti ti-calculator" style="font-size:11px"></i></button>`:''}
+        <button class="btn btn-red btn-sm" onclick="deletePropDoc('${p.id}','${d.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
+      </div>
+    </div>`).join('');
+}
+async function uploadPropDocs(input){
+  const files=Array.from(input.files);if(!files.length)return;
+  const statusEl=document.getElementById('propDocStatus');const btnEl=document.getElementById('propDocUploadBtn');
+  statusEl.style.display='block';statusEl.style.color='var(--amber)';statusEl.textContent=`Uploading ${files.length} file${files.length>1?'s':''}…`;btnEl.disabled=true;
+  try{
+    const p=props.find(x=>x.id===propDocsId);if(!p)throw new Error('Property not found');if(!p.docs)p.docs=[];
+    for(const file of files){
+      const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>resolve(e.target.result);reader.onerror=reject;reader.readAsDataURL(file);});
+      p.docs.push({id:'doc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),name:file.name,size:file.size,data,uploadedAt:new Date().toISOString()});
+    }
+    await persist();renderPropDocList(p);renderProperties();
+    statusEl.style.color='var(--green)';statusEl.textContent=`✓ ${files.length} file${files.length>1?'s':''} uploaded`;
+  }catch(e){statusEl.style.color='var(--red)';statusEl.textContent='✗ Upload failed: '+e.message;}
+  finally{btnEl.disabled=false;input.value='';}
+}
+function downloadPropDoc(propId,docId){const p=props.find(x=>x.id===propId);const d=p?.docs?.find(x=>x.id===docId);if(!d)return;const a=document.createElement('a');a.href=d.data;a.download=d.name;a.click();}
+async function deletePropDoc(propId,docId){
+  if(!confirm('Remove this document?'))return;
+  const p=props.find(x=>x.id===propId);if(!p)return;
+  p.docs=(p.docs||[]).filter(d=>d.id!==docId);await persist();renderPropDocList(p);renderProperties();
+}
+async function parseDocToCalc(propId,docId){
+  const p=props.find(x=>x.id===propId);const d=p?.docs?.find(x=>x.id===docId);if(!d||!d.data)return;
+  closeModal('mPropDocs');openCommCalc();
+  const statusEl=document.getElementById('cc-parse-status');const btnEl=document.getElementById('cc-upload-btn');
+  statusEl.style.display='block';statusEl.style.color='var(--amber)';statusEl.textContent=`✦ Parsing ${d.name}…`;btnEl.disabled=true;
+  try{
+    const base64=d.data.split(',')[1];
+    const res=await fetch('/api/parse-rla',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pdfBase64:base64,filename:d.name})});
+    const data=await res.json();if(!data.ok)throw new Error(data.error||'Parse failed');
+    const f=data.fields;let filled=[];
+    if(f.listPrice){document.getElementById('cc1').value=f.listPrice.toLocaleString();filled.push('price');}
+    if(f.commissionPct){document.getElementById('cc2').value=f.commissionPct;filled.push('commission');}
+    if(f.side){const m={both:'1',buyer:'0.5',seller:'0.5'};if(m[f.side])document.getElementById('cc3').value=m[f.side];filled.push('side');}
+    if(f.compassSplit){document.getElementById('cc4').value=f.compassSplit;filled.push('Compass split');}
+    calcComm();
+    statusEl.textContent=filled.length?`✓ Pulled from ${d.name}: ${filled.join(', ')}`:'⚠️ No commission details found';
+    statusEl.style.color=filled.length?'var(--green)':'var(--amber)';
+  }catch(e){statusEl.textContent='✗ '+e.message;statusEl.style.color='var(--red)';}
+  finally{btnEl.disabled=false;}
+}
+
 
 // ── Tasks ─────────────────────────────────────────────────────
 function renderTasks(){
