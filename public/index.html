@@ -464,7 +464,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Overdue + due today</div><div class="tw" id="dashDue"></div></div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Recent activity</div><div class="tw" id="dashActs"></div></div>
     </div>
-    <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Upcoming appointments</div><div class="tw" id="dashAppts"></div></div>
+    <div class="dash2">
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Upcoming appointments</div><div class="tw" id="dashAppts"></div></div>
+      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">🏠 Scheduled tours</div><div class="tw" id="dashTours"></div></div>
+    </div>
     <div class="dash2" style="margin-top:16px">
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div><div class="tw" id="dashSources"></div></div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Pipeline stages</div><div class="tw" id="dashStages"></div></div>
@@ -1092,6 +1095,18 @@ function renderDashAppts(){
   el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Date</th><th>Time</th></tr></thead><tbody>${up.map(a=>`<tr><td class="ns">${a.leadName}</td><td><span class="badge b-showing">${a.type}</span></td><td style="font-size:12px;font-family:var(--mono)">${a.date}</td><td style="font-size:12px;color:var(--text2)">${a.time}</td></tr>`).join('')}</tbody></table>`;
 }
 
+async function renderDashTours(){
+  const el=document.getElementById('dashTours');if(!el)return;
+  el.innerHTML='<div class="empty" style="color:var(--text3);font-size:12px">Loading…</div>';
+  try{
+    const r=await fetch('/api/tours');const d=await r.json();
+    if(!d.ok||!d.tours.length){el.innerHTML='<div class="empty">No tours scheduled</div>';return;}
+    const fmt=t=>{const[y,m,day]=t.date.split('-');return `${m}/${day}`;};
+    const fmtTime=t=>{ if(!t.time)return ''; const[h,mi]=t.time.split(':'); const hr=+h; return `${hr>12?hr-12:hr||12}:${mi}${hr>=12?'pm':'am'}`; };
+    el.innerHTML=`<table><thead><tr><th>Who</th><th>Property</th><th>Date</th><th>Time</th></tr></thead><tbody>${d.tours.slice(0,5).map(t=>`<tr><td class="ns">${t.leadName}</td><td style="font-size:12px;color:var(--text2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.address}</td><td style="font-size:12px;font-family:var(--mono)">${fmt(t)}</td><td style="font-size:12px;color:var(--amber)">${fmtTime(t)}</td></tr>`).join('')}</tbody></table>`;
+  }catch(e){el.innerHTML='<div class="empty">Could not load tours</div>';}
+}
+
 function renderDashSources(){
   const el=document.getElementById('dashSources');if(!el)return;
   const active=leads.filter(l=>l.temp!=='done');
@@ -1200,7 +1215,7 @@ function renderAppts(){
   el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
 }
 
-function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashSources();renderDashStages();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();populatePropSelect();updateBadges();}
 
 async function sendDigest(){
   setSyncStatus('busy','Sending digest…');

@@ -939,6 +939,21 @@ app.get('/link', async (req, res) => {
   .success-title{font-size:18px;font-weight:700;margin-bottom:6px;color:var(--gold)}
   .success-sub{font-size:13px;color:var(--text2);line-height:1.6}
 
+  /* Tour button */
+  .tour-btn{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 20px 24px;padding:16px;background:linear-gradient(135deg,var(--gold),#8B6520);border-radius:var(--rl);font-size:15px;font-weight:700;color:#fff;cursor:pointer;border:none;width:calc(100% - 40px);font-family:inherit;letter-spacing:0.01em;transition:opacity 0.15s}
+  .tour-btn:active{opacity:0.85}
+
+  /* Tour modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s}
+  .modal-overlay.open{opacity:1;pointer-events:all}
+  .modal-sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform 0.3s cubic-bezier(.4,0,.2,1);padding-bottom:env(safe-area-inset-bottom)}
+  .modal-overlay.open .modal-sheet{transform:translateY(0)}
+  .modal-hd{background:linear-gradient(135deg,var(--gold),#8B6520);padding:20px 20px 18px;border-radius:20px 20px 0 0;position:sticky;top:0}
+  .modal-hd-title{font-size:17px;font-weight:700;color:#fff;margin-bottom:2px}
+  .modal-hd-sub{font-size:12px;color:rgba(255,255,255,0.75)}
+  .modal-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:28px;height:28px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .modal-body{padding:20px}
+
   /* Footer */
   .footer{text-align:center;margin-top:32px;font-size:11px;color:var(--text3);padding:0 20px}
 </style>
@@ -976,6 +991,53 @@ app.get('/link', async (req, res) => {
   View My Listings on Compass
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
 </a>
+
+<!-- Book a Tour button -->
+<button class="tour-btn" onclick="openTourModal()">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  Schedule a Property Tour
+</button>
+
+<!-- Tour booking modal -->
+<div class="modal-overlay" id="tourModal" onclick="closeTourOnBackdrop(event)">
+  <div class="modal-sheet">
+    <div class="modal-hd" style="position:relative">
+      <div class="modal-hd-title">📅 Schedule a Tour</div>
+      <div class="modal-hd-sub">Pick a property, date, and time that works for you</div>
+      <button class="modal-close" onclick="closeTourModal()">✕</button>
+    </div>
+    <div class="modal-body" id="tourFormBody">
+      <form id="tourForm" onsubmit="submitTour(event)">
+        <div class="form-row">
+          <div class="form-group"><label>First name *</label><input type="text" name="first" placeholder="Jane" required></div>
+          <div class="form-group"><label>Last name</label><input type="text" name="last" placeholder="Smith"></div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group"><label>Phone *</label><input type="tel" name="phone" placeholder="(323) 555-0100" required></div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group"><label>Email</label><input type="email" name="email" placeholder="jane@email.com"></div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group"><label>Property address *</label><input type="text" name="address" placeholder="123 Sunset Blvd, Los Angeles, CA" required></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Preferred date *</label><input type="date" name="date" required></div>
+          <div class="form-group"><label>Preferred time *</label><input type="time" name="time" required></div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group"><label>Notes</label><textarea name="notes" placeholder="Anything I should know ahead of time…"></textarea></div>
+        </div>
+        <button type="submit" class="submit-btn" id="tourSubmitBtn">Book Tour →</button>
+      </form>
+      <div class="success-msg" id="tourSuccessMsg">
+        <div class="success-icon">🗓️</div>
+        <div class="success-title">Tour Scheduled!</div>
+        <div class="success-sub">I'll confirm via text shortly. See you there!</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Lead capture form -->
 <div class="form-wrap">
@@ -1046,6 +1108,54 @@ app.get('/link', async (req, res) => {
 <div class="footer">Matt Golden · MG Realty · Los Angeles<br>DRE #02130422 · goldenmb@gmail.com</div>
 
 <script>
+// Tour modal
+function openTourModal() {
+  // Set min date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.querySelector('#tourForm [name="date"]').min = today;
+  document.getElementById('tourModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeTourModal() {
+  document.getElementById('tourModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeTourOnBackdrop(e) {
+  if (e.target === document.getElementById('tourModal')) closeTourModal();
+}
+async function submitTour(e) {
+  e.preventDefault();
+  const btn = document.getElementById('tourSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Booking…';
+  const form = e.target;
+  const data = {
+    first: form.first.value.trim(),
+    last: form.last.value.trim(),
+    phone: form.phone.value.trim(),
+    email: form.email.value.trim(),
+    address: form.address.value.trim(),
+    date: form.date.value,
+    time: form.time.value,
+    notes: form.notes.value.trim()
+  };
+  try {
+    const res = await fetch('/api/book-tour', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.error || 'Something went wrong');
+    document.getElementById('tourForm').style.display = 'none';
+    document.getElementById('tourSuccessMsg').style.display = 'block';
+    document.body.style.overflow = '';
+  } catch(err) {
+    btn.disabled = false;
+    btn.textContent = 'Book Tour →';
+    alert('Something went wrong — please try again or text me directly.');
+  }
+}
+
 async function submitForm(e) {
   e.preventDefault();
   const btn = document.getElementById('submitBtn');
@@ -2381,6 +2491,131 @@ Respond with ONLY valid JSON (no markdown, no backticks):
     }
 
     res.json({ ok: true, suggestion });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Property Tour Scheduler ───────────────────────────────────
+app.post('/api/book-tour', async (req, res) => {
+  try {
+    const { first, last, phone, email, address, date, time, notes } = req.body;
+    if (!first || !phone || !date || !time) return res.status(400).json({ ok: false, error: 'Missing required fields' });
+
+    const crm = await readCRM();
+
+    // Create or find lead
+    const existingLead = crm.leads.find(l => l.phone === phone);
+    let leadId = existingLead?.id;
+    if (!existingLead) {
+      leadId = `lead_${Date.now()}`;
+      const newLead = {
+        id: leadId,
+        name: `${first} ${last || ''}`.trim(),
+        phone, email: email || '',
+        status: 'New',
+        source: 'Tour Request',
+        notes: `Tour request: ${address || 'Address TBD'}\n${notes || ''}`.trim(),
+        createdAt: new Date().toISOString(),
+        followUpDate: date
+      };
+      crm.leads.push(newLead);
+    }
+
+    // Add activity
+    const activityId = `act_${Date.now()}`;
+    crm.activities.push({
+      id: activityId, leadId,
+      type: 'tour_booked',
+      note: `Tour booked: ${address || 'TBD'} on ${date} at ${time}`,
+      createdAt: new Date().toISOString()
+    });
+
+    // Create task for Matt
+    const taskId = `task_${Date.now()}`;
+    crm.tasks.push({
+      id: taskId, leadId,
+      title: `🏠 Tour: ${address || 'TBD'} — ${first} ${last || ''}`.trim(),
+      dueDate: date, dueTime: time,
+      status: 'pending', priority: 'high',
+      type: 'tour',
+      notes: `Phone: ${phone}${email ? ' | Email: ' + email : ''}${notes ? '\nNotes: ' + notes : ''}`,
+      createdAt: new Date().toISOString()
+    });
+
+    // Save tour request record
+    const tours = crm.tours || [];
+    tours.push({
+      id: `tour_${Date.now()}`,
+      leadId, leadName: `${first} ${last || ''}`.trim(),
+      phone, email: email || '',
+      address: address || 'TBD',
+      date, time,
+      notes: notes || '',
+      status: 'scheduled',
+      createdAt: new Date().toISOString()
+    });
+    crm.tours = tours;
+
+    await writeCRM(crm);
+
+    // Send confirmation email to lead
+    if (email) {
+      const tourDate = new Date(`${date}T${time}`);
+      const friendly = tourDate.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
+      try {
+        await resend.emails.send({
+          from: 'Matt Golden <matt@mg-realty.co>',
+          to: email,
+          subject: `Tour confirmed: ${address || 'Property Tour'} — ${friendly}`,
+          html: `
+<div style="font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto;background:#fff;padding:32px 24px">
+  <h2 style="margin:0 0 6px;font-size:22px;color:#0D0D0D">Your tour is confirmed! 🏡</h2>
+  <p style="margin:0 0 24px;color:#666;font-size:14px">Here's what you need to know:</p>
+  <div style="background:#F9F7F3;border-radius:10px;padding:20px;margin-bottom:24px">
+    <div style="margin-bottom:12px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999">Property</strong><div style="font-size:16px;font-weight:700;color:#0D0D0D;margin-top:3px">${address || 'Address to be confirmed'}</div></div>
+    <div style="margin-bottom:12px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999">Date & Time</strong><div style="font-size:16px;font-weight:700;color:#C8973A;margin-top:3px">${friendly} PT</div></div>
+    <div><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999">Your Agent</strong><div style="font-size:15px;font-weight:600;color:#0D0D0D;margin-top:3px">Matt Golden · (323) 555-0100</div></div>
+  </div>
+  <p style="font-size:14px;color:#444;line-height:1.6;margin:0 0 16px">I'll meet you at the property. If anything comes up or you need to reschedule, just text or call me directly.</p>
+  <p style="font-size:13px;color:#999;margin:0">Matt Golden · MG Realty · DRE #02130422</p>
+</div>`
+        });
+      } catch(emailErr) { console.error('Tour confirmation email failed:', emailErr.message); }
+    }
+
+    // Notify Matt
+    try {
+      const token = await googleToken();
+      const tourDate = new Date(`${date}T${time}`);
+      const friendly = tourDate.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
+      const subject = encodeSubject(`🏠 New Tour Request — ${first} ${last || ''} · ${date}`);
+      const body = `New tour booked via your bio link:\n\nName: ${first} ${last || ''}\nPhone: ${phone}\nEmail: ${email || 'N/A'}\nAddress: ${address || 'TBD'}\nDate/Time: ${friendly} PT\nNotes: ${notes || 'None'}\n\n— MG Realty CRM`;
+      const raw = btoa(unescape(encodeURIComponent(
+        `From: MG Realty CRM <goldenmb@gmail.com>\r\nTo: goldenmb@gmail.com\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n${body}`
+      ))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw })
+      });
+    } catch(notifyErr) { console.error('Tour notify email failed:', notifyErr.message); }
+
+    res.json({ ok: true, leadId, taskId });
+  } catch (e) {
+    console.error('book-tour error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Get upcoming tours ────────────────────────────────────────
+app.get('/api/tours', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const today = new Date().toISOString().split('T')[0];
+    const tours = (crm.tours || [])
+      .filter(t => t.date >= today)
+      .sort((a, b) => `${a.date}${a.time}` < `${b.date}${b.time}` ? -1 : 1);
+    res.json({ ok: true, tours });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
