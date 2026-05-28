@@ -3298,5 +3298,51 @@ Make the data realistic for ${neighborhood}, Los Angeles in ${monthYear}. Use ac
   }
 });
 
+// ── AI Deal Analyzer ──────────────────────────────────────────
+app.post('/api/deal-analyze', async (req, res) => {
+  try {
+    const { listing, buyers } = req.body;
+    if (!listing) return res.status(400).json({ ok: false, error: 'Listing text required' });
+
+    const buyerContext = buyers && buyers.length
+      ? buyers.map((b, i) => `Buyer ${i+1}: ${b.first} ${b.last} | Budget: ${b.prop || 'unspecified'} | Temp: ${b.temp} | Notes: ${b.notes || 'none'}`).join('\n')
+      : 'No active buyers provided.';
+
+    const prompt = `You are a sharp real estate analyst helping agent Matt Golden (MG Realty, Los Angeles) evaluate a listing.
+
+LISTING:
+${listing}
+
+ACTIVE BUYERS:
+${buyerContext}
+
+Analyze this listing and respond with valid JSON only (no markdown, no commentary):
+{
+  "verdict": "BUY" or "PASS",
+  "score": number 1-10,
+  "headline": "one punchy sentence summarizing the deal",
+  "pros": ["pro1", "pro2", "pro3"],
+  "cons": ["con1", "con2"],
+  "matchedBuyers": [{"name": "First Last", "reason": "why they'd want this"}],
+  "priceRead": "your read on whether the asking price is fair, high, or a steal based on LA market knowledge",
+  "agentNote": "one tactical tip for Matt on how to approach this deal"
+}`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    let raw = msg.content[0].text.trim();
+    if (raw.startsWith('```')) raw = raw.replace(/```json\n?|```\n?/g, '').trim();
+    const analysis = JSON.parse(raw);
+    res.json({ ok: true, analysis });
+  } catch (e) {
+    console.error('DEAL ANALYZE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
