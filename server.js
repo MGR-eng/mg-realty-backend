@@ -2399,6 +2399,33 @@ ${upcomingAppts.length > 0 ? `
   </table>
 </div>` : ''}
 
+${(() => {
+      const withRef = crm.leads.filter(l => l.referredBy && l.referredBy.trim());
+      if (!withRef.length) return '';
+      const counts = {}; const closed = {};
+      withRef.forEach(l => {
+        const r = l.referredBy.trim();
+        counts[r] = (counts[r] || 0) + 1;
+        if (l.stage === 'closed' || l.stage === 'Closed') closed[r] = (closed[r] || 0) + 1;
+      });
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      return `<div class="card">
+  <div class="section-title">🤝 Top Referrers</div>
+  <table>
+    <tr><th>Name</th><th>Leads Sent</th><th>Closed</th></tr>
+    ${sorted.map(([name, count], i) => {
+      const medals = ['🥇','🥈','🥉'];
+      const cl = closed[name] || 0;
+      return `<tr>
+        <td><div class="name">${medals[i] || ''}${medals[i] ? ' ' : ''}${name}</div></td>
+        <td style="font-weight:700;color:#111">${count}</td>
+        <td style="color:${cl ? '#059669' : '#a1a1aa'};font-weight:${cl ? '700' : '400'}">${cl || '—'}</td>
+      </tr>`;
+    }).join('')}
+  </table>
+</div>`;
+    })()}
+
 <div class="footer">MG Realty · Matt Golden · goldenmb@gmail.com<br>Weekly digest sent every Sunday evening</div>
 </div></body></html>`;
 

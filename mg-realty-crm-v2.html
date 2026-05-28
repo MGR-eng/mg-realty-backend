@@ -430,6 +430,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div><div class="tw" id="dashSources"></div></div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Pipeline stages</div><div class="tw" id="dashStages"></div></div>
     </div>
+    <div style="margin-top:16px"><div style="font-size:13px;font-weight:600;margin-bottom:9px">🤝 Referral leaderboard</div><div class="tw" id="dashReferrals"></div></div>
   </div>
 </div>
 
@@ -761,6 +762,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select></div>
     <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Website">Website</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Other">Other</option></select></div>
     <div class="fgg full"><label>Agent name</label><input id="lf14" placeholder="First and last name"></div>
+    <div class="fgg full"><label>Referred by</label><input id="lf15" placeholder="e.g. John Smith (past client)"></div>
     <div class="fgg full">
       <label>Agent contact</label>
       <div id="agentContactRows" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -970,6 +972,34 @@ async function renderDashTours(){
   }catch(e){el.innerHTML='<div class="empty">Could not load tours</div>';}
 }
 
+function renderDashReferrals(){
+  const el=document.getElementById('dashReferrals');if(!el)return;
+  const withRef=leads.filter(l=>l.referredBy&&l.referredBy.trim());
+  if(!withRef.length){el.innerHTML='<div class="empty">No referrals tracked yet — add a "Referred by" when editing a lead</div>';return;}
+  const counts={};const closed={};
+  withRef.forEach(l=>{
+    const r=l.referredBy.trim();
+    counts[r]=(counts[r]||0)+1;
+    if(l.stage==='closed'||l.stage==='Closed') closed[r]=(closed[r]||0)+1;
+  });
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max=sorted[0][1];
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${sorted.map(([name,count],i)=>{
+    const cl=closed[name]||0;
+    const pct=Math.round(count/max*100);
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    return `<div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-size:12px;font-weight:600">${medal}${medal?' ':''}${name}</span>
+        <span style="font-size:11px;color:var(--text2)">${count} lead${count>1?'s':''}${cl?` · <span style="color:var(--green)">${cl} closed</span>`:''}</span>
+      </div>
+      <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${i===0?'var(--amber)':'var(--border2, #444)'};border-radius:3px;transition:width 0.4s"></div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
 function renderDashSources(){
   const el=document.getElementById('dashSources');if(!el)return;
   const active=leads.filter(l=>l.temp!=='done');
@@ -1074,7 +1104,7 @@ function renderAppts(){
   el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
 }
 
-function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();populatePropSelect();updateBadges();}
 
 async function sendDigest(){
   setSyncStatus('busy','Sending digest…');
@@ -1138,6 +1168,7 @@ function openEdit(id){
   document.getElementById('lf12').value=l.stage||'new';
   document.getElementById('lf13').value=l.source||'Open House';
   document.getElementById('lf14').value=l.agentName||'';
+  document.getElementById('lf15').value=l.referredBy||'';
   document.getElementById('agentContactRows').innerHTML='';
   const agContacts=l.agentContacts||[];
   if(agContacts.length){agContacts.forEach(c=>addAgentContactRow(c.type,c.value));}else{addAgentContactRow();}
@@ -1147,7 +1178,7 @@ function saveLead(){
   const g=id=>document.getElementById(id).value.trim();
   if(!g('lf1')){alert('First name required');return;}
   const ex=editLeadId?leads.find(l=>l.id===editLeadId):{};
-  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,agentName:g('lf14'),agentContacts:getAgentContacts(),lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
+  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,agentName:g('lf14'),referredBy:g('lf15'),agentContacts:getAgentContacts(),lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||''};
   if(editLeadId){leads=leads.map(l=>l.id===editLeadId?lead:l);}else{leads.push(lead);}
   editLeadId=null;persist();closeModal('mLead');renderAll();toast(editLeadId?'Lead updated':'Lead added');
 }
@@ -1218,7 +1249,8 @@ function openLeadDetail(id){
     ${l.prop?`<div class="dp-row"><i class="ti ti-home"></i><span>${l.prop}</span></div>`:''}
     ${l.ohdate?`<div class="dp-row"><i class="ti ti-door-enter"></i><span>Open house: ${l.ohdate}</span></div>`:''}
     <div class="dp-row"><i class="ti ti-calendar-due"></i><span style="${fuCls}">Follow-up: ${fuStr}${l.method?' via '+l.method:''}</span></div>
-    ${l.lastcontact?`<div class="dp-row"><i class="ti ti-clock"></i><span>Last contact: ${rel(l.lastcontact)}${l.lcmethod?' via '+l.lcmethod:''}</span></div>`:''}`;
+    ${l.lastcontact?`<div class="dp-row"><i class="ti ti-clock"></i><span>Last contact: ${rel(l.lastcontact)}${l.lcmethod?' via '+l.lcmethod:''}</span></div>`:''}
+    ${l.referredBy?`<div class="dp-row"><i class="ti ti-users"></i><span style="color:var(--amber)">Referred by: <strong>${l.referredBy}</strong></span></div>`:''}`;
 
   // Agent
   const agSec=document.getElementById('dp-agent');
