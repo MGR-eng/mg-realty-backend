@@ -76,6 +76,11 @@ async function refreshGoogleToken(refreshToken) {
   return { token: data.access_token, expiry: Date.now() + (data.expires_in || 3600) * 1000 };
 }
 
+// Encode email subject for RFC 2047 (handles emojis, em dash, etc.)
+function encodeSubject(str) {
+  return `=?UTF-8?B?${Buffer.from(str).toString('base64')}?=`;
+}
+
 async function googleToken() {
   if (cachedToken && Date.now() < tokenExpiry - 60000) return cachedToken;
   const { token, expiry } = await refreshGoogleToken(process.env.GOOGLE_REFRESH_TOKEN);
@@ -360,7 +365,7 @@ app.post('/email/send', async (req, res) => {
     const rawMessage = [
       `From: ${fromAddress}`,
       `To: ${to}`,
-      `Subject: ${subject || '(no subject)'}`,
+      `Subject: ${encodeSubject(subject || '(no subject)')}`,
       `MIME-Version: 1.0`,
       `Content-Type: text/html; charset=utf-8`,
       ``,
@@ -1810,7 +1815,7 @@ Write the summary in 2nd person ("You have…", "Your top priority…"). Sound l
     const rawMessage = [
       `From: Matt Golden | MG Realty <goldenmb@gmail.com>`,
       `To: goldenmb@gmail.com`,
-      `Subject: ${subject}`,
+      `Subject: ${encodeSubject(subject)}`,
       `MIME-Version: 1.0`,
       `Content-Type: text/html; charset=utf-8`,
       ``,
@@ -2066,7 +2071,7 @@ ${upcomingAppts.length > 0 ? `
     const rawMessage = [
       `From: MG Realty <goldenmb@gmail.com>`,
       `To: goldenmb@gmail.com`,
-      `Subject: ${subject}`,
+      `Subject: ${encodeSubject(subject)}`,
       `MIME-Version: 1.0`,
       `Content-Type: text/html; charset=utf-8`,
       ``,
