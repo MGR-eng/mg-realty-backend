@@ -113,6 +113,62 @@ async function callClaude(prompt, mcpServers = []) {
 // ── Health check ─────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ ok: true, service: 'MG Realty CRM Backend' }));
 
+// ── Google OAuth re-authorization ─────────────────────────────
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/drive',
+].join(' ');
+
+app.get('/auth/google', (req, res) => {
+  const params = new URLSearchParams({
+    client_id:     process.env.GOOGLE_CLIENT_ID,
+    redirect_uri:  `https://mg-realty-backend.onrender.com/auth/google/callback`,
+    response_type: 'code',
+    scope:         GOOGLE_SCOPES,
+    access_type:   'offline',
+    prompt:        'consent',  // force consent screen to get refresh token
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+app.get('/auth/google/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error) return res.send(`<h2>Auth error: ${error}</h2>`);
+  try {
+    const r = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id:     process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri:  `https://mg-realty-backend.onrender.com/auth/google/callback`,
+        grant_type:    'authorization_code',
+      })
+    });
+    const data = await r.json();
+    if (!data.refresh_token) {
+      return res.send(`<h2 style="color:red">No refresh token returned.</h2><pre>${JSON.stringify(data,null,2)}</pre><p>Make sure you included <code>prompt=consent</code> and try again.</p>`);
+    }
+    console.log('NEW REFRESH TOKEN:', data.refresh_token);
+    res.send(`
+      <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:60px auto;padding:20px">
+        <h2 style="color:#27ae60">✅ Authorization successful!</h2>
+        <p>Copy this refresh token and paste it into Render as <strong>GOOGLE_REFRESH_TOKEN</strong>:</p>
+        <textarea style="width:100%;height:80px;font-family:monospace;font-size:13px;padding:10px;border:2px solid #27ae60;border-radius:6px">${data.refresh_token}</textarea>
+        <p style="margin-top:16px;color:#666;font-size:13px">
+          1. Go to <a href="https://render.com" target="_blank">render.com</a> → your service → Environment<br>
+          2. Update <strong>GOOGLE_REFRESH_TOKEN</strong> with the value above<br>
+          3. Save — Render redeploys automatically
+        </p>
+      </body></html>
+    `);
+  } catch(e) {
+    res.send(`<h2 style="color:red">Error: ${e.message}</h2>`);
+  }
+});
+
 // ── CRM sync ──────────────────────────────────────────────────
 app.get('/crm/pull', async (req, res) => {
   try {
