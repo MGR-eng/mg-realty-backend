@@ -2178,10 +2178,10 @@ function tpToggleMirror() {
   document.getElementById('tp-text').classList.toggle('mirror', _tpMirror);
   document.getElementById('tp-mirror-btn').classList.toggle('active', _tpMirror);
 }
-document.getElementById('tp-scroll-area').addEventListener('click', () => tpTogglePlay());
+document.addEventListener('click', e => { if (e.target.closest('#tp-scroll-area')) tpTogglePlay(); });
 document.addEventListener('keydown', e => {
   const overlay = document.getElementById('teleprompterOverlay');
-  if (!overlay.classList.contains('open')) return;
+  if (!overlay || !overlay.classList.contains('open')) return;
   if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); tpTogglePlay(); }
   if (e.key === 'Escape') closeTeleprompter();
   if (e.key === 'ArrowUp') tpSlower();
