@@ -37,7 +37,8 @@ async function readCRM() {
     properties:   row.properties   || [],
     deals:        row.deals        || [],
     agents:       row.agents       || [],
-    sequences:    row.sequences    || []
+    sequences:    row.sequences    || [],
+    leases:       row.leases       || []
   };
 }
 
@@ -839,8 +840,9 @@ app.all('/sequences/process', async (req, res) => {
     }
 
     const postCloseSent = await processPostCloseEmails(crm, today);
+    const leaseSent = await processLeaseReminders(crm, today);
     await writeCRM(crm);
-    res.json({ ok: true, sent: sent + postCloseSent, followUp: sent, postClose: postCloseSent });
+    res.json({ ok: true, sent: sent + postCloseSent + leaseSent, followUp: sent, postClose: postCloseSent, leaseReminders: leaseSent });
   } catch(e) {
     console.error('SEQUENCE PROCESS ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -2907,6 +2909,79 @@ app.get('/api/tours', async (req, res) => {
     res.json({ ok: true, tours });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Lease Renewal Reminders ───────────────────────────────────
+// Called by /sequences/process daily scheduler to send renewal nudges
+async function processLeaseReminders(crm, today) {
+  const leases = crm.leases || [];
+  let sent = 0;
+  for (const lease of leases) {
+    if (!lease.endDate || !lease.email) continue;
+    const daysLeft = Math.round((new Date(lease.endDate+'T12:00:00') - new Date(today)) / 86400000);
+    // Send at 90, 60, 30, 14 days before expiry
+    const triggerDays = [90, 60, 30, 14];
+    if (!triggerDays.includes(daysLeft)) continue;
+
+    // Check if we already sent this reminder
+    const sentKey = `renewal_${daysLeft}`;
+    if ((lease.remindersSent||[]).includes(sentKey)) continue;
+
+    const name = `${lease.first||''} ${lease.last||''}`.trim();
+    const fmtDate = d => new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+    const subject = daysLeft <= 14
+      ? `⚠️ Lease expires in ${daysLeft} days — ${lease.address}`
+      : `Lease renewal coming up — ${lease.address}`;
+
+    const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+        <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+      </div>
+      <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+        <h2 style="margin:0 0 12px;font-size:18px">Hi ${name},</h2>
+        <p style="color:#333;font-size:14px;line-height:1.6">Just a heads-up — your lease at <strong>${lease.address}</strong> expires on <strong>${fmtDate(lease.endDate)}</strong>, which is <strong>${daysLeft} days away</strong>.</p>
+        <p style="color:#333;font-size:14px;line-height:1.6">If you'd like to renew or discuss your options, I'm here to help. Let's connect before the deadline approaches.</p>
+        <p style="margin-top:24px;color:#333;font-size:13px">— Matt Golden<br>
+        <span style="color:#888">MG Realty · Los Angeles · (323) 555-0100<br>goldenmb@gmail.com · DRE #02130422</span></p>
+      </div>
+    </div>`;
+
+    try {
+      const { error } = await resend.emails.send({
+        from: 'Matt Golden <onboarding@resend.dev>',
+        to: lease.email,
+        subject: encodeSubject(subject),
+        html
+      });
+      if (!error) {
+        if (!lease.remindersSent) lease.remindersSent = [];
+        lease.remindersSent.push(sentKey);
+        sent++;
+        console.log(`Lease reminder sent: ${sentKey} → ${lease.email}`);
+      }
+    } catch(e) { console.error('Lease reminder email failed:', e.message); }
+  }
+  return sent;
+}
+
+app.get('/api/lease-reminders', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const today = new Date().toISOString().split('T')[0];
+    const exp90 = new Date(); exp90.setDate(exp90.getDate()+90);
+    const exp90str = exp90.toISOString().split('T')[0];
+    const expiring = (crm.leases||[])
+      .filter(l => l.endDate && l.endDate >= today && l.endDate <= exp90str)
+      .map(l => {
+        const days = Math.round((new Date(l.endDate+'T12:00:00') - new Date(today)) / 86400000);
+        return { id:l.id, tenant:`${l.first||''} ${l.last||''}`.trim(), address:l.address, endDate:l.endDate, daysLeft:days };
+      })
+      .sort((a,b) => a.daysLeft - b.daysLeft);
+    res.json({ ok:true, expiring });
+  } catch(e) {
+    res.status(500).json({ ok:false, error:e.message });
   }
 });
 

@@ -350,8 +350,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .ib-tab{padding:5px 12px;font-size:11px;font-weight:500;background:transparent;border:none;cursor:pointer;color:var(--text2);font-family:var(--font)}
 .ib-tab.active{background:var(--surface2);color:var(--text)}
 /* ── Call List Widget ── */
-.cl-item{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.cl-item{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px}
 .cl-item:last-child{border-bottom:none}
+.cl-rank{width:20px;height:20px;border-radius:50%;background:var(--surface2);color:var(--text3);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.cl-context{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.cl-ctx-chip{font-size:10px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;white-space:nowrap}
+.cl-actions{display:flex;gap:5px;flex-shrink:0;margin-top:2px}
+/* Leases */
+.lease-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px;cursor:pointer;transition:box-shadow .15s}
+.lease-card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+.lease-status-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px}
+.lease-status-active{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.lease-status-expiring{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.lease-status-expired{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.lease-status-pending{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
 .snooze-menu{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.18);padding:5px;z-index:9999;display:none;min-width:136px}
 .snooze-menu.open{display:block}
 .snooze-opt{padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text);white-space:nowrap}
@@ -386,6 +398,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('commission',this)"><i class="ti ti-coin"></i><span>Commission</span></button>
     <button class="nav-item" onclick="showPane('agents',this)"><i class="ti ti-id-badge"></i><span>Agents</span></button>
     <button class="nav-item" onclick="showPane('content',this)"><i class="ti ti-brand-instagram"></i><span>Content</span></button>
+    <button class="nav-item" onclick="showPane('leases',this)"><i class="ti ti-home-check"></i><span>Leases</span><span class="nb" id="nb-leases">0</span></button>
     <div class="nav-lbl">Tools</div>
     <button class="nav-item" onclick="openCommCalc()"><i class="ti ti-calculator"></i><span>Comm. Calc</span></button>
     <button class="nav-item" onclick="openMarketReport()"><i class="ti ti-chart-bar"></i><span>Market Report</span></button>
@@ -528,6 +541,31 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <div id="pane-commission" class="pane">
   <div class="topbar"><div class="page-title">Commission Tracker</div><div class="tba"><button class="btn btn-green" onclick="openAddDeal()"><i class="ti ti-plus"></i> Log deal</button></div></div>
   <div class="content"><div id="commissionStats"></div><div class="tw"><div id="dealList"></div></div></div>
+</div>
+
+<!-- Leases pane -->
+<div id="pane-leases" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-home-check" style="margin-right:6px;color:#E8681A"></i>Leases</div>
+    <div class="tba">
+      <select id="lsFilter" onchange="renderLeases()" style="width:auto">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="expiring">Expiring soon</option>
+        <option value="expired">Expired</option>
+        <option value="pending">Pending</option>
+      </select>
+      <button class="btn btn-primary" onclick="openAddLease()"><i class="ti ti-plus"></i> Add lease</button>
+    </div>
+  </div>
+  <div class="content">
+    <!-- Summary bar -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px" id="leaseStats"></div>
+    <!-- Lease cards grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px" id="leaseGrid">
+      <div style="color:var(--text2);font-size:13px;padding:32px;text-align:center;grid-column:1/-1">No leases yet — click "Add lease" to get started.</div>
+    </div>
+  </div>
 </div>
 
 <!-- Agents pane -->
@@ -701,6 +739,63 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="mfoot"><button class="btn" onclick="closeModal('mCommCalc')">Close</button><button class="btn btn-green" onclick="saveCommCalcAsDeal()"><i class="ti ti-coin"></i> Save as deal</button></div>
 </div></div>
 
+<!-- Add/Edit Lease Modal -->
+<div class="modal-overlay" id="mLease"><div class="modal" style="max-width:580px">
+  <div class="modal-title" id="mLeaseTitle">📋 Add Lease</div>
+  <div class="fgg-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 4px">
+    <!-- Tenant -->
+    <div class="fgg full" style="grid-column:1/-1"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Tenant</label></div>
+    <div class="fgg"><label>First name *</label><input id="lf1" placeholder="Jane"></div>
+    <div class="fgg"><label>Last name</label><input id="lf2" placeholder="Smith"></div>
+    <div class="fgg"><label>Phone</label><input id="lf3" placeholder="(323) 555-0100" type="tel"></div>
+    <div class="fgg"><label>Email</label><input id="lf4" placeholder="jane@email.com" type="email"></div>
+    <!-- Property -->
+    <div class="fgg full" style="grid-column:1/-1;margin-top:4px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Property</label></div>
+    <div class="fgg full" style="grid-column:1/-1"><label>Property address *</label><input id="lf5" placeholder="1234 Sunset Blvd, Los Angeles, CA 90026"></div>
+    <div class="fgg"><label>Unit / Apt</label><input id="lf6" placeholder="Apt 2B"></div>
+    <div class="fgg"><label>Status</label><select id="lf7"><option value="pending">Pending</option><option value="active">Active</option><option value="expiring">Expiring</option><option value="expired">Expired</option></select></div>
+    <!-- Lease terms -->
+    <div class="fgg full" style="grid-column:1/-1;margin-top:4px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Lease Terms</label></div>
+    <div class="fgg"><label>Start date</label><input id="lf8" type="date"></div>
+    <div class="fgg"><label>End date</label><input id="lf9" type="date"></div>
+    <div class="fgg"><label>Monthly rent ($)</label><input id="lf10" type="number" placeholder="3500" step="50"></div>
+    <div class="fgg"><label>Security deposit ($)</label><input id="lf11" type="number" placeholder="7000" step="50"></div>
+    <!-- Owner/Landlord -->
+    <div class="fgg full" style="grid-column:1/-1;margin-top:4px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Owner / Landlord</label></div>
+    <div class="fgg"><label>Owner name</label><input id="lf12" placeholder="John Doe"></div>
+    <div class="fgg"><label>Owner phone</label><input id="lf13" placeholder="(323) 555-0200" type="tel"></div>
+    <div class="fgg full" style="grid-column:1/-1"><label>Owner email</label><input id="lf14" placeholder="owner@email.com" type="email"></div>
+    <!-- Notes -->
+    <div class="fgg full" style="grid-column:1/-1"><label>Notes</label><textarea id="lf15" rows="2" placeholder="Pets allowed, parking space #12, etc."></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn" onclick="closeModal('mLease')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveLease()"><i class="ti ti-check"></i> Save lease</button>
+  </div>
+</div></div>
+
+<!-- Lease Detail Panel -->
+<div class="detail-backdrop" id="leaseDetailBackdrop" onclick="closeLeaseDetail()"></div>
+<div class="detail-panel" id="leaseDetailPanel" style="width:440px">
+  <div class="dp-header">
+    <div>
+      <div class="dp-name" id="ldp-name"></div>
+      <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap" id="ldp-badges"></div>
+    </div>
+    <button class="dp-close" onclick="closeLeaseDetail()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="dp-section" id="ldp-tenant"></div>
+  <div class="dp-section" id="ldp-terms"></div>
+  <div class="dp-section" id="ldp-owner"></div>
+  <div class="dp-section" id="ldp-reminders"></div>
+  <div class="dp-section" id="ldp-docs"></div>
+  <div class="dp-section" id="ldp-notes" style="display:none"></div>
+  <div style="padding:14px 16px;display:flex;gap:8px">
+    <button class="btn btn-primary" style="flex:1" onclick="openEditLease(currentLeaseId)"><i class="ti ti-edit"></i> Edit</button>
+    <button class="btn" style="flex:1;background:var(--red-bg);color:var(--red);border-color:var(--red-bd)" onclick="deleteLease(currentLeaseId)"><i class="ti ti-trash"></i> Delete</button>
+  </div>
+</div>
+
 <!-- Market Report Modal -->
 <div class="modal-overlay" id="mMarketReport"><div class="modal" style="max-width:480px">
   <div class="modal-title">📊 Neighborhood Market Report</div>
@@ -772,6 +867,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="more-btn" onclick="showPane('properties',null);toggleMoreSheet()"><i class="ti ti-building"></i>Props</button>
     <button class="more-btn" onclick="showPane('commission',null);toggleMoreSheet()"><i class="ti ti-coin"></i>Commission</button>
     <button class="more-btn" onclick="showPane('agents',null);toggleMoreSheet()"><i class="ti ti-id-badge"></i>Agents</button>
+    <button class="more-btn" onclick="showPane('leases',null);toggleMoreSheet()"><i class="ti ti-home-check"></i>Leases</button>
     <button class="more-btn" onclick="openCommCalc();toggleMoreSheet()"><i class="ti ti-calculator"></i>Calc</button>
     <button class="more-btn" onclick="openMarketReport();toggleMoreSheet()"><i class="ti ti-chart-bar"></i>Mkt Report</button>
     <button class="more-btn" onclick="sendDigest();toggleMoreSheet()"><i class="ti ti-mail"></i>Digest</button>
@@ -825,6 +921,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   </div>
   <div id="propDocList" style="padding:0 20px;max-height:320px;overflow-y:auto;min-height:60px"></div>
   <div class="mfoot"><button class="btn" onclick="closeModal('mPropDocs')">Done</button></div>
+</div></div>
+
+<!-- Lease Docs Modal -->
+<div class="modal-overlay" id="mLeaseDocs"><div class="modal" style="max-width:500px">
+  <div class="modal-title" id="leaseDocsTitle">📎 Lease Documents</div>
+  <div style="padding:0 20px 8px">
+    <input type="file" id="leaseDocFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadLeaseDocs(this)">
+    <button class="btn" onclick="document.getElementById('leaseDocFile').click()" style="width:100%;border:1.5px dashed var(--border);background:var(--surface2);color:var(--text2);font-size:12px;padding:10px;gap:6px;margin-bottom:8px">
+      <i class="ti ti-cloud-upload"></i> Upload documents (PDF, Word, images)
+    </button>
+    <div id="leaseDocStatus" style="display:none;font-size:11px;text-align:center;margin-bottom:8px;color:var(--amber)"></div>
+  </div>
+  <div id="leaseDocList" style="padding:0 20px;max-height:320px;overflow-y:auto;min-height:60px"></div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mLeaseDocs')">Done</button></div>
 </div></div>
 
 <!-- Property Modal -->
@@ -1017,8 +1127,8 @@ const BACKEND = 'https://mg-realty-backend.onrender.com';
 const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
 const DIGEST_EMAIL = 'goldenmb@gmail.com';
 
-const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1';
-let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null;
+const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1';
+let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null;
 
 function load(){
   try{leads=JSON.parse(localStorage.getItem(SL)||'null')||seed();}catch(e){leads=seed();}
@@ -1028,13 +1138,14 @@ function load(){
   try{props=JSON.parse(localStorage.getItem(SPR)||'null')||[];}catch(e){props=[];}
   try{deals=JSON.parse(localStorage.getItem(SD)||'null')||[];}catch(e){deals=[];}
   try{agents=JSON.parse(localStorage.getItem(SAGT)||'null')||[];}catch(e){agents=[];}
+  try{leases=JSON.parse(localStorage.getItem(SLSE)||'null')||[];}catch(e){leases=[];}
 }
 function persist(){
-  try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));}catch(e){}
+  try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));}catch(e){}
   pushToBackend();
 }
 function pushToBackend(){
-  fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads,activities:acts,appointments:appts,tasks,properties:props,deals,agents})}).catch(()=>{});
+  fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads,activities:acts,appointments:appts,tasks,properties:props,deals,agents,leases})}).catch(()=>{});
 }
 async function syncFromBackend(){
   try{
@@ -1050,7 +1161,8 @@ async function syncFromBackend(){
     if(data.properties?.length){props=data.properties;changed=true;}
     if(data.deals?.length){deals=data.deals;changed=true;}
     if(data.agents?.length){agents=data.agents;changed=true;}
-    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));}catch(e){}renderAll();}
+    if(data.leases?.length){leases=data.leases;changed=true;}
+    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));}catch(e){}renderAll();}
   }catch(e){console.warn('Backend sync failed:',e.message);}
 }
 function seed(){
@@ -1120,6 +1232,13 @@ function updateBadges(){
   const openTasks=tasks.filter(t=>!t.done).length;
   document.getElementById('nb-tasks').textContent=openTasks;
   document.getElementById('nb-tasks').className='nb'+(openTasks?' red':'');
+  // Leases badge — show count expiring within 60 days
+  const today=new Date().toISOString().split('T')[0];
+  const exp60=new Date();exp60.setDate(exp60.getDate()+60);
+  const exp60str=exp60.toISOString().split('T')[0];
+  const expiringCount=leases.filter(l=>l.status==='active'&&l.endDate&&l.endDate<=exp60str&&l.endDate>=today).length;
+  const lsEl=document.getElementById('nb-leases');
+  if(lsEl){lsEl.textContent=expiringCount||leases.length;lsEl.className='nb'+(expiringCount?' red':'');}
   // Mobile badges
   const mlBadge=document.getElementById('nb-leads-mobile');
   if(mlBadge){mlBadge.textContent=ov;mlBadge.style.display=ov?'':'none';}
@@ -1353,7 +1472,7 @@ async function renderDetailPostClose(leadId){
   }catch(e){sec.style.display='none';}
 }
 
-function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();populatePropSelect();updateBadges();}
 
 async function sendDigest(){
   setSyncStatus('busy','Sending digest…');
@@ -3367,28 +3486,48 @@ function renderCallList(items, ts) {
   }
 
   const tempColors = { hot:'b-red', warm:'b-amber', cold:'b-blue' };
-  const stageShort = { New:'New', Contacted:'Contacted', Showing:'Showing', Offer:'🔥 Offer', Closed:'Closed' };
+  const stageShort = { new:'New', contacted:'Contacted', showing:'Showing', offer:'🔥 Offer', closed:'Closed' };
+  const today = new Date().toISOString().split('T')[0];
 
-  body.innerHTML = items.map(item => {
+  body.innerHTML = items.map((item, idx) => {
     const lead = leads.find(l => l.id === item.id);
     if (!lead) return '';
     const tc = tempColors[lead.temp] || 'b-neutral';
-    const stage = stageShort[lead.stage] || lead.stage || '';
+    const stage = stageShort[(lead.stage||'').toLowerCase()] || lead.stage || '';
     const phone = lead.phone || '';
+    const smsHref = phone ? `sms:${phone}` : '';
+
+    // Context chips
+    const chips = [];
+    if (lead.budget) chips.push(`💰 ${lead.budget}`);
+    if (lead.neighborhood) chips.push(`📍 ${lead.neighborhood}`);
+    if (lead.type) chips.push(lead.type);
+    if (lead.followup) {
+      const isOverdue = lead.followup < today;
+      chips.push(`<span class="cl-ctx-chip" style="background:${isOverdue?'var(--red-bg)':'var(--green-bg)'};color:${isOverdue?'var(--red)':'var(--green)'};border-color:${isOverdue?'var(--red-bd)':'var(--green-bd)'}">📅 ${isOverdue ? 'Overdue: ' : ''}${lead.followup}</span>`);
+    } else if (lead.lastcontact) {
+      chips.push(`Last contact: ${lead.lastcontact}`);
+    }
+
+    const plainChips = chips.filter(c => !c.startsWith('<')).map(c => `<span class="cl-ctx-chip">${c}</span>`).join('');
+    const specialChips = chips.filter(c => c.startsWith('<')).join('');
+
     return `<div class="cl-item">
+      <div class="cl-rank">${idx + 1}</div>
       <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span class="cl-name" onclick="openLeadDetail('${lead.id}')">${lead.first || ''} ${lead.last || ''}</span>
           <span class="badge ${tc}" style="font-size:10px">${lead.temp||'cold'}</span>
           ${stage ? `<span class="badge b-neutral" style="font-size:10px">${stage}</span>` : ''}
         </div>
         <div class="cl-reason">${item.reason || ''}</div>
-        ${phone ? `<div class="cl-phone"><a href="tel:${phone}" style="color:var(--text2);text-decoration:none">${phone}</a></div>` : ''}
+        <div class="cl-context">${plainChips}${specialChips}</div>
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        ${phone ? `<a href="tel:${phone}" class="btn btn-sm btn-green"><i class="ti ti-phone" style="font-size:11px"></i></a>` : ''}
+      <div class="cl-actions">
+        ${phone ? `<a href="tel:${phone}" class="btn btn-sm btn-green" title="Call ${lead.first}"><i class="ti ti-phone" style="font-size:12px"></i></a>` : ''}
+        ${smsHref ? `<a href="${smsHref}" class="btn btn-sm" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)" title="Text ${lead.first}"><i class="ti ti-message" style="font-size:12px"></i></a>` : ''}
         <button class="btn btn-sm" onclick="showSnoozeMenu(event,'${lead.id}')" title="Snooze follow-up"><i class="ti ti-alarm-snooze" style="font-size:11px"></i></button>
-        <button class="btn btn-sm btn-primary" onclick="quickLogCall('${lead.id}')"><i class="ti ti-edit" style="font-size:11px"></i> Log</button>
+        <button class="btn btn-sm btn-primary" onclick="quickLogCall('${lead.id}')" title="Log activity"><i class="ti ti-edit" style="font-size:11px"></i></button>
       </div>
     </div>`;
   }).filter(Boolean).join('');
@@ -3778,6 +3917,328 @@ document.addEventListener('click', () => {
   const menu = document.getElementById('snoozeMenu');
   if (menu) menu.classList.remove('open');
 });
+
+// ── Leases ────────────────────────────────────────────────────
+function leaseStatus(lease) {
+  if (!lease.endDate) return lease.status || 'active';
+  const today = new Date().toISOString().split('T')[0];
+  const exp60 = new Date(); exp60.setDate(exp60.getDate()+60);
+  const exp30 = new Date(); exp30.setDate(exp30.getDate()+30);
+  if (lease.endDate < today) return 'expired';
+  if (lease.endDate <= exp30.toISOString().split('T')[0]) return 'expiring';
+  return lease.status || 'active';
+}
+
+function leaseDaysUntilExpiry(lease) {
+  if (!lease.endDate) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const end = new Date(lease.endDate+'T12:00:00');
+  return Math.round((end - today) / 86400000);
+}
+
+function renderLeases() {
+  const grid = document.getElementById('leaseGrid');
+  const statsEl = document.getElementById('leaseStats');
+  if (!grid) return;
+
+  const filter = document.getElementById('lsFilter')?.value || '';
+  const today = new Date().toISOString().split('T')[0];
+
+  // Compute auto-status for each
+  const enriched = leases.map(l => ({ ...l, _status: leaseStatus(l) }));
+  const filtered = filter ? enriched.filter(l => l._status === filter) : enriched;
+
+  // Stats
+  if (statsEl) {
+    const counts = { active: 0, expiring: 0, expired: 0, pending: 0 };
+    enriched.forEach(l => { counts[l._status] = (counts[l._status]||0)+1; });
+    const totalRent = enriched.filter(l=>l._status==='active').reduce((s,l)=>s+(parseFloat(l.rent)||0),0);
+    statsEl.innerHTML = `
+      <div class="tw" style="padding:12px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700">${counts.active}</div>
+        <div style="font-size:11px;color:var(--text2)">Active</div>
+      </div>
+      <div class="tw" style="padding:12px 16px;text-align:center;background:${counts.expiring?'var(--amber-bg)':''}">
+        <div style="font-size:22px;font-weight:700;color:${counts.expiring?'var(--amber)':'var(--text)'}">${counts.expiring}</div>
+        <div style="font-size:11px;color:var(--text2)">Expiring soon</div>
+      </div>
+      <div class="tw" style="padding:12px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700">${counts.pending}</div>
+        <div style="font-size:11px;color:var(--text2)">Pending</div>
+      </div>
+      <div class="tw" style="padding:12px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--green)">$${Math.round(totalRent).toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--text2)">Monthly rent</div>
+      </div>`;
+  }
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="color:var(--text2);font-size:13px;padding:40px;text-align:center;grid-column:1/-1">${filter?'No leases match that filter.':'No leases yet — click "Add lease" to get started.'}</div>`;
+    return;
+  }
+
+  const statusBadge = (s) => {
+    const map = { active:'lease-status-active', expiring:'lease-status-expiring', expired:'lease-status-expired', pending:'lease-status-pending' };
+    const labels = { active:'● Active', expiring:'⚠ Expiring', expired:'✕ Expired', pending:'○ Pending' };
+    return `<span class="lease-status-badge ${map[s]||'lease-status-active'}">${labels[s]||s}</span>`;
+  };
+
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+  const fmtMoney = n => n ? `$${Number(n).toLocaleString()}` : '—';
+
+  grid.innerHTML = filtered.map(l => {
+    const days = leaseDaysUntilExpiry(l);
+    const daysLabel = days === null ? '' : days < 0 ? `Expired ${Math.abs(days)}d ago` : days === 0 ? 'Expires today!' : `${days}d until expiry`;
+    const daysColor = days !== null && days <= 30 ? 'var(--red)' : days !== null && days <= 60 ? 'var(--amber)' : 'var(--text2)';
+    const docCount = (l.docs||[]).length;
+    return `<div class="lease-card" onclick="openLeaseDetail('${l.id}')">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-weight:700;font-size:14px">${l.first||''} ${l.last||''}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${l.address||'No address'}${l.unit?' · '+l.unit:''}</div>
+        </div>
+        ${statusBadge(l._status)}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text3)">Monthly Rent</div>
+        <div style="font-size:11px;color:var(--text3)">Lease End</div>
+        <div style="font-size:13px;font-weight:600;color:var(--green)">${fmtMoney(l.rent)}/mo</div>
+        <div style="font-size:13px;font-weight:600">${fmtDate(l.endDate)}</div>
+      </div>
+      ${daysLabel ? `<div style="font-size:11px;color:${daysColor};font-weight:600;margin-bottom:8px">${daysLabel}</div>` : ''}
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;color:var(--text3)">${l.ownerName ? '🏠 '+l.ownerName : ''}</div>
+        <div style="display:flex;gap:5px" onclick="event.stopPropagation()">
+          ${docCount ? `<span style="font-size:10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);border-radius:5px;padding:1px 7px">📎 ${docCount}</span>` : ''}
+          <button class="btn btn-sm" onclick="openLeaseDetail('${l.id}')" style="font-size:11px">View</button>
+          <button class="btn btn-sm btn-primary" onclick="openEditLease('${l.id}')" style="font-size:11px"><i class="ti ti-edit" style="font-size:11px"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddLease() {
+  editLeaseId = null;
+  document.getElementById('mLeaseTitle').textContent = '📋 Add Lease';
+  ['lf1','lf2','lf3','lf4','lf5','lf6','lf10','lf11','lf12','lf13','lf14','lf15'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('lf7').value = 'active';
+  document.getElementById('lf8').value = '';
+  document.getElementById('lf9').value = '';
+  openModal('mLease');
+}
+
+function openEditLease(id) {
+  const l = leases.find(x=>x.id===id); if(!l) return;
+  editLeaseId = id;
+  document.getElementById('mLeaseTitle').textContent = '✏️ Edit Lease';
+  const g = (field, id) => { const el=document.getElementById(id); if(el) el.value=l[field]||''; };
+  g('first','lf1'); g('last','lf2'); g('phone','lf3'); g('email','lf4');
+  g('address','lf5'); g('unit','lf6'); g('status','lf7');
+  g('startDate','lf8'); g('endDate','lf9');
+  g('rent','lf10'); g('deposit','lf11');
+  g('ownerName','lf12'); g('ownerPhone','lf13'); g('ownerEmail','lf14');
+  g('notes','lf15');
+  openModal('mLease');
+}
+
+function saveLease() {
+  const first = document.getElementById('lf1').value.trim();
+  const address = document.getElementById('lf5').value.trim();
+  if (!first) { toast('Tenant first name is required','error'); return; }
+  if (!address) { toast('Property address is required','error'); return; }
+
+  const lease = {
+    id: editLeaseId || 'lse_'+Date.now(),
+    first, last: document.getElementById('lf2').value.trim(),
+    phone: document.getElementById('lf3').value.trim(),
+    email: document.getElementById('lf4').value.trim(),
+    address, unit: document.getElementById('lf6').value.trim(),
+    status: document.getElementById('lf7').value,
+    startDate: document.getElementById('lf8').value,
+    endDate: document.getElementById('lf9').value,
+    rent: document.getElementById('lf10').value,
+    deposit: document.getElementById('lf11').value,
+    ownerName: document.getElementById('lf12').value.trim(),
+    ownerPhone: document.getElementById('lf13').value.trim(),
+    ownerEmail: document.getElementById('lf14').value.trim(),
+    notes: document.getElementById('lf15').value.trim(),
+    docs: editLeaseId ? (leases.find(l=>l.id===editLeaseId)?.docs||[]) : [],
+    createdAt: editLeaseId ? (leases.find(l=>l.id===editLeaseId)?.createdAt||new Date().toISOString()) : new Date().toISOString()
+  };
+
+  if (editLeaseId) {
+    leases = leases.map(l => l.id===editLeaseId ? lease : l);
+  } else {
+    leases.push(lease);
+  }
+  persist();
+  closeModal('mLease');
+  renderLeases();
+  toast(editLeaseId ? '✓ Lease updated' : '✓ Lease added');
+  editLeaseId = null;
+}
+
+function openLeaseDetail(id) {
+  const l = leases.find(x=>x.id===id); if(!l) return;
+  currentLeaseId = id;
+  const status = leaseStatus(l);
+  const days = leaseDaysUntilExpiry(l);
+  const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '—';
+  const fmtMoney = n => n ? `$${Number(n).toLocaleString()}` : '—';
+
+  document.getElementById('ldp-name').textContent = `${l.first||''} ${l.last||''}`.trim() || 'Tenant';
+  const statusMap = { active:'lease-status-active', expiring:'lease-status-expiring', expired:'lease-status-expired', pending:'lease-status-pending' };
+  const statusLabels = { active:'Active', expiring:'Expiring Soon', expired:'Expired', pending:'Pending' };
+  document.getElementById('ldp-badges').innerHTML = `<span class="lease-status-badge ${statusMap[status]||'lease-status-active'}">${statusLabels[status]||status}</span>`;
+
+  const row = (icon, label, val) => val ? `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="width:20px;text-align:center;color:var(--text3);font-size:13px">${icon}</span><div><div style="font-size:11px;color:var(--text3)">${label}</div><div style="font-size:13px;font-weight:500">${val}</div></div></div>` : '';
+
+  document.getElementById('ldp-tenant').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Tenant</div>
+    ${row('📍','Address',l.address+(l.unit?' · '+l.unit:''))}
+    ${l.phone ? `${row('📞','Phone',`<a href="tel:${l.phone}" style="color:inherit">${l.phone}</a>`)}` : ''}
+    ${row('✉️','Email',l.email)}`;
+
+  document.getElementById('ldp-terms').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Lease Terms</div>
+    ${row('📅','Start date',fmtDate(l.startDate))}
+    ${row('📅','End date',fmtDate(l.endDate)+(days!==null?` <span style="font-size:11px;color:${days<=30?'var(--red)':days<=60?'var(--amber)':'var(--text2)'}">(${days<0?Math.abs(days)+'d ago':days+'d remaining'})</span>`:''))}
+    ${row('💰','Monthly rent',fmtMoney(l.rent)+'/mo')}
+    ${row('🔒','Security deposit',fmtMoney(l.deposit))}`;
+
+  document.getElementById('ldp-owner').innerHTML = l.ownerName ? `
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Owner / Landlord</div>
+    ${row('👤','Name',l.ownerName)}
+    ${l.ownerPhone ? row('📞','Phone',`<a href="tel:${l.ownerPhone}" style="color:inherit">${l.ownerPhone}</a>`) : ''}
+    ${row('✉️','Email',l.ownerEmail)}` : '';
+
+  // Renewal reminders
+  const reminders = [];
+  if (l.endDate) {
+    [90,60,30,14].forEach(d => {
+      const rd = new Date(l.endDate+'T12:00:00');
+      rd.setDate(rd.getDate()-d);
+      const rdStr = rd.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      const done = rdStr < today;
+      reminders.push(`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);opacity:${done?'0.5':'1'}">
+        <span style="font-size:14px">${done?'✅':'🔔'}</span>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600">${d}-day renewal reminder</div>
+        <div style="font-size:11px;color:var(--text2)">${fmtDate(rdStr)}</div></div>
+        ${!done?`<span style="font-size:10px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);border-radius:5px;padding:1px 6px">Upcoming</span>`:''}
+      </div>`);
+    });
+  }
+  document.getElementById('ldp-reminders').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Renewal Reminders</div>
+    ${reminders.length ? reminders.join('') : '<div style="font-size:12px;color:var(--text2)">Set an end date to see renewal reminders.</div>'}`;
+
+  // Docs
+  renderLeaseDocList(id);
+
+  // Notes
+  const notesEl = document.getElementById('ldp-notes');
+  if (l.notes) {
+    notesEl.style.display='block';
+    notesEl.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Notes</div><div style="font-size:13px;color:var(--text2);white-space:pre-line">${l.notes}</div>`;
+  } else { notesEl.style.display='none'; }
+
+  document.getElementById('leaseDetailBackdrop').classList.add('open');
+  document.getElementById('leaseDetailPanel').classList.add('open');
+}
+
+function closeLeaseDetail() {
+  document.getElementById('leaseDetailBackdrop').classList.remove('open');
+  document.getElementById('leaseDetailPanel').classList.remove('open');
+  currentLeaseId = null;
+}
+
+function deleteLease(id) {
+  if (!confirm('Delete this lease record?')) return;
+  leases = leases.filter(l=>l.id!==id);
+  persist(); renderLeases(); closeLeaseDetail();
+  toast('Lease deleted');
+}
+
+// ── Lease Documents ────────────────────────────────────────────
+function renderLeaseDocList(leaseId) {
+  const lease = leases.find(l=>l.id===leaseId); if(!lease) return;
+  const docs = lease.docs||[];
+  const el = document.getElementById('ldp-docs'); if(!el) return;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Documents (${docs.length})</div>
+      <button class="btn btn-sm btn-primary" style="font-size:11px" onclick="openLeaseDocsModal('${leaseId}')"><i class="ti ti-cloud-upload" style="font-size:11px"></i> Upload</button>
+    </div>
+    ${docs.length===0 ? '<div style="font-size:12px;color:var(--text2)">No documents uploaded yet.</div>' :
+      docs.map(d=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <i class="ti ti-file" style="color:var(--blue);font-size:14px"></i>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
+        <div style="font-size:10px;color:var(--text3)">${d.size||''} · ${d.date||''}</div></div>
+        <button class="btn btn-sm" style="font-size:11px" onclick="downloadLeaseDoc('${leaseId}','${d.id}')"><i class="ti ti-download" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" style="font-size:11px;background:var(--red-bg);color:var(--red);border-color:var(--red-bd)" onclick="deleteLeaseDoc('${leaseId}','${d.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+      </div>`).join('')}`;
+}
+
+function openLeaseDocsModal(leaseId) {
+  currentLeaseDocId = leaseId;
+  const lease = leases.find(l=>l.id===leaseId);
+  document.getElementById('leaseDocsTitle').textContent = `📎 ${lease?.address||'Lease'} — Documents`;
+  renderLeaseDocModalList(leaseId);
+  openModal('mLeaseDocs');
+}
+
+function renderLeaseDocModalList(leaseId) {
+  const lease = leases.find(l=>l.id===leaseId); if(!lease) return;
+  const docs = lease.docs||[];
+  const el = document.getElementById('leaseDocList');
+  if(!docs.length){el.innerHTML='<div style="text-align:center;color:var(--text2);font-size:12px;padding:20px">No documents yet.</div>';return;}
+  el.innerHTML = docs.map(d=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+    <i class="ti ti-file" style="color:var(--blue);font-size:14px"></i>
+    <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
+    <div style="font-size:10px;color:var(--text3)">${d.size||''} · ${d.date||''}</div></div>
+    <button class="btn btn-sm" onclick="downloadLeaseDoc('${leaseId}','${d.id}')"><i class="ti ti-download" style="font-size:11px"></i></button>
+    <button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border-color:var(--red-bd)" onclick="deleteLeaseDoc('${leaseId}','${d.id}');renderLeaseDocModalList('${leaseId}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+  </div>`).join('');
+}
+
+async function uploadLeaseDocs(input) {
+  const leaseId = currentLeaseDocId; if(!leaseId) return;
+  const files = Array.from(input.files); if(!files.length) return;
+  const statusEl = document.getElementById('leaseDocStatus');
+  statusEl.style.display='block'; statusEl.textContent=`Uploading ${files.length} file(s)…`;
+  const lease = leases.find(l=>l.id===leaseId); if(!lease) return;
+  if(!lease.docs) lease.docs=[];
+  for(const file of files){
+    const base64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
+    const sizeStr = file.size>1048576?`${(file.size/1048576).toFixed(1)} MB`:`${Math.round(file.size/1024)} KB`;
+    lease.docs.push({id:'ldoc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),name:file.name,size:sizeStr,date:new Date().toLocaleDateString(),data:base64});
+  }
+  persist();
+  renderLeaseDocModalList(leaseId);
+  if(currentLeaseId===leaseId) renderLeaseDocList(leaseId);
+  statusEl.textContent=`✓ ${files.length} file(s) uploaded`;
+  setTimeout(()=>{statusEl.style.display='none';},2500);
+  input.value='';
+}
+
+function downloadLeaseDoc(leaseId, docId) {
+  const lease=leases.find(l=>l.id===leaseId); if(!lease) return;
+  const doc=(lease.docs||[]).find(d=>d.id===docId); if(!doc||!doc.data) return;
+  const a=document.createElement('a');a.href=doc.data;a.download=doc.name;a.click();
+}
+
+function deleteLeaseDoc(leaseId, docId) {
+  if(!confirm('Remove this document?'))return;
+  const lease=leases.find(l=>l.id===leaseId); if(!lease) return;
+  lease.docs=(lease.docs||[]).filter(d=>d.id!==docId);
+  persist();
+  if(currentLeaseId===leaseId) renderLeaseDocList(leaseId);
+  toast('Document removed');
+}
 
 // ── Market Report ─────────────────────────────────────────────
 let mrPdfBase64 = null;
