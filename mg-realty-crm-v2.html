@@ -227,6 +227,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .ce-copy-all .btn{flex:1;justify-content:center;padding:9px}
 .ce-copied{color:var(--green)!important;border-color:var(--green-bd)!important}
 .ce-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:32px;color:var(--text2);font-size:13px}
+/* ── Teleprompter ── */
+#teleprompterOverlay{position:fixed;inset:0;background:#000;z-index:99999;display:none;flex-direction:column;overflow:hidden;touch-action:none}
+#teleprompterOverlay.open{display:flex}
+#tp-scroll-area{flex:1;overflow:hidden;position:relative;cursor:pointer}
+#tp-text{padding:60px 48px 120px;font-size:52px;line-height:1.45;font-weight:600;color:#fff;white-space:pre-wrap;will-change:transform;transition:none;-webkit-user-select:none;user-select:none}
+#tp-text.mirror{transform:scaleX(-1)}
+#tp-controls{position:absolute;bottom:0;left:0;right:0;padding:14px 20px;background:linear-gradient(transparent,rgba(0,0,0,0.85));display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tp-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;backdrop-filter:blur(4px);transition:background 0.15s;font-family:inherit}
+.tp-btn:hover{background:rgba(255,255,255,0.28)}
+.tp-btn.active{background:rgba(255,200,60,0.3);border-color:rgba(255,200,60,0.6);color:#ffd060}
+#tp-speed-label{color:rgba(255,255,255,0.5);font-size:12px;font-weight:500;margin-left:4px}
+#tp-progress{position:absolute;top:0;left:0;height:3px;background:var(--amber);width:0%;transition:width 0.3s linear;border-radius:0 2px 2px 0}
+#tp-play-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;opacity:0;transition:opacity 0.3s;pointer-events:none}
+#tp-font-size-display{color:rgba(255,255,255,0.5);font-size:12px;min-width:28px;text-align:center}
 @keyframes ce-spin{to{transform:rotate(360deg)}}
 .ce-spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--text2);border-radius:50%;animation:ce-spin 0.7s linear infinite;flex-shrink:0}
 @media(max-width:900px){#pane-content .content>div{grid-template-columns:1fr!important}}
@@ -1885,7 +1899,10 @@ function buildOutputHTML(caption, reelsScript, hashtags, hashtagGroups) {
     <div class="ce-output-block">
       <div class="ce-output-hd">
         <div class="ce-output-title"><i class="ti ti-video" style="font-size:14px;color:#E8681A"></i> Reels Script <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0">~45 sec</span></div>
-        <button class="btn btn-sm btn-amber" id="copy-reels" onclick="copyContent('reels','copy-reels')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="openTeleprompter()" style="background:var(--surface2);border-color:var(--border)" title="Open teleprompter"><i class="ti ti-player-play" style="font-size:11px"></i> Film</button>
+          <button class="btn btn-sm btn-amber" id="copy-reels" onclick="copyContent('reels','copy-reels')"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
+        </div>
       </div>
       <div class="ce-output-body" id="out-reels">${escHtml(reelsScript)}</div>
     </div>
@@ -2007,6 +2024,147 @@ function copyForInstagram(btnId) {
 function copyTag(tag) {
   navigator.clipboard.writeText(tag).then(() => toast(`Copied ${tag}`, 'success'));
 }
+
+// ── Reels Teleprompter ────────────────────────────────────────
+let _tpPlaying = false;
+let _tpOffset  = 0;
+let _tpSpeed   = 1;
+let _tpFontSz  = 52;
+let _tpMirror  = false;
+let _tpRAF     = null;
+let _tpLast    = null;
+let _tpTotalH  = 0;
+
+const TP_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+let _tpSpeedIdx = 2;
+
+function openTeleprompter() {
+  const script = window._ceData && window._ceData.reelsScript;
+  if (!script) { toast('Generate a Reels script first', 'error'); return; }
+  const overlay = document.getElementById('teleprompterOverlay');
+  const textEl  = document.getElementById('tp-text');
+  textEl.textContent = script;
+  textEl.style.fontSize = _tpFontSz + 'px';
+  _tpOffset  = 0;
+  _tpPlaying = false;
+  _tpLast    = null;
+  textEl.style.transform = `translateY(0px)`;
+  document.getElementById('tp-progress').style.width = '0%';
+  document.getElementById('tp-play-label').textContent = 'Start';
+  document.getElementById('tp-play-btn').classList.remove('active');
+  document.getElementById('tp-play-hint').textContent = '▶';
+  overlay.classList.add('open');
+  try { screen.orientation.lock('portrait'); } catch(e) {}
+  requestAnimationFrame(() => {
+    const area  = document.getElementById('tp-scroll-area');
+    _tpTotalH = Math.max(0, textEl.scrollHeight - area.clientHeight + 60);
+  });
+}
+
+function closeTeleprompter() {
+  _tpPlaying = false;
+  if (_tpRAF) { cancelAnimationFrame(_tpRAF); _tpRAF = null; }
+  document.getElementById('teleprompterOverlay').classList.remove('open');
+  try { screen.orientation.unlock(); } catch(e) {}
+}
+
+function tpTogglePlay() {
+  _tpPlaying = !_tpPlaying;
+  const hint  = document.getElementById('tp-play-hint');
+  const label = document.getElementById('tp-play-label');
+  const btn   = document.getElementById('tp-play-btn');
+  if (_tpPlaying) {
+    label.textContent = 'Pause';
+    btn.classList.add('active');
+    hint.textContent  = '⏸';
+    _tpLast = null;
+    tpAnimate();
+  } else {
+    label.textContent = 'Resume';
+    btn.classList.remove('active');
+    hint.textContent  = '▶';
+    hint.style.opacity = '1';
+    setTimeout(() => { hint.style.opacity = '0'; }, 800);
+    if (_tpRAF) { cancelAnimationFrame(_tpRAF); _tpRAF = null; }
+  }
+}
+
+function tpAnimate(ts) {
+  if (!_tpPlaying) return;
+  if (_tpLast !== null) {
+    const delta = ts - _tpLast;
+    const pxPerMs = (_tpSpeed * 60) / 1000;
+    _tpOffset += delta * pxPerMs;
+    if (_tpOffset >= _tpTotalH) {
+      _tpOffset = _tpTotalH;
+      _tpPlaying = false;
+      document.getElementById('tp-play-label').textContent = 'Done';
+      document.getElementById('tp-play-btn').classList.remove('active');
+    }
+    const textEl = document.getElementById('tp-text');
+    textEl.style.transform = `translateY(${-_tpOffset}px)`;
+    const pct = _tpTotalH > 0 ? Math.min(100, (_tpOffset / _tpTotalH) * 100) : 0;
+    document.getElementById('tp-progress').style.width = pct + '%';
+  }
+  _tpLast = ts;
+  _tpRAF = requestAnimationFrame(tpAnimate);
+}
+
+function tpRestart() {
+  _tpOffset = 0;
+  _tpPlaying = false;
+  _tpLast = null;
+  if (_tpRAF) { cancelAnimationFrame(_tpRAF); _tpRAF = null; }
+  document.getElementById('tp-text').style.transform = 'translateY(0px)';
+  document.getElementById('tp-progress').style.width = '0%';
+  document.getElementById('tp-play-label').textContent = 'Start';
+  document.getElementById('tp-play-btn').classList.remove('active');
+}
+
+function tpFaster() {
+  _tpSpeedIdx = Math.min(TP_SPEEDS.length - 1, _tpSpeedIdx + 1);
+  _tpSpeed = TP_SPEEDS[_tpSpeedIdx];
+  document.getElementById('tp-speed-label').textContent = _tpSpeed + '×';
+}
+function tpSlower() {
+  _tpSpeedIdx = Math.max(0, _tpSpeedIdx - 1);
+  _tpSpeed = TP_SPEEDS[_tpSpeedIdx];
+  document.getElementById('tp-speed-label').textContent = _tpSpeed + '×';
+}
+function tpLargerFont() {
+  _tpFontSz = Math.min(96, _tpFontSz + 4);
+  document.getElementById('tp-text').style.fontSize = _tpFontSz + 'px';
+  document.getElementById('tp-font-size-display').textContent = _tpFontSz;
+  requestAnimationFrame(() => {
+    const area = document.getElementById('tp-scroll-area');
+    const textEl = document.getElementById('tp-text');
+    _tpTotalH = Math.max(0, textEl.scrollHeight - area.clientHeight + 60);
+  });
+}
+function tpSmallerFont() {
+  _tpFontSz = Math.max(28, _tpFontSz - 4);
+  document.getElementById('tp-text').style.fontSize = _tpFontSz + 'px';
+  document.getElementById('tp-font-size-display').textContent = _tpFontSz;
+  requestAnimationFrame(() => {
+    const area = document.getElementById('tp-scroll-area');
+    const textEl = document.getElementById('tp-text');
+    _tpTotalH = Math.max(0, textEl.scrollHeight - area.clientHeight + 60);
+  });
+}
+function tpToggleMirror() {
+  _tpMirror = !_tpMirror;
+  document.getElementById('tp-text').classList.toggle('mirror', _tpMirror);
+  document.getElementById('tp-mirror-btn').classList.toggle('active', _tpMirror);
+}
+document.getElementById('tp-scroll-area').addEventListener('click', () => tpTogglePlay());
+document.addEventListener('keydown', e => {
+  const overlay = document.getElementById('teleprompterOverlay');
+  if (!overlay.classList.contains('open')) return;
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); tpTogglePlay(); }
+  if (e.key === 'Escape') closeTeleprompter();
+  if (e.key === 'ArrowUp') tpSlower();
+  if (e.key === 'ArrowDown') tpFaster();
+});
 
 // ── Content Calendar ──────────────────────────────────────────
 const CAL_KEY = 'mg_cal_v1';
@@ -2545,6 +2703,33 @@ document.addEventListener('click', () => {
   if (menu) menu.classList.remove('open');
 });
 </script>
+
+<!-- Teleprompter overlay -->
+<div id="teleprompterOverlay">
+  <div id="tp-scroll-area">
+    <div id="tp-progress"></div>
+    <div id="tp-text"></div>
+    <div id="tp-play-hint"></div>
+  </div>
+  <div id="tp-controls">
+    <button class="tp-btn" id="tp-play-btn" onclick="tpTogglePlay()"><i class="ti ti-player-play" style="font-size:14px"></i> <span id="tp-play-label">Start</span></button>
+    <button class="tp-btn" onclick="tpRestart()"><i class="ti ti-refresh" style="font-size:14px"></i> Restart</button>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
+      <span style="color:rgba(255,255,255,0.5);font-size:12px">Speed</span>
+      <button class="tp-btn" onclick="tpSlower()"><i class="ti ti-minus" style="font-size:12px"></i></button>
+      <span id="tp-speed-label">1×</span>
+      <button class="tp-btn" onclick="tpFaster()"><i class="ti ti-plus" style="font-size:12px"></i></button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
+      <span style="color:rgba(255,255,255,0.5);font-size:12px">Size</span>
+      <button class="tp-btn" onclick="tpSmallerFont()"><i class="ti ti-letter-case-lower" style="font-size:12px"></i></button>
+      <span id="tp-font-size-display">52</span>
+      <button class="tp-btn" onclick="tpLargerFont()"><i class="ti ti-letter-case-upper" style="font-size:12px"></i></button>
+    </div>
+    <button class="tp-btn" id="tp-mirror-btn" onclick="tpToggleMirror()" title="Mirror for front-facing camera"><i class="ti ti-flip-horizontal" style="font-size:14px"></i> Mirror</button>
+    <button class="tp-btn" onclick="closeTeleprompter()" style="margin-left:auto;background:rgba(255,60,60,0.2);border-color:rgba(255,60,60,0.4)"><i class="ti ti-x" style="font-size:14px"></i> Close</button>
+  </div>
+</div>
 
 <!-- Snooze dropdown menu -->
 <div id="snoozeMenu" class="snooze-menu">
