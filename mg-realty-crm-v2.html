@@ -178,6 +178,23 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .tone-btn.active{background:#1A1914;color:#fff}
 .ce-hist-item{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
 .ce-hist-item:last-child{border-bottom:none}
+/* ── SMS Inbox Widget ── */
+.sms-thread-list{max-height:320px;overflow-y:auto}
+.sms-row{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;cursor:pointer;transition:background 0.1s}
+.sms-row:last-child{border-bottom:none}
+.sms-row:hover{background:var(--surface2)}
+.sms-row.needs-reply{background:color-mix(in srgb,var(--amber) 5%,transparent)}
+.sms-name{font-weight:600;font-size:13px}
+.sms-preview{font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px;margin-top:1px}
+.sms-convo{display:none;border-top:1px solid var(--border)}
+.sms-convo.open{display:block}
+.sms-messages{max-height:260px;overflow-y:auto;padding:12px 15px;display:flex;flex-direction:column;gap:8px}
+.sms-bubble{max-width:75%;padding:8px 12px;border-radius:14px;font-size:12px;line-height:1.5;word-break:break-word}
+.sms-bubble.out{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.sms-bubble.in{background:var(--surface2);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+.sms-bubble-time{font-size:9px;opacity:0.65;margin-top:3px}
+.sms-reply-box{display:flex;gap:8px;padding:10px 15px;border-top:1px solid var(--border);background:var(--surface)}
+.sms-reply-box textarea{flex:1;min-height:38px;max-height:100px;resize:vertical;font-size:12px;padding:8px 10px}
 /* ── Inbox Widget ── */
 .ib-item{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;cursor:default}
 .ib-item:last-child{border-bottom:none}
@@ -251,6 +268,23 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         </div>
         <div id="cl-body">
           <div class="cl-loading"><div class="ce-spinner"></div><span>Analyzing your leads…</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SMS Inbox -->
+    <div style="margin-bottom:18px">
+      <div class="tw" id="sms-inbox-widget">
+        <div class="ib-hd">
+          <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+            <i class="ti ti-message-2" style="color:var(--green);font-size:15px"></i> Text Inbox
+            <span id="sms-needs-badge" style="display:none;background:var(--amber);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px"></span>
+            <span id="sms-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+          </div>
+          <button class="btn btn-sm btn-primary" id="sms-refresh-btn" onclick="refreshSmsInbox()"><i class="ti ti-refresh" style="font-size:11px"></i> Refresh</button>
+        </div>
+        <div id="sms-body">
+          <div class="cl-loading"><div class="ce-spinner"></div><span>Loading texts…</span></div>
         </div>
       </div>
     </div>
@@ -1855,6 +1889,144 @@ function quickLogCall(leadId) {
     const el = document.getElementById('af1');
     if (el) el.value = 'call';
   }, 100);
+}
+
+// ── SMS Inbox ─────────────────────────────────────────────────
+const SMS_KEY = 'mg_sms_v1';
+let smsThreads = [];
+let openSmsNumber = null;
+
+function loadSmsInbox() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(SMS_KEY) || 'null');
+    if (cached && cached.ts && (Date.now() - cached.ts) < 10 * 60 * 1000 && cached.threads) {
+      smsThreads = cached.threads; renderSmsInbox(); return;
+    }
+  } catch(e) {}
+  fetchSmsInbox();
+}
+
+async function fetchSmsInbox() {
+  const body = document.getElementById('sms-body');
+  const btn  = document.getElementById('sms-refresh-btn');
+  if (!body) return;
+  body.innerHTML = `<div class="cl-loading"><div class="ce-spinner"></div><span>Loading texts…</span></div>`;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="ce-spinner" style="width:11px;height:11px;border-width:1.5px"></div>'; }
+  try {
+    const res  = await fetch(BACKEND + '/api/sms-inbox');
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    smsThreads = data.threads || [];
+    try { localStorage.setItem(SMS_KEY, JSON.stringify({ ts: Date.now(), threads: smsThreads })); } catch(e) {}
+    renderSmsInbox();
+  } catch(e) {
+    body.innerHTML = `<div style="padding:18px;text-align:center;color:var(--red);font-size:13px">${e.message}</div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh" style="font-size:11px"></i> Refresh'; }
+  }
+}
+
+function leadForNumber(number) {
+  const clean = n => (n||'').replace(/\D/g,'');
+  return leads.find(l => l.phone && clean(l.phone) === clean(number));
+}
+
+function renderSmsInbox() {
+  const body  = document.getElementById('sms-body');
+  const badge = document.getElementById('sms-needs-badge');
+  const upd   = document.getElementById('sms-updated');
+  if (!body) return;
+  const needsCount = smsThreads.filter(t => t.needsReply).length;
+  if (badge) { badge.style.display = needsCount ? '' : 'none'; badge.textContent = needsCount; }
+  if (upd) upd.textContent = '· just now';
+  if (!smsThreads.length) {
+    body.innerHTML = `<div style="padding:22px;text-align:center;color:var(--text2);font-size:13px"><i class="ti ti-message-off" style="font-size:22px;display:block;margin-bottom:8px;color:var(--border)"></i>No text messages yet.</div>`;
+    return;
+  }
+  body.innerHTML = `<div class="sms-thread-list">${smsThreads.map(t => {
+    const lead = leadForNumber(t.number);
+    const name = lead ? `${lead.first} ${lead.last}`.trim() : t.number;
+    const date = t.lastDate ? new Date(t.lastDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+    const preview = (t.lastDirection === 'outbound-api' ? '↑ ' : '↓ ') + (t.lastMessage||'').substring(0,80);
+    const isOpen = openSmsNumber === t.number;
+    return `<div>
+      <div class="sms-row${t.needsReply ? ' needs-reply' : ''}" onclick="toggleSmsThread('${t.number}')">
+        ${t.needsReply ? '<div class="ib-dot" style="margin-top:2px;flex-shrink:0;background:var(--amber)"></div>' : '<div style="width:7px;flex-shrink:0"></div>'}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span class="sms-name">${name}</span>
+            ${t.needsReply ? '<span class="badge b-amber" style="font-size:9px;padding:1px 5px">Needs reply</span>' : ''}
+            <span style="font-size:10px;color:var(--text3);margin-left:auto">${date} · ${t.messageCount} msgs</span>
+          </div>
+          <div class="sms-preview">${preview}</div>
+        </div>
+        <i class="ti ti-chevron-${isOpen ? 'up' : 'down'}" style="font-size:12px;color:var(--text3);flex-shrink:0"></i>
+      </div>
+      <div class="sms-convo${isOpen ? ' open' : ''}" id="sms-convo-${t.number.replace(/\+/g,'p')}">
+        <div class="sms-messages">${renderSmsMessages(t.messages)}</div>
+        <div class="sms-reply-box">
+          <textarea id="sms-reply-${t.number.replace(/\+/g,'p')}" placeholder="Type a reply…" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))sendSmsReply('${t.number}')"></textarea>
+          <button class="btn btn-green" onclick="sendSmsReply('${t.number}')" style="align-self:flex-end"><i class="ti ti-send"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderSmsMessages(messages) {
+  return messages.map(m => {
+    const isOut = m.direction !== 'inbound';
+    const time  = m.date ? new Date(m.date).toLocaleTimeString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+    return `<div style="display:flex;flex-direction:column;align-items:${isOut ? 'flex-end' : 'flex-start'}">
+      <div class="sms-bubble ${isOut ? 'out' : 'in'}">${(m.body||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+        <div class="sms-bubble-time">${time}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleSmsThread(number) {
+  openSmsNumber = openSmsNumber === number ? null : number;
+  renderSmsInbox();
+  if (openSmsNumber) {
+    setTimeout(() => {
+      const convo = document.getElementById('sms-convo-' + number.replace(/\+/g,'p'));
+      if (convo) { const msgs = convo.querySelector('.sms-messages'); if (msgs) msgs.scrollTop = msgs.scrollHeight; }
+    }, 50);
+  }
+}
+
+async function sendSmsReply(number) {
+  const key = 'sms-reply-' + number.replace(/\+/g,'p');
+  const ta  = document.getElementById(key);
+  if (!ta) return;
+  const body = ta.value.trim();
+  if (!body) return;
+  ta.disabled = true;
+  try {
+    const res  = await fetch(BACKEND + '/api/sms-reply', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: number, body })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    ta.value = '';
+    const thread = smsThreads.find(t => t.number === number);
+    if (thread) {
+      thread.messages.push({ body, direction: 'outbound-api', date: new Date().toISOString() });
+      thread.lastMessage = body; thread.lastDirection = 'outbound-api'; thread.needsReply = false;
+      try { localStorage.setItem(SMS_KEY, JSON.stringify({ ts: Date.now(), threads: smsThreads })); } catch(e) {}
+      openSmsNumber = number; renderSmsInbox();
+    }
+    toast('Text sent ✓');
+  } catch(e) {
+    toast('Send failed: ' + e.message, 'error');
+  } finally { ta.disabled = false; }
+}
+
+function refreshSmsInbox() {
+  try { localStorage.removeItem(SMS_KEY); } catch(e) {}
+  openSmsNumber = null; fetchSmsInbox();
 }
 
 // ── Lead Inbox ────────────────────────────────────────────────

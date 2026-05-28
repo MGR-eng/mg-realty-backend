@@ -1402,6 +1402,90 @@ app.post('/api/inbox', async (req, res) => {
   }
 });
 
+// ── SMS Inbox ─────────────────────────────────────────────────
+app.get('/api/sms-inbox', async (req, res) => {
+  try {
+    const sid   = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    const from  = process.env.TWILIO_FROM;
+    if (!sid || !token || !from) return res.json({ ok: true, threads: [] });
+
+    const auth = Buffer.from(`${sid}:${token}`).toString('base64');
+
+    // Fetch last 200 messages (inbound + outbound) involving our Twilio number
+    const [inRes, outRes] = await Promise.all([
+      fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json?To=${encodeURIComponent(from)}&PageSize=100`, { headers: { Authorization: `Basic ${auth}` } }),
+      fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json?From=${encodeURIComponent(from)}&PageSize=100`, { headers: { Authorization: `Basic ${auth}` } }),
+    ]);
+    const [inData, outData] = await Promise.all([inRes.json(), outRes.json()]);
+
+    const allMessages = [
+      ...(inData.messages  || []),
+      ...(outData.messages || []),
+    ].map(m => ({
+      sid:       m.sid,
+      body:      m.body,
+      direction: m.direction, // inbound / outbound-api
+      from:      m.from,
+      to:        m.to,
+      date:      m.date_sent || m.date_created,
+      otherParty: m.direction === 'inbound' ? m.from : m.to,
+    }));
+
+    // Group by other party number
+    const byNumber = {};
+    for (const msg of allMessages) {
+      const num = msg.otherParty;
+      if (!num) continue;
+      if (!byNumber[num]) byNumber[num] = [];
+      byNumber[num].push(msg);
+    }
+
+    // Build threads sorted newest first
+    const threads = Object.entries(byNumber).map(([number, msgs]) => {
+      const sorted = msgs.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const last   = sorted[sorted.length - 1];
+      const needsReply = last.direction === 'inbound';
+      return {
+        number,
+        messages: sorted,
+        lastMessage:  last.body,
+        lastDate:     last.date,
+        lastDirection: last.direction,
+        needsReply,
+        messageCount: sorted.length,
+      };
+    }).sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate));
+
+    res.json({ ok: true, threads });
+  } catch (e) {
+    console.error('SMS INBOX ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/sms-reply', async (req, res) => {
+  try {
+    const { to, body } = req.body;
+    if (!to || !body) return res.status(400).json({ ok: false, error: 'Missing to or body' });
+    const sid   = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    const from  = process.env.TWILIO_FROM;
+    const auth  = Buffer.from(`${sid}:${token}`).toString('base64');
+    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+      method: 'POST',
+      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ From: from, To: to, Body: body })
+    });
+    const data = await r.json();
+    if (data.error_code) throw new Error(data.error_message || 'Twilio error');
+    res.json({ ok: true, sid: data.sid });
+  } catch (e) {
+    console.error('SMS REPLY ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── AI Email Draft ────────────────────────────────────────────
 app.post('/api/draft-email', async (req, res) => {
   try {
