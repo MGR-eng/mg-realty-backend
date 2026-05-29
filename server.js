@@ -413,7 +413,7 @@ app.post('/gmail/digest', async (req, res) => {
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto">
         <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
-          <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:64px;max-width:200px;object-fit:contain;display:block;margin:0 auto 12px">
+          <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:64px;max-width:200px;object-fit:contain;display:block;margin:0 auto 12px">
           <h1 style="color:#fff;margin:0;font-size:18px">Daily Digest</h1>
           <p style="color:#aaa;margin:4px 0 0;font-size:13px">${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
@@ -706,7 +706,7 @@ Return only: {"ok":true}`, [calMcp]);
         subject: action.subject || 'Message from MG Realty',
         html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
           <div style="background:#1A1914;padding:20px;text-align:center;border-radius:8px 8px 0 0">
-            <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain">
+            <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain">
           </div>
           <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
             <p>${(action.body || '').replace(/\n/g, '<br>')}</p>
@@ -910,7 +910,7 @@ app.all('/sequences/process', async (req, res) => {
         const html = `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
             <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
-              <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+              <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
             </div>
             <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
               ${tpl.body(firstName)}
@@ -1085,7 +1085,7 @@ async function processPostCloseEmails(crm, today) {
         };
         const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
           <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
-            <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+            <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
           </div>
           <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
             ${bodyHtml}
@@ -1614,7 +1614,7 @@ async function sendLeadEmail(first, last, phone, email, intent, budget, timeline
     html: `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
-        <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto 10px">
+        <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto 10px">
         <h2 style="color:#fff;margin:0;font-size:18px">New Lead from Contact Form</h2>
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
@@ -2401,7 +2401,7 @@ Write the summary in 2nd person ("You have…", "Your top priority…"). Sound l
         <div style="color:#C9A84C;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">Morning Briefing</div>
         <div style="color:white;font-size:20px;font-weight:700;margin-top:2px">${dayName}, ${dateStr}</div>
       </div>
-      <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="height:40px;width:auto;object-fit:contain">
+      <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="height:40px;width:auto;object-fit:contain">
     </div>
 
     <!-- AI Summary -->
@@ -3096,7 +3096,7 @@ async function processLeaseReminders(crm, today) {
 
     const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
       <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
-        <img src="https://mgr-eng.github.io/mg-realty-backend/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+        <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
       </div>
       <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
         <h2 style="margin:0 0 12px;font-size:18px">Hi ${name},</h2>
