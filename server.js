@@ -3388,6 +3388,49 @@ app.post('/api/text-blast', async (req, res) => {
 });
 
 // ── AI Deal Analyzer ──────────────────────────────────────────
+// ── Instagram DM → Lead extractor ────────────────────────────
+app.post('/api/extract-dm', async (req, res) => {
+  try {
+    const { conversation } = req.body;
+    if (!conversation) return res.status(400).json({ ok: false, error: 'Conversation required' });
+
+    const prompt = `You are a CRM assistant for real estate agent Matt Golden (MG Realty, Los Angeles).
+
+Extract lead information from this Instagram DM conversation. Return ONLY valid JSON with no markdown or commentary:
+
+{
+  "first": "first name or empty string",
+  "last": "last name or empty string",
+  "phone": "phone number if mentioned, or empty string",
+  "email": "email if mentioned, or empty string",
+  "type": "buyer" or "seller" or "investor" or "renter" — infer from context,
+  "temp": "hot" or "warm" or "cold" — infer from how engaged they seem,
+  "prop": "property interest description (e.g. '3BR Silver Lake under $800k') or empty string",
+  "budget": "budget if mentioned, or empty string",
+  "neighborhood": "neighborhood preference if mentioned, or empty string",
+  "notes": "2-3 sentence summary of what they want and any key details from the conversation",
+  "confidence": "high", "medium", or "low" — how complete the extracted data is
+}
+
+CONVERSATION:
+${conversation}`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 512,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    let raw = msg.content[0].text.trim();
+    if (raw.startsWith('```')) raw = raw.replace(/```json\n?|```\n?/g, '').trim();
+    const lead = JSON.parse(raw);
+    res.json({ ok: true, lead });
+  } catch (e) {
+    console.error('EXTRACT DM ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/deal-analyze', async (req, res) => {
   try {
     const { listing, buyers } = req.body;

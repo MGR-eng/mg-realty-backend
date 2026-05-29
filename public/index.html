@@ -398,6 +398,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('commission',this)"><i class="ti ti-coin"></i><span>Commission</span></button>
     <button class="nav-item" onclick="showPane('agents',this)"><i class="ti ti-id-badge"></i><span>Agents</span></button>
     <button class="nav-item" onclick="showPane('content',this)"><i class="ti ti-brand-instagram"></i><span>Content</span></button>
+    <button class="nav-item" onclick="showPane('dm-import',this)"><i class="ti ti-message-bolt"></i><span>DM Importer</span></button>
     <button class="nav-item" onclick="showPane('leases',this)"><i class="ti ti-home-check"></i><span>Leases</span><span class="nb" id="nb-leases">0</span></button>
     <button class="nav-item" onclick="showPane('deals',this)"><i class="ti ti-analyze"></i><span>Deal Analyzer</span></button>
     <button class="nav-item" onclick="showPane('textblast',this)"><i class="ti ti-send"></i><span>Text Blast</span></button>
@@ -820,6 +821,52 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     </div>
   </div>
   <div class="content"><div class="tw"><table><thead><tr><th style="width:150px">Name</th><th style="width:160px">Brokerage</th><th style="width:120px">Phone</th><th style="width:150px">Email</th><th style="width:80px">Type</th><th style="width:110px">License #</th><th style="width:80px"></th></tr></thead><tbody id="agentTbody"></tbody></table></div></div>
+</div>
+
+<!-- DM Importer pane -->
+<div id="pane-dm-import" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-message-bolt" style="margin-right:6px;color:#E8681A"></i>Instagram DM Importer</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px;max-width:1200px">
+
+    <!-- Left: paste DM -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px">
+        <div style="font-weight:600;font-size:14px;margin-bottom:6px">Paste DM Conversation</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">Copy the conversation from Instagram DMs and paste it here. Works with any format — AI will extract the lead details automatically.</div>
+        <textarea id="dm-text" rows="16" placeholder="Example:
+them: Hey I saw your post about the Silver Lake property, is it still available?
+me: Hi! Yes it is, what are you looking for?
+them: I'm looking for a 3 bed in Silver Lake or Los Feliz, budget around $900k. My name is Jessica Torres, you can reach me at 310-555-0199
+me: Perfect, I'd love to help! Can we set up a showing this week?
+them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--text1);font-family:inherit;box-sizing:border-box"></textarea>
+        <button onclick="extractDM()" id="dm-btn" style="margin-top:12px;width:100%;padding:11px;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:600;cursor:pointer">
+          <i class="ti ti-sparkles"></i> Extract Lead from DM
+        </button>
+      </div>
+
+      <!-- Tips -->
+      <div style="background:rgba(232,104,26,.06);border:1px solid rgba(232,104,26,.2);border-radius:var(--r);padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px">Tips</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7">
+          • Copy the full conversation — more context = better extraction<br>
+          • Works with Instagram, Facebook, WhatsApp, iMessage — any format<br>
+          • Phone/email don't have to be explicitly stated — AI infers from context<br>
+          • You can edit every field before saving
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: extracted lead preview -->
+    <div id="dm-result">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:32px;text-align:center;color:var(--text2)">
+        <i class="ti ti-message-bolt" style="font-size:40px;opacity:.3;display:block;margin-bottom:10px"></i>
+        <div style="font-size:14px">Paste a DM on the left and hit Extract.<br>The lead details will appear here ready to save.</div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <!-- Content Engine pane -->
@@ -4962,6 +5009,138 @@ async function runTextBlast() {
   }
   btn.disabled = false;
   btn.innerHTML = '<i class="ti ti-send"></i> Send Blast';
+}
+
+// ── Instagram DM Importer ─────────────────────────────────────
+async function extractDM() {
+  const conversation = document.getElementById('dm-text').value.trim();
+  if (!conversation) { toast('Paste a DM conversation first', 'err'); return; }
+  const btn = document.getElementById('dm-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Extracting…';
+  document.getElementById('dm-result').innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:32px;text-align:center;color:var(--text2)">
+      <i class="ti ti-loader ti-spin" style="font-size:32px;display:block;margin-bottom:10px;color:var(--accent)"></i>
+      <div style="font-size:14px">Reading the conversation…</div>
+    </div>`;
+  try {
+    const r = await fetch(BACKEND + '/api/extract-dm', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ conversation })
+    });
+    const { ok, lead, error } = await r.json();
+    if (!ok) throw new Error(error);
+    renderDMResult(lead);
+  } catch(e) {
+    document.getElementById('dm-result').innerHTML = `<div style="color:var(--red);padding:20px">${e.message}</div>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-sparkles"></i> Extract Lead from DM';
+}
+
+function renderDMResult(lead) {
+  const confColor = lead.confidence === 'high' ? 'var(--green)' : lead.confidence === 'medium' ? 'var(--amber)' : 'var(--red)';
+  const confLabel = lead.confidence === 'high' ? 'High confidence' : lead.confidence === 'medium' ? 'Medium confidence' : 'Low confidence — review carefully';
+
+  document.getElementById('dm-result').innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:14px">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-weight:700;font-size:15px">Extracted Lead</div>
+        <span style="font-size:11px;font-weight:600;color:${confColor};background:${confColor}22;border:1px solid ${confColor}44;border-radius:99px;padding:2px 10px">${confLabel}</span>
+      </div>
+
+      <!-- Editable fields -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">First Name</label>
+          <input id="dm-first" value="${lead.first||''}" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text1);font-size:13px;font-family:inherit;box-sizing:border-box">
+        </div>
+        <div class="fg">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Last Name</label>
+          <input id="dm-last" value="${lead.last||''}" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text1);font-size:13px;font-family:inherit;box-sizing:border-box">
+        </div>
+        <div class="fg">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Phone</label>
+          <input id="dm-phone" value="${lead.phone||''}" placeholder="(310) 555-0100" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text1);font-size:13px;font-family:inherit;box-sizing:border-box">
+        </div>
+        <div class="fg">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Email</label>
+          <input id="dm-email" value="${lead.email||''}" placeholder="optional" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text1);font-size:13px;font-family:inherit;box-sizing:border-box">
+        </div>
+        <div class="fg">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Type</label>
+          <select id="dm-type" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text1);font-size:13px">
+            <option value="buyer" ${lead.type==='buyer'?'selected':''}>Buyer</option>
+            <option value="seller" ${lead.type==='seller'?'selected':''}>Seller</option>
+            <option value="investor" ${lead.type==='investor'?'selected':''}>Investor</option>
+            <option value="renter" ${lead.type==='renter'?'selected':''}>Renter</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Temp</label>
+          <select id="dm-temp" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text1);font-size:13px">
+            <option value="hot" ${lead.temp==='hot'?'selected':''}>🔥 Hot</option>
+            <option value="warm" ${lead.temp==='warm'?'selected':''}>☀️ Warm</option>
+            <option value="cold" ${lead.temp==='cold'?'selected':''}>❄️ Cold</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Property Interest</label>
+          <input id="dm-prop" value="${lead.prop||''}" placeholder="e.g. 3BR Silver Lake under $900k" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text1);font-size:13px;font-family:inherit;box-sizing:border-box">
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Notes</label>
+          <textarea id="dm-notes" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text1);font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box">${lead.notes||''}</textarea>
+        </div>
+      </div>
+
+      <!-- Source tag -->
+      <div style="font-size:12px;color:var(--text2);background:var(--bg);border-radius:6px;padding:8px 12px">
+        <i class="ti ti-brand-instagram" style="color:#E1306C;margin-right:5px"></i>Source will be tagged as <strong>Instagram</strong>
+      </div>
+
+      <!-- Save button -->
+      <button onclick="saveDMlead()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:600;cursor:pointer">
+        <i class="ti ti-user-plus"></i> Save Lead to CRM
+      </button>
+    </div>`;
+}
+
+function saveDMlead() {
+  const first = document.getElementById('dm-first')?.value.trim();
+  const last  = document.getElementById('dm-last')?.value.trim();
+  if (!first) { toast('First name is required', 'err'); return; }
+  const today = new Date().toISOString().split('T')[0];
+  const lead = {
+    id: 'l' + Date.now(),
+    first, last: last||'',
+    phone: document.getElementById('dm-phone')?.value.trim()||'',
+    email: document.getElementById('dm-email')?.value.trim()||'',
+    type:  document.getElementById('dm-type')?.value||'buyer',
+    temp:  document.getElementById('dm-temp')?.value||'warm',
+    prop:  document.getElementById('dm-prop')?.value.trim()||'',
+    notes: document.getElementById('dm-notes')?.value.trim()||'',
+    source: 'Instagram',
+    stage: 'new',
+    ohdate: today,
+    followup: today,
+    method: 'text',
+    lastcontact: today,
+    lcmethod: 'dm',
+  };
+  leads.push(lead);
+  persist();
+  pushToBackend();
+  toast(`${first} ${last||''} added to CRM from Instagram DM ✓`);
+  // Clear the form and result
+  document.getElementById('dm-text').value = '';
+  document.getElementById('dm-result').innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:32px;text-align:center;color:var(--text2)">
+      <div style="font-size:36px;margin-bottom:10px">✓</div>
+      <div style="font-size:14px;color:var(--green);font-weight:600">${first} saved!</div>
+      <div style="font-size:13px;margin-top:6px">Paste another DM to import more leads.</div>
+    </div>`;
 }
 
 // ── Client Portal ─────────────────────────────────────────────
