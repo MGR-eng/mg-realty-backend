@@ -3357,6 +3357,36 @@ Make the data realistic for ${neighborhood}, Los Angeles in ${monthYear}. Use ac
   }
 });
 
+// ── Text Blast ────────────────────────────────────────────────
+app.post('/api/text-blast', async (req, res) => {
+  try {
+    const { message, leads } = req.body;
+    if (!message || !leads || !leads.length) return res.status(400).json({ ok: false, error: 'Message and leads required' });
+
+    const results = [];
+    for (const lead of leads) {
+      if (!lead.phone) { results.push({ id: lead.id, name: `${lead.first} ${lead.last}`, ok: false, error: 'No phone' }); continue; }
+      try {
+        // Personalise: swap {first} token
+        const body = message.replace(/\{first\}/gi, lead.first || 'there');
+        const sid = await sendSMS(lead.phone, body);
+        results.push({ id: lead.id, name: `${lead.first} ${lead.last}`, ok: true, sid });
+      } catch(e) {
+        results.push({ id: lead.id, name: `${lead.first} ${lead.last}`, ok: false, error: e.message });
+      }
+      // 300ms between sends to stay well under Twilio rate limits
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    const sent = results.filter(r => r.ok).length;
+    const failed = results.filter(r => !r.ok).length;
+    res.json({ ok: true, sent, failed, results });
+  } catch(e) {
+    console.error('TEXT BLAST ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── AI Deal Analyzer ──────────────────────────────────────────
 app.post('/api/deal-analyze', async (req, res) => {
   try {

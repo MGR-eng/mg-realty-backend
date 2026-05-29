@@ -400,6 +400,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('content',this)"><i class="ti ti-brand-instagram"></i><span>Content</span></button>
     <button class="nav-item" onclick="showPane('leases',this)"><i class="ti ti-home-check"></i><span>Leases</span><span class="nb" id="nb-leases">0</span></button>
     <button class="nav-item" onclick="showPane('deals',this)"><i class="ti ti-analyze"></i><span>Deal Analyzer</span></button>
+    <button class="nav-item" onclick="showPane('textblast',this)"><i class="ti ti-send"></i><span>Text Blast</span></button>
     <div class="nav-lbl">Tools</div>
     <button class="nav-item" onclick="openCommCalc()"><i class="ti ti-calculator"></i><span>Comm. Calc</span></button>
     <button class="nav-item" onclick="openMarketReport()"><i class="ti ti-chart-bar"></i><span>Market Report</span></button>
@@ -558,6 +559,97 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <div id="pane-commission" class="pane">
   <div class="topbar"><div class="page-title">Commission Tracker</div><div class="tba"><button class="btn btn-green" onclick="openAddDeal()"><i class="ti ti-plus"></i> Log deal</button></div></div>
   <div class="content"><div id="commissionStats"></div><div class="tw"><div id="dealList"></div></div></div>
+</div>
+
+<!-- Text Blast pane -->
+<div id="pane-textblast" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-send" style="margin-right:6px;color:#E8681A"></i>Text Blast</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px;max-width:1200px">
+
+    <!-- Left: filters + message -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Filters -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:12px">Filter Recipients</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Lead Temp</label>
+            <select id="tb-filter-temp" onchange="tbUpdatePreview()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text1);font-size:13px">
+              <option value="">All</option>
+              <option value="hot">Hot</option>
+              <option value="warm">Warm</option>
+              <option value="cold">Cold</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Lead Type</label>
+            <select id="tb-filter-type" onchange="tbUpdatePreview()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text1);font-size:13px">
+              <option value="">All</option>
+              <option value="buyer">Buyers</option>
+              <option value="seller">Sellers</option>
+              <option value="investor">Investors</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Stage</label>
+            <select id="tb-filter-stage" onchange="tbUpdatePreview()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text1);font-size:13px">
+              <option value="">All</option>
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="showing">Showing</option>
+              <option value="offer">Offer</option>
+              <option value="contract">Contract</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px">Has Phone</label>
+            <select id="tb-filter-phone" onchange="tbUpdatePreview()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text1);font-size:13px">
+              <option value="yes">With phone only</option>
+              <option value="">All</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;color:var(--text2)">Recipients matched:</span>
+          <span id="tb-count" style="font-size:18px;font-weight:700;color:var(--accent)">0</span>
+        </div>
+      </div>
+
+      <!-- Message -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px">Message</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Use <code style="background:var(--bg);padding:1px 5px;border-radius:4px;color:var(--accent)">{first}</code> to personalise with their first name.</div>
+        <textarea id="tb-message" rows="6" oninput="tbCharCount()" placeholder="Hey {first}, just wanted to reach out about the LA market — prices are moving fast right now. Let me know if you want a quick update on your area. — Matt" style="width:100%;resize:vertical;font-size:13px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--text1);font-family:inherit;box-sizing:border-box"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <span id="tb-chars" style="font-size:12px;color:var(--text2)">0 / 160 chars</span>
+          <span id="tb-segments" style="font-size:12px;color:var(--text2)"></span>
+        </div>
+      </div>
+
+      <!-- Send -->
+      <button onclick="runTextBlast()" id="tb-send-btn" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:600;cursor:pointer">
+        <i class="ti ti-send"></i> Send Blast
+      </button>
+    </div>
+
+    <!-- Right: recipient list + results -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:10px">Recipients Preview</div>
+        <div id="tb-recipient-list" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:13px;color:var(--text2)">Adjust filters to see recipients.</div>
+        </div>
+      </div>
+      <div id="tb-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:10px">Blast Results</div>
+        <div id="tb-results-body"></div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <!-- Deal Analyzer pane -->
@@ -1281,6 +1373,7 @@ function showPane(id,el){
   if(mTab)mTab.classList.add('active');
   renderAll();
   if(id==='deals') renderDealHistory();
+  if(id==='textblast') tbUpdatePreview();
 }
 function toggleMoreSheet(){
   document.getElementById('moreSheet').classList.toggle('open');
@@ -4415,6 +4508,118 @@ function deleteLeaseDoc(leaseId, docId) {
   persist();
   if(currentLeaseId===leaseId) renderLeaseDocList(leaseId);
   toast('Document removed');
+}
+
+// ── Text Blast ────────────────────────────────────────────────
+function tbGetFiltered() {
+  const temp  = document.getElementById('tb-filter-temp')?.value  || '';
+  const type  = document.getElementById('tb-filter-type')?.value  || '';
+  const stage = document.getElementById('tb-filter-stage')?.value || '';
+  const phone = document.getElementById('tb-filter-phone')?.value || '';
+  return leads.filter(l => {
+    if (l.temp === 'done') return false;
+    if (temp  && l.temp  !== temp)  return false;
+    if (type  && l.type  !== type)  return false;
+    if (stage && l.stage !== stage) return false;
+    if (phone === 'yes' && !l.phone) return false;
+    return true;
+  });
+}
+
+function tbUpdatePreview() {
+  const filtered = tbGetFiltered();
+  const countEl = document.getElementById('tb-count');
+  const listEl  = document.getElementById('tb-recipient-list');
+  if (!countEl || !listEl) return;
+  countEl.textContent = filtered.length;
+  if (!filtered.length) {
+    listEl.innerHTML = '<div style="font-size:13px;color:var(--text2)">No leads match these filters.</div>';
+    return;
+  }
+  listEl.innerHTML = filtered.map(l => `
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg);border-radius:6px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${l.first} ${l.last}</div>
+        <div style="font-size:11px;color:var(--text2)">${l.phone || '<span style="color:var(--red)">No phone</span>'} · ${l.type||''} · ${l.temp||''}</div>
+      </div>
+      ${!l.phone ? '<i class="ti ti-alert-circle" style="color:var(--red);font-size:14px" title="No phone — will be skipped"></i>' : '<i class="ti ti-check" style="color:var(--green);font-size:14px"></i>'}
+    </div>`).join('');
+}
+
+function tbCharCount() {
+  const msg = document.getElementById('tb-message')?.value || '';
+  const len = msg.length;
+  const segs = Math.ceil(len / 160) || 1;
+  const el = document.getElementById('tb-chars');
+  const sel = document.getElementById('tb-segments');
+  if (el) { el.textContent = `${len} chars`; el.style.color = len > 320 ? 'var(--red)' : len > 160 ? 'var(--amber)' : 'var(--text2)'; }
+  if (sel) sel.textContent = segs > 1 ? `${segs} SMS segments` : '';
+}
+
+async function runTextBlast() {
+  const message = document.getElementById('tb-message')?.value.trim();
+  if (!message) { toast('Write a message first', 'err'); return; }
+  const recipients = tbGetFiltered();
+  const withPhone = recipients.filter(l => l.phone);
+  if (!withPhone.length) { toast('No recipients with phone numbers', 'err'); return; }
+  if (!confirm(`Send to ${withPhone.length} lead${withPhone.length!==1?'s':''}? This cannot be undone.`)) return;
+
+  const btn = document.getElementById('tb-send-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<i class="ti ti-loader ti-spin"></i> Sending to ${withPhone.length} leads…`;
+
+  try {
+    const r = await fetch(BACKEND + '/api/text-blast', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message, leads: withPhone })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+
+    // Log each successful send as an activity
+    d.results.filter(r => r.ok).forEach(result => {
+      const lead = leads.find(l => l.id === result.id);
+      if (lead) {
+        const act = {
+          id: 'a' + Date.now() + Math.random().toString(36).slice(2),
+          leadId: lead.id,
+          leadName: `${lead.first} ${lead.last}`,
+          date: new Date().toISOString().split('T')[0],
+          type: 'text',
+          direction: 'out',
+          outcome: 'Text blast sent',
+          notes: message.substring(0, 100)
+        };
+        acts.push(act);
+      }
+    });
+    persist();
+
+    // Show results
+    const resultEl = document.getElementById('tb-results');
+    const bodyEl   = document.getElementById('tb-results-body');
+    resultEl.style.display = '';
+    bodyEl.innerHTML = `
+      <div style="display:flex;gap:16px;margin-bottom:12px">
+        <div style="background:rgba(39,174,96,.12);border:1px solid rgba(39,174,96,.3);border-radius:8px;padding:10px 16px;flex:1;text-align:center">
+          <div style="font-size:24px;font-weight:800;color:var(--green)">${d.sent}</div>
+          <div style="font-size:12px;color:var(--text2)">Sent</div>
+        </div>
+        <div style="background:${d.failed?'rgba(231,76,60,.12)':'var(--bg)'};border:1px solid ${d.failed?'rgba(231,76,60,.3)':'var(--border)'};border-radius:8px;padding:10px 16px;flex:1;text-align:center">
+          <div style="font-size:24px;font-weight:800;color:${d.failed?'var(--red)':'var(--text2)'}">${d.failed}</div>
+          <div style="font-size:12px;color:var(--text2)">Failed</div>
+        </div>
+      </div>
+      ${d.results.filter(r=>!r.ok).map(r=>`
+        <div style="font-size:12px;color:var(--red);padding:4px 0">${r.name}: ${r.error}</div>
+      `).join('')}`;
+    toast(`Blast sent — ${d.sent} delivered${d.failed?' · '+d.failed+' failed':''}`, d.failed?'warn':'ok');
+  } catch(e) {
+    toast(e.message, 'err');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-send"></i> Send Blast';
 }
 
 // ── Client Portal ─────────────────────────────────────────────
