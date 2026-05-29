@@ -1102,28 +1102,28 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
   <div class="fgg-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 4px">
     <!-- Tenant -->
     <div class="fgg full" style="grid-column:1/-1"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Tenant</label></div>
-    <div class="fgg"><label>First name *</label><input id="lf1" placeholder="Jane"></div>
-    <div class="fgg"><label>Last name</label><input id="lf2" placeholder="Smith"></div>
-    <div class="fgg"><label>Phone</label><input id="lf3" placeholder="(323) 555-0100" type="tel"></div>
-    <div class="fgg"><label>Email</label><input id="lf4" placeholder="jane@email.com" type="email"></div>
+    <div class="fgg"><label>First name *</label><input id="llf1" placeholder="Jane"></div>
+    <div class="fgg"><label>Last name</label><input id="llf2" placeholder="Smith"></div>
+    <div class="fgg"><label>Phone</label><input id="llf3" placeholder="(323) 555-0100" type="tel"></div>
+    <div class="fgg"><label>Email</label><input id="llf4" placeholder="jane@email.com" type="email"></div>
     <!-- Property -->
     <div class="fgg full" style="grid-column:1/-1;margin-top:4px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Property</label></div>
-    <div class="fgg full" style="grid-column:1/-1"><label>Property address *</label><input id="lf5" placeholder="1234 Sunset Blvd, Los Angeles, CA 90026"></div>
-    <div class="fgg"><label>Unit / Apt</label><input id="lf6" placeholder="Apt 2B"></div>
-    <div class="fgg"><label>Status</label><select id="lf7"><option value="pending">Pending</option><option value="active">Active</option><option value="expiring">Expiring</option><option value="expired">Expired</option></select></div>
+    <div class="fgg full" style="grid-column:1/-1"><label>Property address *</label><input id="llf5" placeholder="1234 Sunset Blvd, Los Angeles, CA 90026"></div>
+    <div class="fgg"><label>Unit / Apt</label><input id="llf6" placeholder="Apt 2B"></div>
+    <div class="fgg"><label>Status</label><select id="llf7"><option value="pending">Pending</option><option value="active">Active</option><option value="expiring">Expiring</option><option value="expired">Expired</option></select></div>
     <!-- Lease terms -->
     <div class="fgg full" style="grid-column:1/-1;margin-top:4px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Lease Terms</label></div>
-    <div class="fgg"><label>Start date</label><input id="lf8" type="date"></div>
-    <div class="fgg"><label>End date</label><input id="lf9" type="date"></div>
-    <div class="fgg"><label>Monthly rent ($)</label><input id="lf10" type="number" placeholder="3500" step="50"></div>
-    <div class="fgg"><label>Security deposit ($)</label><input id="lf11" type="number" placeholder="7000" step="50"></div>
+    <div class="fgg"><label>Start date</label><input id="llf8" type="date"></div>
+    <div class="fgg"><label>End date</label><input id="llf9" type="date"></div>
+    <div class="fgg"><label>Monthly rent ($)</label><input id="llf10" type="number" placeholder="3500" step="50"></div>
+    <div class="fgg"><label>Security deposit ($)</label><input id="llf11" type="number" placeholder="7000" step="50"></div>
     <!-- Owner/Landlord -->
     <div class="fgg full" style="grid-column:1/-1;margin-top:4px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Owner / Landlord</label></div>
-    <div class="fgg"><label>Owner name</label><input id="lf12" placeholder="John Doe"></div>
-    <div class="fgg"><label>Owner phone</label><input id="lf13" placeholder="(323) 555-0200" type="tel"></div>
-    <div class="fgg full" style="grid-column:1/-1"><label>Owner email</label><input id="lf14" placeholder="owner@email.com" type="email"></div>
+    <div class="fgg"><label>Owner name</label><input id="llf12" placeholder="John Doe"></div>
+    <div class="fgg"><label>Owner phone</label><input id="llf13" placeholder="(323) 555-0200" type="tel"></div>
+    <div class="fgg full" style="grid-column:1/-1"><label>Owner email</label><input id="llf14" placeholder="owner@email.com" type="email"></div>
     <!-- Notes -->
-    <div class="fgg full" style="grid-column:1/-1"><label>Notes</label><textarea id="lf15" rows="2" placeholder="Pets allowed, parking space #12, etc."></textarea></div>
+    <div class="fgg full" style="grid-column:1/-1"><label>Notes</label><textarea id="llf15" rows="2" placeholder="Pets allowed, parking space #12, etc."></textarea></div>
   </div>
   <div class="mfoot">
     <button class="btn" onclick="closeModal('mLease')">Cancel</button>
@@ -4716,12 +4716,12 @@ function renderLeases() {
 function openAddLease() {
   editLeaseId = null;
   document.getElementById('mLeaseTitle').textContent = '📋 Add Lease';
-  ['lf1','lf2','lf3','lf4','lf5','lf6','lf10','lf11','lf12','lf13','lf14','lf15'].forEach(id => {
+  ['llf1','llf2','llf3','llf4','llf5','llf6','llf10','llf11','llf12','llf13','llf14','llf15'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value='';
   });
-  document.getElementById('lf7').value = 'active';
-  document.getElementById('lf8').value = '';
-  document.getElementById('lf9').value = '';
+  document.getElementById('llf7').value = 'active';
+  document.getElementById('llf8').value = '';
+  document.getElementById('llf9').value = '';
   openModal('mLease');
 }
 
@@ -4730,36 +4730,36 @@ function openEditLease(id) {
   editLeaseId = id;
   document.getElementById('mLeaseTitle').textContent = '✏️ Edit Lease';
   const g = (field, id) => { const el=document.getElementById(id); if(el) el.value=l[field]||''; };
-  g('first','lf1'); g('last','lf2'); g('phone','lf3'); g('email','lf4');
-  g('address','lf5'); g('unit','lf6'); g('status','lf7');
-  g('startDate','lf8'); g('endDate','lf9');
-  g('rent','lf10'); g('deposit','lf11');
-  g('ownerName','lf12'); g('ownerPhone','lf13'); g('ownerEmail','lf14');
-  g('notes','lf15');
+  g('first','llf1'); g('last','llf2'); g('phone','llf3'); g('email','llf4');
+  g('address','llf5'); g('unit','llf6'); g('status','llf7');
+  g('startDate','llf8'); g('endDate','llf9');
+  g('rent','llf10'); g('deposit','llf11');
+  g('ownerName','llf12'); g('ownerPhone','llf13'); g('ownerEmail','llf14');
+  g('notes','llf15');
   openModal('mLease');
 }
 
 function saveLease() {
-  const first = document.getElementById('lf1').value.trim();
-  const address = document.getElementById('lf5').value.trim();
+  const first = document.getElementById('llf1').value.trim();
+  const address = document.getElementById('llf5').value.trim();
   if (!first) { toast('Tenant first name is required','error'); return; }
   if (!address) { toast('Property address is required','error'); return; }
 
   const lease = {
     id: editLeaseId || 'lse_'+Date.now(),
-    first, last: document.getElementById('lf2').value.trim(),
-    phone: document.getElementById('lf3').value.trim(),
-    email: document.getElementById('lf4').value.trim(),
-    address, unit: document.getElementById('lf6').value.trim(),
-    status: document.getElementById('lf7').value,
-    startDate: document.getElementById('lf8').value,
-    endDate: document.getElementById('lf9').value,
-    rent: document.getElementById('lf10').value,
-    deposit: document.getElementById('lf11').value,
-    ownerName: document.getElementById('lf12').value.trim(),
-    ownerPhone: document.getElementById('lf13').value.trim(),
-    ownerEmail: document.getElementById('lf14').value.trim(),
-    notes: document.getElementById('lf15').value.trim(),
+    first, last: document.getElementById('llf2').value.trim(),
+    phone: document.getElementById('llf3').value.trim(),
+    email: document.getElementById('llf4').value.trim(),
+    address, unit: document.getElementById('llf6').value.trim(),
+    status: document.getElementById('llf7').value,
+    startDate: document.getElementById('llf8').value,
+    endDate: document.getElementById('llf9').value,
+    rent: document.getElementById('llf10').value,
+    deposit: document.getElementById('llf11').value,
+    ownerName: document.getElementById('llf12').value.trim(),
+    ownerPhone: document.getElementById('llf13').value.trim(),
+    ownerEmail: document.getElementById('llf14').value.trim(),
+    notes: document.getElementById('llf15').value.trim(),
     docs: editLeaseId ? (leases.find(l=>l.id===editLeaseId)?.docs||[]) : [],
     createdAt: editLeaseId ? (leases.find(l=>l.id===editLeaseId)?.createdAt||new Date().toISOString()) : new Date().toISOString()
   };
