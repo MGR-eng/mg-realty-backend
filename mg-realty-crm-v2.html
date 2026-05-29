@@ -524,7 +524,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
   </div>
-  <div class="content"><div class="tw"><table><thead><tr><th style="width:135px">Name</th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:103px">Follow-up</th><th style="width:103px">Last contact</th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
+  <div class="content"><div class="tw"><table><thead><tr><th style="width:135px">Name</th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:52px">Score</th><th style="width:103px">Follow-up</th><th style="width:103px">Last contact</th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
 </div>
 
 <div id="pane-activity" class="pane">
@@ -1345,6 +1345,70 @@ async function api(path,body){
 }
 
 function du(s){if(!s)return null;const t=new Date();t.setHours(0,0,0,0);const[y,m,d]=s.split('-').map(Number);const dt=new Date(y,m-1,d);return Math.round((dt-t)/86400000);}
+
+// ── Lead Score (1–10) ──────────────────────────────────────────
+function calcLeadScore(lead) {
+  if (!lead || lead.temp === 'done') return 0;
+  let pts = 0;
+
+  // Temp (0–30)
+  if (lead.temp === 'hot')  pts += 30;
+  else if (lead.temp === 'warm') pts += 18;
+  else pts += 5;
+
+  // Stage (0–20)
+  const stageScore = { contract:20, offer:18, showing:12, contacted:6, new:2 };
+  pts += stageScore[(lead.stage||'new').toLowerCase()] || 2;
+
+  // Follow-up urgency (–15 to +12)
+  const fd = du(lead.followup);
+  if (fd !== null) {
+    if (fd < -7)  pts -= 15;
+    else if (fd < 0)   pts += 10; // overdue but recent — needs attention
+    else if (fd === 0) pts += 12; // due today
+    else if (fd <= 3)  pts += 8;
+    else if (fd <= 7)  pts += 4;
+  } else {
+    pts -= 5; // no follow-up set
+  }
+
+  // Last contact recency (–12 to +10)
+  const lc = du(lead.lastcontact);
+  if (lc !== null) {
+    if (lc > -3)   pts += 10; // contacted in last 3 days
+    else if (lc > -7)  pts += 6;
+    else if (lc > -14) pts += 2;
+    else if (lc > -30) pts -= 5;
+    else pts -= 12;
+  } else {
+    pts -= 8; // never contacted
+  }
+
+  // Activity count (0–10)
+  const actCount = (window.acts || []).filter(a => a.leadId === lead.id).length;
+  if (actCount >= 6) pts += 10;
+  else if (actCount >= 3) pts += 6;
+  else if (actCount >= 1) pts += 3;
+
+  // Contact info completeness (0–5)
+  if (lead.phone) pts += 3;
+  if (lead.email) pts += 2;
+
+  // Normalize to 1–10
+  const raw = Math.max(1, Math.min(100, pts));
+  return Math.round(1 + (raw / 100) * 9);
+}
+
+function scoreColor(s) {
+  if (s >= 8) return { bg:'rgba(39,174,96,.15)', color:'#27AE60', border:'rgba(39,174,96,.3)' };
+  if (s >= 5) return { bg:'rgba(243,156,18,.15)', color:'#F39C12', border:'rgba(243,156,18,.3)' };
+  return { bg:'rgba(231,76,60,.15)', color:'#E74C3C', border:'rgba(231,76,60,.3)' };
+}
+
+function scoreTag(s) {
+  const c = scoreColor(s);
+  return `<span style="background:${c.bg};color:${c.color};border:1px solid ${c.border};border-radius:99px;font-size:10px;font-weight:700;padding:1px 7px;white-space:nowrap">${s}/10</span>`;
+}
 function rel(s){if(!s)return'—';const d=du(s);if(d===0)return'Today';if(d===-1)return'Yesterday';if(d<0)return Math.abs(d)+'d ago';if(d===1)return'Tomorrow';return'In '+d+'d';}
 function ffu(s,m){
   if(!s)return'<span class="due-ok">—</span>';
@@ -1556,7 +1620,8 @@ function renderLeads(){
   if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">No leads match</div></td></tr>`;return;}
   tbody.innerHTML=f.map(l=>{
     const d=du(l.followup),rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
-    return`<tr class="${rc}" onclick="openLeadDetail('${l.id}')" style="cursor:pointer"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td><td style="white-space:nowrap"><button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
+    const score = calcLeadScore(l);
+    return`<tr class="${rc}" onclick="openLeadDetail('${l.id}')" style="cursor:pointer"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${scoreTag(score)}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td><td style="white-space:nowrap"><button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
   }).join('');
 }
 
@@ -1912,10 +1977,12 @@ function openLeadDetail(id){
   const stageCols={new:'b-neutral',contacted:'b-call',showing:'b-showing',offer:'b-offer',closed:'b-done'};
 
   document.getElementById('dp-name').textContent=l.first+' '+l.last;
+  const dpScore = calcLeadScore(l);
   document.getElementById('dp-badges').innerHTML=
     tb(l.temp)+
     `<span class="badge b-neutral" style="text-transform:capitalize">${l.type}</span>`+
     `<span class="badge ${stageCols[l.stage||'new']}">${stageLabels[l.stage||'new']}</span>`+
+    scoreTag(dpScore)+
     (l.source?`<span class="badge" style="background:${srcColor(l.source)+'22'};color:${srcColor(l.source)};border-color:${srcColor(l.source)+'55'}">${l.source}</span>`:'');
 
   // Contact
@@ -3680,6 +3747,7 @@ function renderCallList(items, ts) {
           <span class="cl-name" onclick="openLeadDetail('${lead.id}')">${lead.first || ''} ${lead.last || ''}</span>
           <span class="badge ${tc}" style="font-size:10px">${lead.temp||'cold'}</span>
           ${stage ? `<span class="badge b-neutral" style="font-size:10px">${stage}</span>` : ''}
+          ${scoreTag(calcLeadScore(lead))}
         </div>
         <div class="cl-reason">${item.reason || ''}</div>
         <div class="cl-context">${plainChips}${specialChips}</div>
