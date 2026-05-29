@@ -158,7 +158,8 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .sw{position:relative}.sw input{padding-left:31px}.sw i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
 .dash2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 /* ── Mobile left icon rail ── */
-.mobile-tabs{display:none}
+.mobile-tabs{display:none!important}
+@media(max-width:700px){.mobile-tabs{display:flex!important}}
 .rail-logo{display:none}
 @media(max-width:700px){
   .sidebar{display:none}
