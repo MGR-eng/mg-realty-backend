@@ -269,7 +269,7 @@ app.get('/privacy', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG
 <p>MG Realty ("we") operates an internal CRM assistant accessible via SMS. This policy describes how we handle information.</p>
 <h2>Information We Collect</h2><p>We collect SMS messages sent to our business number for the purpose of managing real estate client relationships.</p>
 <h2>How We Use Information</h2><p>Messages are processed by an AI assistant to help manage leads, appointments, and follow-ups. No data is sold or shared with third parties.</p>
-<h2>Contact</h2><p>Matt Golden · goldenmb@gmail.com</p>
+<h2>Contact</h2><p>Matt Golden · matt@mgoldenrealty.com</p>
 </body></html>`));
 
 // ── Terms of Service ──────────────────────────────────────────
@@ -278,7 +278,7 @@ app.get('/terms', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG R
 <p>By texting MG Realty's SMS number, you agree to receive automated responses from our AI CRM assistant.</p>
 <h2>Use</h2><p>This service is for internal business use by MG Realty staff only. Messages are processed to assist with real estate client management.</p>
 <h2>Opt-Out</h2><p>Reply STOP at any time to opt out of messages.</p>
-<h2>Contact</h2><p>Matt Golden · goldenmb@gmail.com</p>
+<h2>Contact</h2><p>Matt Golden · matt@mgoldenrealty.com</p>
 </body></html>`));
 
 // ── Calendar: create event ────────────────────────────────────
@@ -429,7 +429,7 @@ app.post('/gmail/digest', async (req, res) => {
 
     // Send via Resend
     const { error: resendErr } = await resend.emails.send({
-      from: 'MG Realty <onboarding@resend.dev>',
+      from: 'MG Realty <matt@mgoldenrealty.com>',
       to, subject, html
     });
     if (resendErr) throw new Error('Resend: ' + resendErr.message);
@@ -450,7 +450,7 @@ app.post('/email/send', async (req, res) => {
 
     const fromAddress = from === 'compass'
       ? 'Matt Golden | MG Realty <matthewgolden@compass.com>'
-      : 'Matt Golden | MG Realty <goldenmb@gmail.com>';
+      : 'Matt Golden | MG Realty <matt@mgoldenrealty.com>';
 
     // Build RFC 2822 raw email message
     const boundary = `boundary_${Date.now()}`;
@@ -691,7 +691,7 @@ Return only: {"ok":true}`, [calMcp]);
     const toEmail = action.email || lead?.email;
     if (toEmail) {
       await resend.emails.send({
-        from: 'MG Realty <onboarding@resend.dev>',
+        from: 'MG Realty <matt@mgoldenrealty.com>',
         to: toEmail,
         subject: action.subject || 'Message from MG Realty',
         html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
@@ -700,7 +700,7 @@ Return only: {"ok":true}`, [calMcp]);
           </div>
           <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
             <p>${(action.body || '').replace(/\n/g, '<br>')}</p>
-            <p style="margin-top:24px;color:#666;font-size:12px">Matt Golden · MG Realty · goldenmb@gmail.com</p>
+            <p style="margin-top:24px;color:#666;font-size:12px">Matt Golden · MG Realty · matt@mgoldenrealty.com</p>
           </div>
         </div>`
       });
@@ -904,12 +904,12 @@ app.all('/sequences/process', async (req, res) => {
             </div>
             <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
               ${tpl.body(firstName)}
-              <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · Los Angeles<br>goldenmb@gmail.com</span></p>
+              <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · Los Angeles<br>matt@mgoldenrealty.com</span></p>
             </div>
           </div>`;
 
         const { error } = await resend.emails.send({
-          from: 'Matt Golden <onboarding@resend.dev>',
+          from: 'Matt Golden <matt@mgoldenrealty.com>',
           to: seq.leadEmail,
           subject: touch.subject,
           html
@@ -1080,12 +1080,12 @@ async function processPostCloseEmails(crm, today) {
           <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
             ${bodyHtml}
             <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br>
-            <span style="color:#888">MG Realty · Los Angeles · (323) 555-0100<br>goldenmb@gmail.com · DRE #02130422</span></p>
+            <span style="color:#888">MG Realty · Los Angeles · (323) 555-0100<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
           </div>
         </div>`;
 
         const { error } = await resend.emails.send({
-          from: 'Matt Golden <onboarding@resend.dev>',
+          from: 'Matt Golden <matt@mgoldenrealty.com>',
           to: seq.leadEmail,
           subject: encodeSubject(subjects[touch.key] || touch.label),
           html
@@ -1425,7 +1425,7 @@ app.get('/link', async (req, res) => {
   </div>
 </div>
 
-<div class="footer">Matt Golden · MG Realty · Los Angeles<br>DRE #02130422 · goldenmb@gmail.com</div>
+<div class="footer">Matt Golden · MG Realty · Los Angeles<br>DRE #02130422 · matt@mgoldenrealty.com</div>
 
 <script>
 // Tour modal
@@ -1598,7 +1598,7 @@ async function sendLeadEmail(first, last, phone, email, intent, budget, timeline
   const toAddresses = ['goldenmb@gmail.com'];
   if (notifyEmail && notifyEmail !== 'goldenmb@gmail.com') toAddresses.push(notifyEmail);
   await resend.emails.send({
-    from: 'MG Realty <onboarding@resend.dev>',
+    from: 'MG Realty <matt@mgoldenrealty.com>',
     to: toAddresses,
     subject: `🏡 New Lead: ${first} ${last}`,
     html: `
@@ -1874,7 +1874,7 @@ You can do anything Matt asks. Always pick the right action:
           const overdue = crm.leads.filter(l => l.temp !== 'done' && l.followup && l.followup < today2);
           const dueToday = crm.leads.filter(l => l.temp !== 'done' && l.followup === today2);
           await resend.emails.send({
-            from: 'MG Realty <onboarding@resend.dev>',
+            from: 'MG Realty <matt@mgoldenrealty.com>',
             to: 'goldenmb@gmail.com',
             subject: `🏡 MG Realty Digest — ${new Date().toLocaleDateString()}`,
             html: `<p>Overdue: ${overdue.map(l=>`${l.first} ${l.last}`).join(', ')||'none'}</p><p>Due today: ${dueToday.map(l=>`${l.first} ${l.last}`).join(', ')||'none'}</p>`
@@ -2746,7 +2746,7 @@ ${(() => {
 </div>`;
     })()}
 
-<div class="footer">MG Realty · Matt Golden · goldenmb@gmail.com<br>Weekly digest sent every Sunday evening</div>
+<div class="footer">MG Realty · Matt Golden · matt@mgoldenrealty.com<br>Weekly digest sent every Sunday evening</div>
 </div></body></html>`;
 
     // ── Send via Gmail API ─────────────────────────────────────
@@ -3093,13 +3093,13 @@ async function processLeaseReminders(crm, today) {
         <p style="color:#333;font-size:14px;line-height:1.6">Just a heads-up — your lease at <strong>${lease.address}</strong> expires on <strong>${fmtDate(lease.endDate)}</strong>, which is <strong>${daysLeft} days away</strong>.</p>
         <p style="color:#333;font-size:14px;line-height:1.6">If you'd like to renew or discuss your options, I'm here to help. Let's connect before the deadline approaches.</p>
         <p style="margin-top:24px;color:#333;font-size:13px">— Matt Golden<br>
-        <span style="color:#888">MG Realty · Los Angeles · (323) 555-0100<br>goldenmb@gmail.com · DRE #02130422</span></p>
+        <span style="color:#888">MG Realty · Los Angeles · (323) 555-0100<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
       </div>
     </div>`;
 
     try {
       const { error } = await resend.emails.send({
-        from: 'Matt Golden <onboarding@resend.dev>',
+        from: 'Matt Golden <matt@mgoldenrealty.com>',
         to: lease.email,
         subject: encodeSubject(subject),
         html
@@ -3338,7 +3338,7 @@ Make the data realistic for ${neighborhood}, Los Angeles in ${monthYear}. Use ac
       doc.rect(0, H - 52, W, 52).fill(DARK);
       doc.rect(0, H - 52, W, 2).fill(GOLD);
       doc.fillColor('#AAAAAA').font('Helvetica').fontSize(7.5)
-        .text('Matt Golden · MG Realty · Los Angeles · goldenmb@gmail.com · (323) 555-0100 · DRE #02130422', 40, H - 38, { width: W - 80, align: 'center' });
+        .text('Matt Golden · MG Realty · Los Angeles · matt@mgoldenrealty.com · (323) 555-0100 · DRE #02130422', 40, H - 38, { width: W - 80, align: 'center' });
       doc.fillColor('#555').font('Helvetica').fontSize(6.5)
         .text('This report is generated for informational purposes and reflects AI-synthesized market estimates. Data should be verified with MLS sources before making real estate decisions.', 40, H - 22, { width: W - 80, align: 'center' });
 
