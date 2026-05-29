@@ -1867,7 +1867,7 @@ function renderDashStages(){
 
 function renderLeads(){
   const s=document.getElementById('srch').value.toLowerCase(),ft=document.getElementById('ftemp').value,fty=document.getElementById('ftype').value;
-  let f=leads.filter(l=>{if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;if(ft&&l.temp!==ft)return false;if(fty&&l.type!==fty)return false;return true;}).sort((a,b)=>(du(a.followup)??9999)-(du(b.followup)??9999));
+  let f=leads.filter(l=>{if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;if(ft&&l.temp!==ft)return false;if(fty&&l.type!==fty)return false;return true;}).sort((a,b)=>{const la=(a.last||'').toLowerCase(),lb=(b.last||'').toLowerCase();if(la!==lb)return la<lb?-1:1;return(a.first||'').toLowerCase()<(b.first||'').toLowerCase()?-1:1;});
   const tbody=document.getElementById('ltbody');
   if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">No leads match</div></td></tr>`;return;}
   tbody.innerHTML=f.map(l=>{
