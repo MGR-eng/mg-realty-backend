@@ -1897,7 +1897,19 @@ function renderAppts(){
     const calStatus = a.gcalEventId
       ? `<span style="font-size:11px;color:var(--purple)"><i class="ti ti-calendar-check" style="font-size:11px;margin-right:2px"></i>Synced to Google Calendar</span>`
       : `<button class="btn btn-sm" id="gcal-sync-${a.id}" onclick="syncApptToGcal('${a.id}')" style="font-size:10px;padding:2px 7px;color:#4285F4;border-color:#4285F4;background:transparent"><i class="ti ti-calendar-plus" style="font-size:10px"></i> Sync to Google Cal</button>`;
-    return`<div class="appt-item"><div class="appt-date-box"><div class="appt-day">${new Date(a.date+'T12:00').getDate()}</div><div class="appt-mo">${new Date(a.date+'T12:00').toLocaleString('default',{month:'short'})}</div></div><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-weight:600">${a.leadName}</span><span class="badge b-showing">${a.type}</span><span class="badge ${d>=0&&d<=1?'b-hot':'b-neutral'}">${lbl}</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px">${a.address||''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${a.time} · ${a.duration} min${a.notes?' · '+a.notes:''}</div><div style="margin-top:4px">${calStatus}</div></div><button class="btn btn-red btn-sm" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button></div>`;
+    // Feedback display
+    const STARS = ['','⭐','⭐⭐','⭐⭐⭐','⭐⭐⭐⭐','⭐⭐⭐⭐⭐'];
+    const feedbackRow = a.feedback
+      ? `<div style="margin-top:6px;background:var(--surface2);border-radius:8px;padding:7px 10px;font-size:12px">
+           <span style="font-weight:600">${STARS[a.feedback.rating]||a.feedback.rating+'/5'}</span>
+           ${a.feedback.comment?`<span style="color:var(--text2);margin-left:6px">"${a.feedback.comment}"</span>`:''}
+         </div>`
+      : a.type==='Showing' && d<0 && !a.feedbackRequested
+        ? `<button class="btn btn-sm" onclick="requestShowingFeedback('${a.id}')" style="margin-top:4px;font-size:10px;color:var(--green);border-color:var(--green-bd);background:var(--green-bg)"><i class="ti ti-message-star" style="font-size:10px"></i> Request Feedback</button>`
+        : a.feedbackRequested && !a.feedback
+          ? `<span style="font-size:11px;color:var(--text3);margin-top:4px;display:block"><i class="ti ti-clock" style="font-size:10px"></i> Feedback requested — awaiting reply</span>`
+          : '';
+    return`<div class="appt-item"><div class="appt-date-box"><div class="appt-day">${new Date(a.date+'T12:00').getDate()}</div><div class="appt-mo">${new Date(a.date+'T12:00').toLocaleString('default',{month:'short'})}</div></div><div style="flex:1;min-width:0"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-weight:600">${a.leadName}</span><span class="badge b-showing">${a.type}</span><span class="badge ${d>=0&&d<=1?'b-hot':'b-neutral'}">${lbl}</span></div><div style="font-size:12px;color:var(--text2);margin-top:3px">${a.address||''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${a.time} · ${a.duration} min${a.notes?' · '+a.notes:''}</div><div style="margin-top:4px">${calStatus}</div>${feedbackRow}</div><button class="btn btn-red btn-sm" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button></div>`;
   }
   el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
 }
@@ -2216,6 +2228,43 @@ async function saveAppt(){
   document.getElementById('apptSaveBtn').disabled=false;
 }
 function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(a=>a.id!==id);persist();renderAll();}}
+
+async function requestShowingFeedback(apptId) {
+  const appt = appts.find(a => a.id === apptId);
+  if (!appt) return;
+  const lead = leads.find(l => l.id === appt.leadId);
+  if (!lead?.phone) { toast('No phone number on file for this lead', 'err'); return; }
+  if (!confirm(`Send feedback request to ${lead.first} at ${lead.phone}?`)) return;
+  try {
+    const r = await fetch(BACKEND + '/api/showing-feedback-request', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ apptId })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    appt.feedbackRequested = true;
+    persist();
+    renderAppts();
+    toast(`Feedback request sent to ${lead.first} ✓`);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function logShowingFeedback(apptId) {
+  const appt = appts.find(a => a.id === apptId);
+  if (!appt) return;
+  const rating = prompt(`Log feedback for ${appt.leadName} — ${appt.address||'showing'}:\n\nEnter rating (1-5):\n1=Not for me  2=Has potential  3=Liked it  4=Really interested  5=Let's offer!`);
+  if (!rating || isNaN(rating) || rating < 1 || rating > 5) return;
+  const comment = prompt('Any comments? (optional — press Enter to skip)') || '';
+  appt.feedback = { rating: parseInt(rating), comment, receivedAt: new Date().toISOString() };
+  persist();
+  // Also push to backend
+  fetch(BACKEND + '/api/showing-feedback-log', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ apptId, rating, comment })
+  }).catch(()=>{});
+  renderAppts();
+  toast(`Feedback logged: ${rating}/5 ✓`);
+}
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));

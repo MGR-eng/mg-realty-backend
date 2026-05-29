@@ -941,8 +941,9 @@ app.all('/sequences/process', async (req, res) => {
 
     const postCloseSent = await processPostCloseEmails(crm, today);
     const leaseSent = await processLeaseReminders(crm, today);
+    const feedbackSent = await processShowingFeedback(crm, today);
     await writeCRM(crm);
-    res.json({ ok: true, sent: sent + postCloseSent + leaseSent, followUp: sent, postClose: postCloseSent, leaseReminders: leaseSent });
+    res.json({ ok: true, sent: sent + postCloseSent + leaseSent + feedbackSent, followUp: sent, postClose: postCloseSent, leaseReminders: leaseSent, showingFeedback: feedbackSent });
   } catch(e) {
     console.error('SEQUENCE PROCESS ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -3393,6 +3394,67 @@ app.post('/api/text-blast', async (req, res) => {
     res.json({ ok: true, sent, failed, results });
   } catch(e) {
     console.error('TEXT BLAST ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Showing Feedback ─────────────────────────────────────────
+async function processShowingFeedback(crm, today) {
+  const appts = crm.appointments || [];
+  const leads = crm.leads || [];
+  let sent = 0;
+  for (const appt of appts) {
+    if (appt.type !== 'Showing') continue;
+    if (appt.feedbackRequested) continue;
+    if (appt.date !== today) continue;
+    const lead = leads.find(l => l.id === appt.leadId);
+    if (!lead?.phone) continue;
+    try {
+      const msg = `Hi ${lead.first}! Hope you enjoyed the showing at ${appt.address || 'the property'} today.\n\nQuick question — on a scale of 1-5, how did you feel about it?\n\n1 = Not for me\n2 = Has potential\n3 = I liked it\n4 = Really interested\n5 = Let's make an offer! 🏡\n\nJust reply with a number. — Matt`;
+      await sendSMS(lead.phone, msg);
+      appt.feedbackRequested = true;
+      appt.feedbackRequestedAt = new Date().toISOString();
+      sent++;
+    } catch(e) {
+      console.error(`Showing feedback SMS failed for ${lead.first}:`, e.message);
+    }
+  }
+  return sent;
+}
+
+// Manual trigger — send feedback request for a specific appointment
+app.post('/api/showing-feedback-request', async (req, res) => {
+  try {
+    const { apptId } = req.body;
+    if (!apptId) return res.status(400).json({ ok: false, error: 'apptId required' });
+    const crm = await readCRM();
+    const appt = (crm.appointments || []).find(a => a.id === apptId);
+    if (!appt) return res.status(404).json({ ok: false, error: 'Appointment not found' });
+    const lead = (crm.leads || []).find(l => l.id === appt.leadId);
+    if (!lead?.phone) return res.status(400).json({ ok: false, error: 'Lead has no phone number' });
+    const msg = `Hi ${lead.first}! Hope you enjoyed the showing at ${appt.address || 'the property'}.\n\nQuick question — on a scale of 1-5, how did you feel about it?\n\n1 = Not for me\n2 = Has potential\n3 = I liked it\n4 = Really interested\n5 = Let's make an offer! 🏡\n\nJust reply with a number. — Matt`;
+    await sendSMS(lead.phone, msg);
+    appt.feedbackRequested = true;
+    appt.feedbackRequestedAt = new Date().toISOString();
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('FEEDBACK REQUEST ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Log feedback response from a lead (called from CRM when you see their text reply)
+app.post('/api/showing-feedback-log', async (req, res) => {
+  try {
+    const { apptId, rating, comment } = req.body;
+    const crm = await readCRM();
+    const appt = (crm.appointments || []).find(a => a.id === apptId);
+    if (!appt) return res.status(404).json({ ok: false, error: 'Not found' });
+    appt.feedback = { rating: parseInt(rating), comment: comment || '', receivedAt: new Date().toISOString() };
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch(e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
