@@ -446,6 +446,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="openMarketReport()"><i class="ti ti-chart-bar"></i><span>Market Report</span></button>
     <div class="nav-lbl">Automate</div>
     <button class="nav-item" onclick="sendDigest()"><i class="ti ti-mail"></i><span>Send digest</span></button>
+    <button class="nav-item" onclick="sendAllClientReports()"><i class="ti ti-mail-forward"></i><span>Client Reports</span></button>
     <button class="nav-item" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
   </nav>
   <div class="sidebar-foot">
@@ -1962,6 +1963,38 @@ async function renderDetailPostClose(leadId){
 
 function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
 
+// ── Weekly Client Reports ─────────────────────────────────────
+async function sendClientReport(leadId) {
+  const lead = leads.find(l => l.id === leadId);
+  if (!lead?.email) { toast('This lead has no email address on file', 'err'); return; }
+  if (!confirm(`Send weekly report to ${lead.first} ${lead.last} (${lead.email})?`)) return;
+  try {
+    const r = await fetch(BACKEND + '/api/weekly-client-report', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ leadId })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    toast(`Weekly report sent to ${lead.first} ✓`);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function sendAllClientReports() {
+  const eligible = leads.filter(l => l.temp !== 'done' && l.email && ['buyer','seller','investor'].includes(l.type));
+  if (!eligible.length) { toast('No active leads with email addresses', 'err'); return; }
+  if (!confirm(`Send weekly reports to all ${eligible.length} active clients with email addresses?`)) return;
+  toast(`Sending ${eligible.length} reports…`, 'info');
+  try {
+    const r = await fetch(BACKEND + '/api/weekly-client-report', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({})
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    toast(`✓ Sent ${d.sent} of ${d.total} weekly reports`);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
 async function sendDigest(){
   setSyncStatus('busy','Sending digest…');
   try{
@@ -2358,6 +2391,7 @@ function openLeadDetail(id){
     <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
     <button class="btn" onclick="sendPortalLink('${id}')" title="Send client portal link via SMS" style="background:rgba(52,152,219,.12);border-color:var(--blue);color:var(--blue)"><i class="ti ti-link"></i> Portal Link</button>
     <button class="btn" onclick="openAddOffer('${id}')" style="background:rgba(232,104,26,.12);border-color:var(--accent);color:var(--accent)"><i class="ti ti-file-dollar"></i> Add Offer</button>
+    <button class="btn" onclick="sendClientReport('${id}')" style="background:rgba(139,92,246,.1);border-color:#8b5cf6;color:#8b5cf6"><i class="ti ti-mail-forward"></i> Weekly Report</button>
     <button class="btn" onclick="openOHAnnounce('${id}')" style="background:rgba(39,174,96,.12);border-color:var(--green);color:var(--green)"><i class="ti ti-home-move"></i> Open House Email</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
 

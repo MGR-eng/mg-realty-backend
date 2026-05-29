@@ -3459,6 +3459,158 @@ app.post('/api/showing-feedback-log', async (req, res) => {
   }
 });
 
+// ── Weekly Client Report ─────────────────────────────────────
+app.post('/api/weekly-client-report', async (req, res) => {
+  try {
+    const { leadId, preview } = req.body;
+    const crm = await readCRM();
+    const leads = crm.leads || [];
+    const activities = crm.activities || [];
+    const appointments = crm.appointments || [];
+    const offers = crm.offers || [];
+
+    // If leadId specified, send to just that lead; otherwise send to all active leads with email
+    const targets = leadId
+      ? leads.filter(l => l.id === leadId && l.email)
+      : leads.filter(l => l.temp !== 'done' && l.email && ['buyer','seller','investor'].includes(l.type));
+
+    if (!targets.length) return res.json({ ok: true, sent: 0, message: 'No eligible leads with email addresses' });
+
+    const weekLabel = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const STAGE_LABELS = { new:'Getting Started', contacted:'In Contact', showing:'Viewing Properties', offer:'Offer Stage', contract:'In Contract', closed:'Closed' };
+    const STARS = ['','⭐','⭐⭐','⭐⭐⭐','⭐⭐⭐⭐','⭐⭐⭐⭐⭐'];
+    let sent = 0;
+    const results = [];
+
+    for (const lead of targets) {
+      const leadActs = activities.filter(a => a.leadId === lead.id)
+        .sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+      const leadAppts = appointments.filter(a => a.leadId === lead.id && a.date >= new Date().toISOString().split('T')[0])
+        .sort((a,b) => a.date.localeCompare(b.date)).slice(0, 3);
+      const pastAppts = appointments.filter(a => a.leadId === lead.id && a.date < new Date().toISOString().split('T')[0])
+        .sort((a,b) => b.date.localeCompare(a.date)).slice(0, 3);
+      const leadOffers = offers.filter(o => o.leadId === lead.id);
+      const stage = STAGE_LABELS[lead.stage || 'new'] || lead.stage;
+
+      const actHTML = leadActs.length ? leadActs.map(a => `
+        <tr>
+          <td style="padding:8px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0">${a.date}</td>
+          <td style="padding:8px 12px;font-size:13px;text-transform:capitalize;border-bottom:1px solid #f0f0f0">${a.type}</td>
+          <td style="padding:8px 12px;font-size:13px;color:#555;border-bottom:1px solid #f0f0f0">${a.outcome || ''}</td>
+        </tr>`).join('') : `<tr><td colspan="3" style="padding:12px;color:#888;font-size:13px;text-align:center">No activity this week</td></tr>`;
+
+      const upcomingHTML = leadAppts.length ? leadAppts.map(a => `
+        <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f5f5f5;align-items:flex-start">
+          <div style="background:#fff3ed;border-radius:8px;padding:6px 10px;text-align:center;min-width:44px">
+            <div style="font-size:10px;font-weight:700;color:#E8681A;text-transform:uppercase">${new Date(a.date+'T12:00').toLocaleDateString('en-US',{month:'short'})}</div>
+            <div style="font-size:20px;font-weight:700;color:#E8681A;line-height:1">${new Date(a.date+'T12:00').getDate()}</div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#333">${a.type}</div>
+            <div style="font-size:12px;color:#888;margin-top:2px">${a.address || ''} ${a.time ? '· '+a.time : ''}</div>
+          </div>
+        </div>`).join('') : '<p style="color:#888;font-size:13px">No upcoming appointments scheduled.</p>';
+
+      const offersHTML = leadOffers.length ? leadOffers.map(o => `
+        <div style="background:#f9f9f9;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid ${o.status==='accepted'?'#27AE60':o.status==='rejected'?'#E74C3C':'#E8681A'}">
+          <div style="font-size:13px;font-weight:700;color:#333">${o.address}</div>
+          <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap">
+            <span style="font-size:12px;color:#555">💰 ${o.offerPrice}</span>
+            <span style="font-size:12px;font-weight:600;color:${o.status==='accepted'?'#27AE60':o.status==='rejected'?'#E74C3C':'#E8681A'};text-transform:capitalize">${o.status}</span>
+          </div>
+        </div>`).join('') : '';
+
+      const feedbackItems = pastAppts.filter(a => a.feedback);
+      const feedbackHTML = feedbackItems.length ? feedbackItems.map(a => `
+        <div style="background:#f9f9f9;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+          <div style="font-size:12px;font-weight:600;color:#555">${a.address || a.type} · ${a.date}</div>
+          <div style="font-size:16px;margin-top:4px">${STARS[a.feedback.rating]||''} <span style="font-size:12px;color:#888">${a.feedback.comment||''}</span></div>
+        </div>`).join('') : '';
+
+      const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Inter,Arial,sans-serif">
+<div style="max-width:600px;margin:0 auto;padding:24px 12px">
+
+  <div style="background:#111;border-radius:12px 12px 0 0;padding:24px 28px">
+    <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="height:40px;width:auto;border-radius:6px;display:block;margin-bottom:16px">
+    <div style="color:#E8681A;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Weekly Update · ${weekLabel}</div>
+    <div style="color:#fff;font-size:22px;font-weight:800;margin-top:6px">Hi ${lead.first}, here's your weekly update!</div>
+  </div>
+
+  <div style="background:#E8681A;padding:14px 28px;display:flex;align-items:center;gap:10px">
+    <div style="color:#fff;font-size:13px;font-weight:600">Current Stage:</div>
+    <div style="background:rgba(255,255,255,.2);color:#fff;font-size:13px;font-weight:700;padding:3px 12px;border-radius:99px">${stage}</div>
+    ${lead.prop ? `<div style="color:rgba(255,255,255,.8);font-size:12px;margin-left:auto">${lead.prop}</div>` : ''}
+  </div>
+
+  <div style="background:#fff;padding:24px 28px;border-radius:0 0 12px 12px">
+
+    ${offersHTML ? `
+    <div style="margin-bottom:24px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#E8681A;margin-bottom:10px">🏷 Active Offers</div>
+      ${offersHTML}
+    </div>` : ''}
+
+    <div style="margin-bottom:24px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:10px">📅 Upcoming Appointments</div>
+      ${upcomingHTML}
+    </div>
+
+    <div style="margin-bottom:24px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:10px">📋 Recent Activity</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#888;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Date</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#888;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Type</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#888;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Notes</th>
+        </tr></thead>
+        <tbody>${actHTML}</tbody>
+      </table>
+    </div>
+
+    ${feedbackHTML ? `
+    <div style="margin-bottom:24px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:10px">⭐ Showing Feedback</div>
+      ${feedbackHTML}
+    </div>` : ''}
+
+    <div style="background:#f9f9f9;border-radius:8px;padding:16px;margin-bottom:24px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:8px">💬 A Note from Matt</div>
+      <p style="color:#444;font-size:14px;line-height:1.7;margin:0">I'm working hard on your behalf and will keep you posted on any new developments. Don't hesitate to reach out anytime — I'm always happy to chat. Talk soon!</p>
+    </div>
+
+    <div style="text-align:center;padding-top:16px;border-top:1px solid #f0f0f0">
+      <p style="color:#333;font-size:14px;font-weight:600;margin:0">Matt Golden · MG Realty</p>
+      <p style="color:#888;font-size:12px;margin:4px 0">(323) 688-3855 · matt@mgoldenrealty.com</p>
+      <a href="https://mg-realty-backend.onrender.com/portal" style="display:inline-block;margin-top:10px;background:#E8681A;color:#fff;font-size:12px;font-weight:600;padding:8px 18px;border-radius:8px;text-decoration:none">View Your Client Portal →</a>
+    </div>
+  </div>
+  <div style="text-align:center;padding:14px;color:#aaa;font-size:11px">MG Realty · DRE #02130422 · Los Angeles, CA</div>
+</div>
+</body></html>`;
+
+      if (preview) {
+        return res.json({ ok: true, html, lead: { first: lead.first, email: lead.email } });
+      }
+
+      const { error } = await resend.emails.send({
+        from: 'Matt Golden | MG Realty <matt@mgoldenrealty.com>',
+        to: lead.email,
+        subject: `Your Weekly Update from MG Realty — ${weekLabel}`,
+        html
+      });
+      if (error) { results.push({ name: `${lead.first} ${lead.last}`, ok: false, error: error.message }); }
+      else { results.push({ name: `${lead.first} ${lead.last}`, ok: true }); sent++; }
+    }
+
+    res.json({ ok: true, sent, total: targets.length, results });
+  } catch(e) {
+    console.error('WEEKLY CLIENT REPORT ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── AI Deal Analyzer ──────────────────────────────────────────
 // ── Instagram DM → Lead extractor ────────────────────────────
 app.post('/api/extract-dm', async (req, res) => {
