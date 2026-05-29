@@ -401,6 +401,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('leases',this)"><i class="ti ti-home-check"></i><span>Leases</span><span class="nb" id="nb-leases">0</span></button>
     <button class="nav-item" onclick="showPane('deals',this)"><i class="ti ti-analyze"></i><span>Deal Analyzer</span></button>
     <button class="nav-item" onclick="showPane('textblast',this)"><i class="ti ti-send"></i><span>Text Blast</span></button>
+    <button class="nav-item" onclick="showPane('offers',this)"><i class="ti ti-file-dollar"></i><span>Offer Tracker</span><span class="nb" id="nb-offers">0</span></button>
     <div class="nav-lbl">Tools</div>
     <button class="nav-item" onclick="openCommCalc()"><i class="ti ti-calculator"></i><span>Comm. Calc</span></button>
     <button class="nav-item" onclick="openMarketReport()"><i class="ti ti-chart-bar"></i><span>Market Report</span></button>
@@ -559,6 +560,102 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <div id="pane-commission" class="pane">
   <div class="topbar"><div class="page-title">Commission Tracker</div><div class="tba"><button class="btn btn-green" onclick="openAddDeal()"><i class="ti ti-plus"></i> Log deal</button></div></div>
   <div class="content"><div id="commissionStats"></div><div class="tw"><div id="dealList"></div></div></div>
+</div>
+
+<!-- Offer Tracker pane -->
+<div id="pane-offers" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-file-dollar" style="margin-right:6px;color:#E8681A"></i>Offer Tracker</div>
+    <div class="tba">
+      <select id="of-filter" onchange="renderOffers()" style="width:auto">
+        <option value="">All offers</option>
+        <option value="pending">Pending</option>
+        <option value="countered">Countered</option>
+        <option value="accepted">Accepted</option>
+        <option value="rejected">Rejected</option>
+        <option value="withdrawn">Withdrawn</option>
+      </select>
+      <button class="btn btn-primary" onclick="openAddOffer()"><i class="ti ti-plus"></i> New Offer</button>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="offerStats" style="display:flex;gap:10px;padding:12px 18px 0;flex-wrap:wrap"></div>
+
+  <!-- Cards grid -->
+  <div id="offerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;padding:14px 18px"></div>
+</div>
+
+<!-- Offer modal -->
+<div id="mOffer" class="modal" style="display:none">
+  <div class="modal-box" style="max-width:560px">
+    <div class="mhead"><span id="mOffer-title">New Offer</span><button class="close-btn" onclick="closeModal('mOffer')"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <div class="fgg-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg" style="grid-column:1/-1">
+          <label>Property Address *</label>
+          <input id="of1" placeholder="123 Main St, Los Angeles, CA 90001">
+        </div>
+        <div class="fg">
+          <label>Client (Lead)</label>
+          <select id="of2"><option value="">— select lead —</option></select>
+        </div>
+        <div class="fg">
+          <label>Side</label>
+          <select id="of3">
+            <option value="buyer">Buyer</option>
+            <option value="seller">Seller</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Offer Price *</label>
+          <input id="of4" placeholder="$850,000" type="text">
+        </div>
+        <div class="fg">
+          <label>List Price</label>
+          <input id="of5" placeholder="$875,000" type="text">
+        </div>
+        <div class="fg">
+          <label>Offer Date</label>
+          <input id="of6" type="date">
+        </div>
+        <div class="fg">
+          <label>Expiration Date</label>
+          <input id="of7" type="date">
+        </div>
+        <div class="fg">
+          <label>Down Payment</label>
+          <input id="of8" placeholder="$170,000 / 20%">
+        </div>
+        <div class="fg">
+          <label>Contingencies</label>
+          <input id="of9" placeholder="Inspection, Financing, Appraisal">
+        </div>
+        <div class="fg">
+          <label>Close Date (target)</label>
+          <input id="of10" type="date">
+        </div>
+        <div class="fg">
+          <label>Status</label>
+          <select id="of11">
+            <option value="pending">Pending</option>
+            <option value="countered">Countered</option>
+            <option value="accepted">Accepted ✓</option>
+            <option value="rejected">Rejected</option>
+            <option value="withdrawn">Withdrawn</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Notes / Counter Terms</label>
+          <textarea id="of12" rows="3" placeholder="Counter at $860k, 21-day close, seller keeps washer/dryer…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="closeModal('mOffer')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOffer()">Save Offer</button>
+    </div>
+  </div>
 </div>
 
 <!-- Text Blast pane -->
@@ -1271,8 +1368,8 @@ const BACKEND = 'https://mg-realty-backend.onrender.com';
 const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
 const DIGEST_EMAIL = 'goldenmb@gmail.com';
 
-const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1';
-let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null;
+const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1',SOF='mg_offers_v1';
+let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],offers=[],actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null,editOfferId=null;
 // ── Early globals (must be declared before init line) ─────────
 const CAL_KEY = 'mg_cal_v1';
 let calPosts = [], calWeekStart = null;
@@ -1293,9 +1390,10 @@ function load(){
   try{deals=JSON.parse(localStorage.getItem(SD)||'null')||[];}catch(e){deals=[];}
   try{agents=JSON.parse(localStorage.getItem(SAGT)||'null')||[];}catch(e){agents=[];}
   try{leases=JSON.parse(localStorage.getItem(SLSE)||'null')||[];}catch(e){leases=[];}
+  try{offers=JSON.parse(localStorage.getItem(SOF)||'null')||[];}catch(e){offers=[];}
 }
 function persist(){
-  try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));}catch(e){}
+  try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));localStorage.setItem(SOF,JSON.stringify(offers));}catch(e){}
   pushToBackend();
 }
 function pushToBackend(){
@@ -1316,7 +1414,7 @@ async function syncFromBackend(){
     if(data.deals?.length){deals=data.deals;changed=true;}
     if(data.agents?.length){agents=data.agents;changed=true;}
     if(data.leases?.length){leases=data.leases;changed=true;}
-    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));}catch(e){}renderAll();}
+    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));localStorage.setItem(SOF,JSON.stringify(offers));}catch(e){}renderAll();}
   }catch(e){console.warn('Backend sync failed:',e.message);}
 }
 function seed(){
@@ -1696,7 +1794,7 @@ async function renderDetailPostClose(leadId){
   }catch(e){sec.style.display='none';}
 }
 
-function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
 
 async function sendDigest(){
   setSyncStatus('busy','Sending digest…');
@@ -2056,6 +2154,7 @@ function openLeadDetail(id){
     ${l.email?`<button class="btn btn-green" onclick="startSequence('${id}')"><i class="ti ti-mail-forward"></i> Sequence</button>`:''}
     <button class="btn" onclick="closeLeadDetail();openEdit('${id}')"><i class="ti ti-edit"></i> Edit</button>
     <button class="btn" onclick="sendPortalLink('${id}')" title="Send client portal link via SMS" style="background:rgba(52,152,219,.12);border-color:var(--blue);color:var(--blue)"><i class="ti ti-link"></i> Portal Link</button>
+    <button class="btn" onclick="openAddOffer('${id}')" style="background:rgba(232,104,26,.12);border-color:var(--accent);color:var(--accent)"><i class="ti ti-file-dollar"></i> Add Offer</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
 
   document.getElementById('detailPanel').classList.add('open');
@@ -4576,6 +4675,181 @@ function deleteLeaseDoc(leaseId, docId) {
   persist();
   if(currentLeaseId===leaseId) renderLeaseDocList(leaseId);
   toast('Document removed');
+}
+
+// ── Offer Tracker ─────────────────────────────────────────────
+const OFFER_STATUS_CFG = {
+  pending:   { label:'Pending',   bg:'rgba(243,156,18,.15)',  color:'#F39C12', border:'rgba(243,156,18,.3)' },
+  countered: { label:'Countered', bg:'rgba(52,152,219,.15)',  color:'#3498db', border:'rgba(52,152,219,.3)' },
+  accepted:  { label:'Accepted',  bg:'rgba(39,174,96,.15)',   color:'#27AE60', border:'rgba(39,174,96,.3)' },
+  rejected:  { label:'Rejected',  bg:'rgba(231,76,60,.15)',   color:'#E74C3C', border:'rgba(231,76,60,.3)' },
+  withdrawn: { label:'Withdrawn', bg:'rgba(150,150,150,.15)', color:'#888',    border:'rgba(150,150,150,.3)' },
+};
+
+function ofStatusBadge(s) {
+  const c = OFFER_STATUS_CFG[s] || OFFER_STATUS_CFG.pending;
+  return `<span style="background:${c.bg};color:${c.color};border:1px solid ${c.border};border-radius:99px;font-size:11px;font-weight:700;padding:2px 9px">${c.label}</span>`;
+}
+
+function renderOffers() {
+  const grid = document.getElementById('offerGrid');
+  const statsEl = document.getElementById('offerStats');
+  const nbEl = document.getElementById('nb-offers');
+  if (!grid) return;
+
+  const filter = document.getElementById('of-filter')?.value || '';
+  const filtered = filter ? offers.filter(o => o.status === filter) : offers;
+  const active = offers.filter(o => !['rejected','withdrawn'].includes(o.status));
+
+  // Stats
+  const totalActive = active.length;
+  const totalValue = active.reduce((s,o) => s + (parseFloat((o.offerPrice||'0').replace(/[^0-9.]/g,''))||0), 0);
+  const expiringSoon = active.filter(o => { if(!o.expiry) return false; const d=du(o.expiry); return d!==null&&d>=0&&d<=3; }).length;
+  if (statsEl) statsEl.innerHTML = [
+    ['Active Offers', totalActive, totalActive ? 'var(--accent)' : 'var(--text2)'],
+    ['Total Value', totalValue ? '$'+Math.round(totalValue/1000)+'K' : '—', 'var(--green)'],
+    ['Expiring ≤3 days', expiringSoon, expiringSoon ? 'var(--red)' : 'var(--text2)'],
+    ['Accepted', offers.filter(o=>o.status==='accepted').length, 'var(--green)'],
+  ].map(([lbl,val,col]) => `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px">
+      <div style="font-size:18px;font-weight:800;color:${col}">${val}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${lbl}</div>
+    </div>`).join('');
+
+  if (nbEl) { nbEl.textContent = totalActive || offers.length; nbEl.className = 'nb' + (expiringSoon ? ' red' : ''); }
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text2)"><i class="ti ti-file-dollar" style="font-size:36px;opacity:.3;display:block;margin-bottom:8px"></i>No offers yet. Click "New Offer" to add one.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.sort((a,b) => (b.offerDate||'').localeCompare(a.offerDate||'')).map(o => {
+    const lead = leads.find(l => l.id === o.leadId);
+    const expiryDays = o.expiry ? du(o.expiry) : null;
+    const expStr = expiryDays === null ? '' : expiryDays < 0 ? `<span style="color:var(--red);font-weight:600">Expired ${Math.abs(expiryDays)}d ago</span>` : expiryDays === 0 ? `<span style="color:var(--red);font-weight:600">Expires TODAY</span>` : expiryDays <= 3 ? `<span style="color:var(--amber);font-weight:600">Expires in ${expiryDays}d</span>` : `Expires ${o.expiry}`;
+    const priceDiff = o.offerPrice && o.listPrice ? (() => {
+      const op = parseFloat(o.offerPrice.replace(/[^0-9.]/g,''));
+      const lp = parseFloat(o.listPrice.replace(/[^0-9.]/g,''));
+      if (!op || !lp) return '';
+      const diff = op - lp;
+      const pct = ((diff/lp)*100).toFixed(1);
+      return `<span style="color:${diff>=0?'var(--green)':'var(--red)'};font-size:11px">${diff>=0?'+':''}${pct}% vs list</span>`;
+    })() : '';
+
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;border-left:3px solid ${OFFER_STATUS_CFG[o.status||'pending'].color}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="font-weight:700;font-size:14px;line-height:1.3;flex:1">${o.address}</div>
+        ${ofStatusBadge(o.status||'pending')}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:20px;font-weight:800;color:var(--accent)">${o.offerPrice||'—'}</span>
+        ${priceDiff}
+        ${o.side ? `<span style="font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:1px 8px;text-transform:capitalize">${o.side} side</span>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:12px;color:var(--text2)">
+        ${lead ? `<div><i class="ti ti-user" style="font-size:10px;margin-right:3px"></i>${lead.first} ${lead.last}</div>` : ''}
+        ${o.offerDate ? `<div><i class="ti ti-calendar" style="font-size:10px;margin-right:3px"></i>Offered ${o.offerDate}</div>` : ''}
+        ${o.closeDate ? `<div><i class="ti ti-key" style="font-size:10px;margin-right:3px"></i>Close ${o.closeDate}</div>` : ''}
+        ${o.downPayment ? `<div><i class="ti ti-coin" style="font-size:10px;margin-right:3px"></i>${o.downPayment}</div>` : ''}
+      </div>
+      ${expStr ? `<div style="font-size:12px">${expStr}</div>` : ''}
+      ${o.contingencies ? `<div style="font-size:12px;color:var(--text2)"><i class="ti ti-shield-check" style="font-size:10px;margin-right:3px"></i>${o.contingencies}</div>` : ''}
+      ${o.notes ? `<div style="font-size:12px;color:var(--text2);background:var(--bg);border-radius:6px;padding:8px;border-left:2px solid var(--border)">${o.notes}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <select onchange="quickUpdateOfferStatus('${o.id}',this.value)" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 7px;color:var(--text1);font-size:12px">
+          ${['pending','countered','accepted','rejected','withdrawn'].map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${OFFER_STATUS_CFG[s].label}</option>`).join('')}
+        </select>
+        <button class="btn btn-sm" onclick="openEditOffer('${o.id}')" title="Edit"><i class="ti ti-edit" style="font-size:11px"></i></button>
+        <button class="btn btn-sm btn-red" onclick="deleteOffer('${o.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function populateOfferLeadSelect() {
+  const sel = document.getElementById('of2');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— select lead —</option>' +
+    leads.filter(l=>l.temp!=='done').sort((a,b)=>a.first.localeCompare(b.first)).map(l=>`<option value="${l.id}">${l.first} ${l.last}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+function openAddOffer(leadId) {
+  editOfferId = null;
+  document.getElementById('mOffer-title').textContent = 'New Offer';
+  ['of1','of4','of5','of8','of9','of12'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['of6','of7','of10'].forEach(id => { const el=document.getElementById(id); if(el) el.value=new Date().toISOString().split('T')[0]; });
+  document.getElementById('of3').value = 'buyer';
+  document.getElementById('of11').value = 'pending';
+  populateOfferLeadSelect();
+  if (leadId) document.getElementById('of2').value = leadId;
+  document.getElementById('mOffer').style.display = 'flex';
+}
+
+function openEditOffer(id) {
+  const o = offers.find(x=>x.id===id);
+  if (!o) return;
+  editOfferId = id;
+  document.getElementById('mOffer-title').textContent = 'Edit Offer';
+  populateOfferLeadSelect();
+  document.getElementById('of1').value = o.address||'';
+  document.getElementById('of2').value = o.leadId||'';
+  document.getElementById('of3').value = o.side||'buyer';
+  document.getElementById('of4').value = o.offerPrice||'';
+  document.getElementById('of5').value = o.listPrice||'';
+  document.getElementById('of6').value = o.offerDate||'';
+  document.getElementById('of7').value = o.expiry||'';
+  document.getElementById('of8').value = o.downPayment||'';
+  document.getElementById('of9').value = o.contingencies||'';
+  document.getElementById('of10').value = o.closeDate||'';
+  document.getElementById('of11').value = o.status||'pending';
+  document.getElementById('of12').value = o.notes||'';
+  document.getElementById('mOffer').style.display = 'flex';
+}
+
+function saveOffer() {
+  const address = document.getElementById('of1').value.trim();
+  const offerPrice = document.getElementById('of4').value.trim();
+  if (!address || !offerPrice) { toast('Address and offer price are required', 'err'); return; }
+  const o = {
+    id: editOfferId || ('of' + Date.now()),
+    address, offerPrice,
+    leadId: document.getElementById('of2').value,
+    side: document.getElementById('of3').value,
+    listPrice: document.getElementById('of5').value.trim(),
+    offerDate: document.getElementById('of6').value,
+    expiry: document.getElementById('of7').value,
+    downPayment: document.getElementById('of8').value.trim(),
+    contingencies: document.getElementById('of9').value.trim(),
+    closeDate: document.getElementById('of10').value,
+    status: document.getElementById('of11').value,
+    notes: document.getElementById('of12').value.trim(),
+  };
+  if (editOfferId) offers = offers.map(x => x.id===editOfferId ? o : x);
+  else offers.push(o);
+  editOfferId = null;
+  persist();
+  closeModal('mOffer');
+  renderOffers();
+  toast('Offer saved');
+}
+
+function quickUpdateOfferStatus(id, status) {
+  const o = offers.find(x=>x.id===id);
+  if (!o) return;
+  o.status = status;
+  persist();
+  renderOffers();
+  toast(`Offer marked ${OFFER_STATUS_CFG[status].label}`);
+}
+
+function deleteOffer(id) {
+  if (!confirm('Delete this offer?')) return;
+  offers = offers.filter(x=>x.id!==id);
+  persist();
+  renderOffers();
+  toast('Offer deleted');
 }
 
 // ── Text Blast ────────────────────────────────────────────────
