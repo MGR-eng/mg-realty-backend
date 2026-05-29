@@ -587,12 +587,12 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div id="offerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;padding:14px 18px"></div>
 </div>
 
-<!-- Open House Announcement modal -->
+<!-- Open House Recap modal -->
 <div id="mOHAnnounce" class="modal" style="display:none">
   <div class="modal-box" style="max-width:580px">
-    <div class="mhead"><span>Open House Announcement</span><button class="close-btn" onclick="closeModal('mOHAnnounce')"><i class="ti ti-x"></i></button></div>
+    <div class="mhead"><span>Open House Recap Email</span><button class="close-btn" onclick="closeModal('mOHAnnounce')"><i class="ti ti-x"></i></button></div>
     <div class="mbody">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Fill in the details below — a branded email will be generated and sent to your seller.</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px">Fill in what happened — a branded recap email will be sent to your seller.</div>
       <div class="fgg-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="fg" style="grid-column:1/-1">
           <label>Property Address *</label>
@@ -603,41 +603,32 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
           <input id="oh-date" type="date">
         </div>
         <div class="fg">
-          <label>Day of Week</label>
-          <select id="oh-day">
-            <option value="Saturday">Saturday</option>
-            <option value="Sunday">Sunday</option>
-            <option value="Friday">Friday</option>
-            <option value="Thursday">Thursday</option>
-          </select>
+          <label>Total Visitors</label>
+          <input id="oh-visitors" type="number" placeholder="e.g. 24" min="0">
         </div>
         <div class="fg">
-          <label>Start Time *</label>
-          <input id="oh-start" type="time" value="13:00">
+          <label>Interested Parties</label>
+          <input id="oh-interested" type="number" placeholder="e.g. 6" min="0">
         </div>
         <div class="fg">
-          <label>End Time *</label>
-          <input id="oh-end" type="time" value="16:00">
+          <label>Offers Received</label>
+          <input id="oh-offers" type="number" placeholder="0" min="0" value="0">
         </div>
         <div class="fg" style="grid-column:1/-1">
-          <label>Listing Price</label>
-          <input id="oh-price" placeholder="e.g. $1,195,000">
+          <label>Overall Feedback from Buyers</label>
+          <textarea id="oh-feedback" rows="3" placeholder="e.g. Most visitors loved the kitchen and natural light. A few mentioned the backyard size as a plus. Common question was about the school district. Two groups said they'd be discussing with their agents."></textarea>
         </div>
         <div class="fg" style="grid-column:1/-1">
-          <label>Key Features to Highlight</label>
-          <input id="oh-features" placeholder="e.g. newly renovated kitchen, 3 bed/2 bath, large backyard, mountain views">
+          <label>Any Concerns or Objections Heard</label>
+          <textarea id="oh-concerns" rows="2" placeholder="e.g. A couple of visitors mentioned the price felt slightly high compared to the house down the street. One group wanted more parking."></textarea>
         </div>
         <div class="fg" style="grid-column:1/-1">
-          <label>Marketing Plan</label>
-          <textarea id="oh-marketing" rows="2" placeholder="e.g. Listed on Zillow, Redfin & MLS. Promoted on Instagram & Facebook. 8 directional signs. Professional photos live."></textarea>
+          <label>Next Steps</label>
+          <textarea id="oh-nextsteps" rows="2" placeholder="e.g. Following up with 3 interested buyers this week. Will have an update by Wednesday. Plan to review pricing strategy if no offers by Friday."></textarea>
         </div>
         <div class="fg" style="grid-column:1/-1">
-          <label>Prep Instructions for Seller</label>
-          <textarea id="oh-prep" rows="3" placeholder="e.g. Please ensure the home is tidy and well-lit. Remove personal photos if possible. Leave by 12:45 PM and plan to be out until 4:15 PM. Leave the AC/heat on for comfort."></textarea>
-        </div>
-        <div class="fg" style="grid-column:1/-1">
-          <label>Additional Notes</label>
-          <textarea id="oh-notes" rows="2" placeholder="Anything else you want to mention to the seller..."></textarea>
+          <label>Additional Notes for Seller</label>
+          <textarea id="oh-notes" rows="2" placeholder="Anything else you want the seller to know..."></textarea>
         </div>
       </div>
     </div>
@@ -2481,22 +2472,16 @@ function openOHAnnounce(leadId) {
 }
 
 function buildOHEmailHTML(lead) {
-  const address  = document.getElementById('oh-address').value.trim();
-  const dateVal  = document.getElementById('oh-date').value;
-  const day      = document.getElementById('oh-day').value;
-  const start    = document.getElementById('oh-start').value;
-  const end      = document.getElementById('oh-end').value;
-  const price    = document.getElementById('oh-price').value.trim();
-  const features = document.getElementById('oh-features').value.trim();
-  const marketing= document.getElementById('oh-marketing').value.trim();
-  const prep     = document.getElementById('oh-prep').value.trim();
-  const notes    = document.getElementById('oh-notes').value.trim();
+  const address    = document.getElementById('oh-address').value.trim();
+  const dateVal    = document.getElementById('oh-date').value;
+  const visitors   = document.getElementById('oh-visitors').value.trim();
+  const interested = document.getElementById('oh-interested').value.trim();
+  const offersNum  = document.getElementById('oh-offers').value.trim();
+  const feedback   = document.getElementById('oh-feedback').value.trim();
+  const concerns   = document.getElementById('oh-concerns').value.trim();
+  const nextsteps  = document.getElementById('oh-nextsteps').value.trim();
+  const notes      = document.getElementById('oh-notes').value.trim();
 
-  const fmtTime = t => {
-    const [h,m] = t.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`;
-  };
   const fmtDate = d => {
     if (!d) return '';
     const dt = new Date(d + 'T12:00:00');
@@ -2511,43 +2496,44 @@ function buildOHEmailHTML(lead) {
 
   <!-- Header -->
   <div style="background:#1a1a1a;border-radius:12px 12px 0 0;padding:24px 28px;text-align:center">
-    <div style="color:#E8681A;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">MG Realty · Open House Announcement</div>
+    <div style="color:#E8681A;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">MG Realty · Open House Recap</div>
     <div style="color:#fff;font-size:22px;font-weight:800;line-height:1.3">${address}</div>
-    ${price ? `<div style="color:#E8681A;font-size:18px;font-weight:700;margin-top:6px">${price}</div>` : ''}
+    <div style="color:rgba(255,255,255,.6);font-size:14px;margin-top:6px">${fmtDate(dateVal)}</div>
   </div>
 
-  <!-- Date/Time banner -->
-  <div style="background:#E8681A;padding:16px 28px;text-align:center">
-    <div style="color:#fff;font-size:20px;font-weight:800">${day}, ${fmtDate(dateVal)}</div>
-    <div style="color:rgba(255,255,255,.9);font-size:15px;margin-top:4px">${fmtTime(start)} – ${fmtTime(end)}</div>
+  <!-- Stats bar -->
+  <div style="background:#E8681A;padding:16px 28px;display:flex;justify-content:space-around;text-align:center">
+    ${visitors ? `<div><div style="color:#fff;font-size:26px;font-weight:800">${visitors}</div><div style="color:rgba(255,255,255,.85);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Visitors</div></div>` : ''}
+    ${interested ? `<div><div style="color:#fff;font-size:26px;font-weight:800">${interested}</div><div style="color:rgba(255,255,255,.85);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Interested</div></div>` : ''}
+    <div><div style="color:#fff;font-size:26px;font-weight:800">${offersNum || '0'}</div><div style="color:rgba(255,255,255,.85);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Offers</div></div>
   </div>
 
   <!-- Body -->
   <div style="background:#fff;padding:28px;border-radius:0 0 12px 12px">
     <p style="color:#333;font-size:15px;line-height:1.6">Hi ${lead?.first || 'there'},</p>
-    <p style="color:#333;font-size:15px;line-height:1.6">Great news — your open house is confirmed and everything is set for a successful showing. Here's a quick overview of what to expect.</p>
+    <p style="color:#333;font-size:15px;line-height:1.6">Your open house is a wrap! Here's a full recap of how it went and where things stand.</p>
 
-    ${features ? `
-    <div style="background:#f9f9f9;border-left:3px solid #E8681A;border-radius:0 8px 8px 0;padding:14px 16px;margin:18px 0">
-      <div style="font-size:12px;font-weight:700;color:#E8681A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Property Highlights</div>
-      <div style="color:#333;font-size:14px;line-height:1.6">${features}</div>
+    ${feedback ? `
+    <div style="background:#f9f9f9;border-left:3px solid #E8681A;border-radius:0 8px 8px 0;padding:14px 16px;margin:20px 0">
+      <div style="font-size:12px;font-weight:700;color:#E8681A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">💬 Buyer Feedback</div>
+      <div style="color:#444;font-size:14px;line-height:1.7">${feedback.replace(/\n/g,'<br>')}</div>
     </div>` : ''}
 
-    ${marketing ? `
-    <div style="margin:18px 0">
-      <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px">📣 How We're Marketing Your Home</div>
-      <div style="color:#555;font-size:14px;line-height:1.7">${marketing.replace(/\n/g,'<br>')}</div>
+    ${concerns ? `
+    <div style="background:#fff8f0;border:1px solid #fde8d0;border-radius:8px;padding:14px 16px;margin:20px 0">
+      <div style="font-size:12px;font-weight:700;color:#c0621a;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⚠️ Concerns / Objections Heard</div>
+      <div style="color:#555;font-size:14px;line-height:1.7">${concerns.replace(/\n/g,'<br>')}</div>
     </div>` : ''}
 
-    ${prep ? `
-    <div style="background:#fff8f0;border:1px solid #fde8d0;border-radius:8px;padding:16px;margin:18px 0">
-      <div style="font-size:13px;font-weight:700;color:#E8681A;margin-bottom:8px">📋 Day-Of Prep for You</div>
-      <div style="color:#555;font-size:14px;line-height:1.7">${prep.replace(/\n/g,'<br>')}</div>
+    ${nextsteps ? `
+    <div style="background:#f0faf4;border:1px solid #c3e6d0;border-radius:8px;padding:14px 16px;margin:20px 0">
+      <div style="font-size:12px;font-weight:700;color:#1a7a43;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">✅ Next Steps</div>
+      <div style="color:#444;font-size:14px;line-height:1.7">${nextsteps.replace(/\n/g,'<br>')}</div>
     </div>` : ''}
 
-    ${notes ? `<p style="color:#555;font-size:14px;line-height:1.6">${notes.replace(/\n/g,'<br>')}</p>` : ''}
+    ${notes ? `<p style="color:#555;font-size:14px;line-height:1.6;margin-top:16px">${notes.replace(/\n/g,'<br>')}</p>` : ''}
 
-    <p style="color:#333;font-size:15px;line-height:1.6;margin-top:20px">I'll be in touch after the open house with a full summary of the turnout and feedback. If you have any questions before then, don't hesitate to reach out.</p>
+    <p style="color:#333;font-size:15px;line-height:1.6;margin-top:24px">As always, I'm here if you have any questions. I'll keep you updated as I follow up with interested buyers.</p>
 
     <p style="color:#333;font-size:15px;margin-top:20px">Talk soon,</p>
     <p style="color:#333;font-size:15px;font-weight:700;margin:4px 0">Matt Golden</p>
@@ -2585,7 +2571,7 @@ async function sendOHAnnouncement() {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         to: lead.email,
-        subject: `Open House Confirmed: ${address} — ${day}, ${fmtDate(dateVal)}`,
+        subject: `Open House Recap: ${address} — ${fmtDate(dateVal)}`,
         html,
         from: 'business'
       })
@@ -2598,13 +2584,13 @@ async function sendOHAnnouncement() {
       id:'a'+Date.now(), leadId: lead.id, leadName:`${lead.first} ${lead.last}`,
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
-      type:'email', direction:'out', outcome:'Open house announcement sent',
-      notes:`Open house at ${address}`
+      type:'email', direction:'out', outcome:'Open house recap sent',
+      notes:`Open house recap sent for ${address}`
     });
     persist();
     closeModal('mOHAnnounce');
     closeModal('mOHPreview');
-    toast(`Open house announcement sent to ${lead.first} ✓`);
+    toast(`Open house recap sent to ${lead.first} ✓`);
   } catch(e) {
     toast(e.message, 'err');
   }
