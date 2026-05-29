@@ -445,12 +445,22 @@ app.post('/gmail/digest', async (req, res) => {
 // ── Email: send template ─────────────────────────────────────
 app.post('/email/send', async (req, res) => {
   try {
-    const { to, subject, html, from = 'personal' } = req.body;
+    const { to, subject, html, from = 'business' } = req.body;
     if (!to) throw new Error('No recipient email address');
+
+    // 'business' = Resend (matt@mgoldenrealty.com), 'compass' or 'personal' = Gmail OAuth
+    if (from === 'business') {
+      const { error: resendErr } = await resend.emails.send({
+        from: 'Matt Golden | MG Realty <matt@mgoldenrealty.com>',
+        to, subject, html
+      });
+      if (resendErr) throw new Error('Resend: ' + resendErr.message);
+      return res.json({ ok: true, method: 'resend' });
+    }
 
     const fromAddress = from === 'compass'
       ? 'Matt Golden | MG Realty <matthewgolden@compass.com>'
-      : 'Matt Golden | MG Realty <matt@mgoldenrealty.com>';
+      : 'Matt Golden | MG Realty <goldenmb@gmail.com>';
 
     // Build RFC 2822 raw email message
     const boundary = `boundary_${Date.now()}`;
@@ -2170,7 +2180,7 @@ app.post('/api/draft-email', async (req, res) => {
     };
 
     const guide = templateGuides[templateType] || templateGuides.custom;
-    const fromLabel = fromAccount === 'compass' ? 'matthewgolden@compass.com (Compass)' : 'goldenmb@gmail.com (personal)';
+    const fromLabel = fromAccount === 'compass' ? 'matthewgolden@compass.com (Compass)' : fromAccount === 'business' ? 'matt@mgoldenrealty.com (MG Realty)' : 'goldenmb@gmail.com (personal)';
 
     const prompt = `You are Matt Golden, a real estate agent at MG Realty in Los Angeles. Write a personalized email to a lead.
 
