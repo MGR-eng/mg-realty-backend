@@ -964,6 +964,7 @@ app.get('/sequences/status/:leadId', async (req, res) => {
 
 // ── Post-Close Check-in Sequences ────────────────────────────
 const POST_CLOSE_TOUCHES = [
+  { day: 14, key: 'pc_14', label: '14-Day Review Ask' },
   { day: 30, key: 'pc_30', label: '30-Day Check-in' },
   { day: 60, key: 'pc_60', label: '60-Day Referral Ask' },
   { day: 90, key: 'pc_90', label: '90-Day Check-in' },
@@ -974,7 +975,9 @@ async function generatePostCloseEmail(touchKey, lead) {
   const prop = lead.prop || lead.address || 'your new home';
   const hood = lead.neighborhood || 'your neighborhood';
 
+  const GOOGLE_REVIEW_URL = process.env.GOOGLE_REVIEW_URL || 'https://g.page/r/review';
   const prompts = {
+    pc_14: `Write a short, warm email from real estate agent Matt Golden to client ${name} who just closed on ${prop} about 2 weeks ago. The goal is to ask them to leave a Google review — make it feel genuine and easy, not pushy. Mention you'd be so grateful, and include this exact link as a clickable button in the HTML: ${GOOGLE_REVIEW_URL}. 2-3 sentences max. No subject line, just HTML paragraphs with the button.`,
     pc_30: `Write a warm, casual 3-sentence check-in email from real estate agent Matt Golden to client ${name} who closed on ${prop} about 30 days ago. Ask how they're settling in, mention you loved working with them, and subtly open the door for referrals without being pushy. Sign off as Matt. No subject line, just the email body in plain HTML paragraphs.`,
     pc_60: `Write a short, warm, direct referral ask email from real estate agent Matt Golden to past client ${name} who closed on ${prop} about 60 days ago. The sole purpose is to ask if they know anyone thinking about buying or selling in LA — keep it genuine, not salesy, 3 sentences max. Make it feel like a text from a friend, not a marketing email. End with a specific ask like "If anyone comes to mind, I'd love an intro." Sign off as Matt. No subject line, just HTML paragraphs.`,
     pc_90: `Write a warm, casual 2-sentence check-in email from Matt Golden (LA real estate agent) to past client ${name} who closed on ${prop} 90 days ago. Just checking in to say hi and let them know you're always around if they need anything. Keep it short and genuine — no ask, no pitch. Sign off as Matt. No subject line, just HTML paragraphs.`
@@ -1080,6 +1083,7 @@ async function processPostCloseEmails(crm, today) {
         };
         const bodyHtml = await generatePostCloseEmail(touch.key, lead);
         const subjects = {
+          pc_14: `Quick ask — would you leave us a review? ⭐`,
           pc_30: `Checking in — how's ${seq.property || 'the new place'}?`,
           pc_60: `A quick favor to ask 🙏`,
           pc_90: `Thinking of you — hope all is well!`
@@ -3696,6 +3700,95 @@ Analyze this listing and respond with valid JSON only (no markdown, no commentar
     res.json({ ok: true, analysis });
   } catch (e) {
     console.error('DEAL ANALYZE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+
+// ── Market Report Generator ───────────────────────────────────
+app.post('/market-report/generate', async (req, res) => {
+  try {
+    const { neighborhood, weekOf, activeListings, newThisWeek, soldThisWeek, medianPrice, avgDOM, notes, recipient } = req.body;
+
+    const prompt = `You are writing a weekly real estate market update email for Matt Golden, a Los Angeles real estate agent at MG Realty.
+
+Write a polished, professional but conversational market update email body (no subject line) for ${neighborhood} for the week of ${weekOf}.
+
+Market data:
+- Active listings: ${activeListings || 'N/A'}
+- New listings this week: ${newThisWeek || 'N/A'}
+- Sold this week: ${soldThisWeek || 'N/A'}
+- Median list price: ${medianPrice || 'N/A'}
+- Average days on market: ${avgDOM || 'N/A'} days
+- Agent notes: ${notes || 'Nothing notable'}
+
+Rules:
+- 3-4 short paragraphs max
+- Start with a punchy one-liner about market conditions
+- Weave in the data naturally — don't just list numbers
+- End with a soft call to action (chat with Matt, see listings, etc.)
+- Tone: knowledgeable neighbor, not corporate analyst
+- Return only the email body as HTML paragraphs, no subject line`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const bodyHtml = msg.content[0].text.trim();
+
+    const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+        <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+      </div>
+      <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111">${neighborhood} Market Update — Week of ${weekOf}</h2>
+        ${bodyHtml}
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;color:#666">
+            <tr>
+              ${activeListings ? `<td style="padding:4px 8px;text-align:center"><strong style="color:#111;font-size:15px">${activeListings}</strong><br>Active</td>` : ''}
+              ${newThisWeek ? `<td style="padding:4px 8px;text-align:center"><strong style="color:#111;font-size:15px">${newThisWeek}</strong><br>New</td>` : ''}
+              ${soldThisWeek ? `<td style="padding:4px 8px;text-align:center"><strong style="color:#111;font-size:15px">${soldThisWeek}</strong><br>Sold</td>` : ''}
+              ${medianPrice ? `<td style="padding:4px 8px;text-align:center"><strong style="color:#111;font-size:15px">${medianPrice}</strong><br>Median</td>` : ''}
+              ${avgDOM ? `<td style="padding:4px 8px;text-align:center"><strong style="color:#111;font-size:15px">${avgDOM}d</strong><br>Avg DOM</td>` : ''}
+            </tr>
+          </table>
+        </div>
+        <p style="margin-top:24px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · Los Angeles · matt@mgoldenrealty.com</span></p>
+      </div>
+    </div>`;
+
+    const subject = `${neighborhood} Market Update — Week of ${weekOf}`;
+
+    if (recipient === 'self_preview') {
+      return res.json({ ok: true, preview: bodyHtml });
+    }
+
+    const crm = await readCRM();
+    let recipients = ['goldenmb@gmail.com'];
+
+    if (recipient === 'all_active') {
+      const clientEmails = crm.leads
+        .filter(l => l.temp !== 'done' && l.email)
+        .map(l => l.email);
+      recipients = [...new Set([...recipients, ...clientEmails])];
+    }
+
+    let sent = 0;
+    for (const to of recipients) {
+      const { error } = await resend.emails.send({
+        from: 'Matt Golden | MG Realty <matt@mgoldenrealty.com>',
+        to, subject, html
+      });
+      if (!error) sent++;
+      else console.error('Market report send failed:', error.message);
+    }
+
+    console.log(\`Market report sent: \${sent}/\${recipients.length} recipients\`);
+    res.json({ ok: true, sent });
+  } catch(e) {
+    console.error('MARKET REPORT ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
