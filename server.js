@@ -3785,7 +3785,7 @@ Rules:
       else console.error('Market report send failed:', error.message);
     }
 
-    console.log(\`Market report sent: \${sent}/\${recipients.length} recipients\`);
+    console.log(`Market report sent: ${sent}/${recipients.length} recipients`);
     res.json({ ok: true, sent });
   } catch(e) {
     console.error('MARKET REPORT ERROR:', e.message);
