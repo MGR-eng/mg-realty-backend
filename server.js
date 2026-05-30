@@ -975,7 +975,7 @@ async function generatePostCloseEmail(touchKey, lead) {
   const prop = lead.prop || lead.address || 'your new home';
   const hood = lead.neighborhood || 'your neighborhood';
 
-  const GOOGLE_REVIEW_URL = process.env.GOOGLE_REVIEW_URL || 'https://g.page/r/review';
+  const GOOGLE_REVIEW_URL = process.env.GOOGLE_REVIEW_URL || 'https://g.page/r/Cb0DDRp3u6RFEBM/review';
   const prompts = {
     pc_14: `Write a short, warm email from real estate agent Matt Golden to client ${name} who just closed on ${prop} about 2 weeks ago. The goal is to ask them to leave a Google review — make it feel genuine and easy, not pushy. Mention you'd be so grateful, and include this exact link as a clickable button in the HTML: ${GOOGLE_REVIEW_URL}. 2-3 sentences max. No subject line, just HTML paragraphs with the button.`,
     pc_30: `Write a warm, casual 3-sentence check-in email from real estate agent Matt Golden to client ${name} who closed on ${prop} about 30 days ago. Ask how they're settling in, mention you loved working with them, and subtly open the door for referrals without being pushy. Sign off as Matt. No subject line, just the email body in plain HTML paragraphs.`,
