@@ -416,6 +416,51 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 </style>
 </head>
 <body>
+<div id="lockscreen" style="display:none;position:fixed;inset:0;background:#0A0A0A;z-index:9999;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif">
+  <div style="width:100%;max-width:360px;padding:0 24px">
+    <div style="text-align:center;margin-bottom:32px">
+      <img src="/icons/mg-logo.jpg" alt="MG Realty" style="width:64px;height:64px;border-radius:12px;object-fit:cover;margin-bottom:16px">
+      <div style="font-size:20px;font-weight:700;color:#F0F0F0">MG Realty CRM</div>
+      <div style="font-size:13px;color:#888;margin-top:4px">Enter your password to continue</div>
+    </div>
+    <input type="password" id="lock-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()"
+      style="width:100%;padding:14px 16px;background:#111;border:1px solid #242424;border-radius:10px;color:#F0F0F0;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:10px">
+    <div id="lock-error" style="color:#F87171;font-size:12px;margin-bottom:10px;display:none">Incorrect password. Try again.</div>
+    <button onclick="checkPassword()" style="width:100%;padding:14px;background:linear-gradient(135deg,#E8681A,#c45510);border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Unlock</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const CRM_PASSWORD = 'mgrealty2024';
+  const SESSION_KEY = 'mg_crm_auth';
+  const lockscreen = document.getElementById('lockscreen');
+  const shell = document.querySelector('.shell');
+
+  function checkPassword(){
+    const val = document.getElementById('lock-input').value;
+    if(val === CRM_PASSWORD){
+      sessionStorage.setItem(SESSION_KEY, '1');
+      lockscreen.style.display = 'none';
+      if(shell) shell.style.display = '';
+    } else {
+      document.getElementById('lock-error').style.display = 'block';
+      document.getElementById('lock-input').value = '';
+      document.getElementById('lock-input').focus();
+    }
+  }
+  window.checkPassword = checkPassword;
+
+  if(!sessionStorage.getItem(SESSION_KEY)){
+    lockscreen.style.display = 'flex';
+    if(shell) shell.style.display = 'none';
+    setTimeout(()=>document.getElementById('lock-input').focus(), 100);
+  } else {
+    lockscreen.style.display = 'none';
+  }
+})();
+</script>
+
 <div id="toast" class="toast"></div>
 <div class="shell">
 
