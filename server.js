@@ -965,8 +965,8 @@ app.get('/sequences/status/:leadId', async (req, res) => {
 // ── Post-Close Check-in Sequences ────────────────────────────
 const POST_CLOSE_TOUCHES = [
   { day: 30, key: 'pc_30', label: '30-Day Check-in' },
-  { day: 60, key: 'pc_60', label: '60-Day Market Update' },
-  { day: 90, key: 'pc_90', label: '90-Day Referral Ask' },
+  { day: 60, key: 'pc_60', label: '60-Day Referral Ask' },
+  { day: 90, key: 'pc_90', label: '90-Day Check-in' },
 ];
 
 async function generatePostCloseEmail(touchKey, lead) {
@@ -976,8 +976,8 @@ async function generatePostCloseEmail(touchKey, lead) {
 
   const prompts = {
     pc_30: `Write a warm, casual 3-sentence check-in email from real estate agent Matt Golden to client ${name} who closed on ${prop} about 30 days ago. Ask how they're settling in, mention you loved working with them, and subtly open the door for referrals without being pushy. Sign off as Matt. No subject line, just the email body in plain HTML paragraphs.`,
-    pc_60: `Write a value-add 3-sentence email from Matt Golden (LA real estate agent) to past client ${name} who bought/sold ${prop} 60 days ago. Share that you've been watching ${hood} and wanted to give them a quick market pulse. Keep it conversational and end with an offer to chat. No subject line, just HTML paragraphs.`,
-    pc_90: `Write a friendly 3-sentence email from Matt Golden (LA real estate agent) to past client ${name} who closed on ${prop} 90 days ago. Congratulate them on 3 months in their new situation, ask if they know anyone who could use help buying or selling in LA, and make it feel natural not salesy. No subject line, just HTML paragraphs.`
+    pc_60: `Write a short, warm, direct referral ask email from real estate agent Matt Golden to past client ${name} who closed on ${prop} about 60 days ago. The sole purpose is to ask if they know anyone thinking about buying or selling in LA — keep it genuine, not salesy, 3 sentences max. Make it feel like a text from a friend, not a marketing email. End with a specific ask like "If anyone comes to mind, I'd love an intro." Sign off as Matt. No subject line, just HTML paragraphs.`,
+    pc_90: `Write a warm, casual 2-sentence check-in email from Matt Golden (LA real estate agent) to past client ${name} who closed on ${prop} 90 days ago. Just checking in to say hi and let them know you're always around if they need anything. Keep it short and genuine — no ask, no pitch. Sign off as Matt. No subject line, just HTML paragraphs.`
   };
 
   const msg = await anthropic.messages.create({
@@ -1081,8 +1081,8 @@ async function processPostCloseEmails(crm, today) {
         const bodyHtml = await generatePostCloseEmail(touch.key, lead);
         const subjects = {
           pc_30: `Checking in — how's ${seq.property || 'the new place'}?`,
-          pc_60: `Quick market update for ${seq.neighborhood || 'your area'}`,
-          pc_90: `3 months in — congrats! 🏡`
+          pc_60: `A quick favor to ask 🙏`,
+          pc_90: `Thinking of you — hope all is well!`
         };
         const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
           <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
