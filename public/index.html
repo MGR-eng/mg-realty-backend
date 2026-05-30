@@ -429,6 +429,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item active" onclick="showPane('dashboard',this)"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></button>
     <button class="nav-item" onclick="showPane('leads',this)"><i class="ti ti-users"></i><span>Leads</span><span class="nb" id="nb-leads">0</span></button>
     <button class="nav-item" onclick="openFollowUpAlert()" id="nav-followups"><i class="ti ti-bell-ringing"></i><span>Follow-ups</span><span class="nb red" id="nb-followups" style="display:none">0</span></button>
+    <button class="nav-item" onclick="openFollowUpAlert()" id="nav-followups"><i class="ti ti-bell-ringing"></i><span>Follow-ups</span><span class="nb red" id="nb-followups" style="display:none">0</span></button>
     <button class="nav-item" onclick="showPane('activity',this)"><i class="ti ti-activity"></i><span>Activity log</span></button>
     <button class="nav-item" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span><span class="nb" id="nb-appts">0</span></button>
     <button class="nav-item" onclick="showPane('pipeline',this)"><i class="ti ti-layout-kanban"></i><span>Pipeline</span></button>
@@ -2668,231 +2669,6 @@ function buildOHEmailHTML(lead) {
 
   <div style="text-align:center;padding:16px;color:#aaa;font-size:11px">MG Realty · DRE #02130422</div>
 </div>
-
-<!-- ── Follow-Up Alert Modal ─────────────────────────────── -->
-<div id="mFollowUp" class="modal" style="display:none">
-  <div class="modal-box" style="max-width:560px">
-    <div class="mhead">
-      <span id="fu-modal-title">Follow-Up Alert</span>
-      <button class="close-btn" onclick="closeFollowUpAlert()"><i class="ti ti-x"></i></button>
-    </div>
-    <div class="mbody">
-      <!-- Lead info -->
-      <div id="fu-lead-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-          <div>
-            <div id="fu-lead-name" style="font-size:16px;font-weight:700;color:var(--text)"></div>
-            <div id="fu-lead-meta" style="font-size:12px;color:var(--text2);margin-top:3px"></div>
-          </div>
-          <div id="fu-lead-score" style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(232,104,26,0.15);color:var(--accent)"></div>
-        </div>
-        <div id="fu-lead-notes" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.5"></div>
-      </div>
-
-      <!-- Progress -->
-      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;text-align:right" id="fu-progress"></div>
-
-      <!-- Action fields -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div class="fg">
-          <label>Method Used</label>
-          <select id="fu-method">
-            <option value="call">📞 Call</option>
-            <option value="text">💬 Text</option>
-            <option value="email">✉️ Email</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label>Outcome</label>
-          <select id="fu-outcome">
-            <option value="connected">Connected / Spoke</option>
-            <option value="no_answer">No answer</option>
-            <option value="voicemail">Left voicemail</option>
-            <option value="interested">Interested</option>
-            <option value="not_interested">Not interested</option>
-            <option value="needs_time">Needs more time</option>
-            <option value="appointment_set">Appointment set</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg" style="margin-bottom:10px">
-        <label>Notes</label>
-        <textarea id="fu-notes" rows="3" placeholder="What happened? Key takeaways..." style="width:100%;resize:vertical"></textarea>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-        <div class="fg">
-          <label>Next Follow-Up Date</label>
-          <input type="date" id="fu-next-date">
-        </div>
-        <div class="fg">
-          <label>Next Method</label>
-          <select id="fu-next-method">
-            <option value="call">📞 Call</option>
-            <option value="text">💬 Text</option>
-            <option value="email">✉️ Email</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Quick actions -->
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="fuQuickEmail()" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)"><i class="ti ti-mail"></i> Send Email</button>
-        <button class="btn btn-sm" onclick="fuQuickShowing()" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)"><i class="ti ti-home-search"></i> Schedule Showing</button>
-        <button class="btn btn-sm" onclick="fuSkip()" style="background:rgba(255,255,255,0.05);color:var(--text2);border:1px solid var(--border)"><i class="ti ti-player-skip-forward"></i> Skip for now</button>
-      </div>
-
-      <!-- Footer buttons -->
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-gold" style="flex:1" onclick="fuSaveAndNext()"><i class="ti ti-check"></i> Log & Next</button>
-        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="closeFollowUpAlert()">Done for now</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-// ── Follow-Up Alert System ────────────────────────────────────
-let fuQueue = [];
-let fuIndex = 0;
-
-function getFollowUpQueue() {
-  const today = new Date().toISOString().split('T')[0];
-  return leads
-    .filter(l => l.temp !== 'done' && l.followup && du(l.followup) <= 0)
-    .sort((a, b) => {
-      // Overdue first, then by temp (hot > warm > cold)
-      const tempOrder = { hot: 0, warm: 1, cold: 2 };
-      if (du(a.followup) !== du(b.followup)) return du(a.followup) - du(b.followup);
-      return (tempOrder[a.temp] ?? 3) - (tempOrder[b.temp] ?? 3);
-    });
-}
-
-function openFollowUpAlert() {
-  fuQueue = getFollowUpQueue();
-  if (!fuQueue.length) { toast('No follow-ups due today 🎉'); return; }
-  fuIndex = 0;
-  renderFuModal();
-  document.getElementById('mFollowUp').style.display = 'flex';
-}
-
-function closeFollowUpAlert() {
-  document.getElementById('mFollowUp').style.display = 'none';
-}
-
-function renderFuModal() {
-  const lead = fuQueue[fuIndex];
-  if (!lead) { closeFollowUpAlert(); toast('All follow-ups logged! 🎉'); return; }
-
-  document.getElementById('fu-modal-title').textContent = 'Follow-Up Alert';
-  document.getElementById('fu-lead-name').textContent = `${lead.first} ${lead.last}`;
-  document.getElementById('fu-lead-score').textContent = `Score: ${calcLeadScore ? calcLeadScore(lead) : '—'}/10`;
-
-  const daysOverdue = du(lead.followup);
-  const overdueText = daysOverdue === 0 ? 'Due today' : `${Math.abs(daysOverdue)} day${Math.abs(daysOverdue)!==1?'s':''} overdue`;
-  document.getElementById('fu-lead-meta').textContent =
-    `${lead.phone || 'No phone'} · ${lead.temp.toUpperCase()} · ${overdueText} · ${lead.method || 'call'}`;
-  document.getElementById('fu-lead-notes').textContent = lead.notes ? `Notes: ${lead.notes.substring(0, 120)}` : '';
-  document.getElementById('fu-progress').textContent = `${fuIndex + 1} of ${fuQueue.length} follow-ups`;
-
-  // Reset fields
-  document.getElementById('fu-method').value = lead.method || 'call';
-  document.getElementById('fu-outcome').value = 'connected';
-  document.getElementById('fu-notes').value = '';
-
-  // Default next follow-up: 3 days from now
-  const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + 3);
-  document.getElementById('fu-next-date').value = nextDate.toISOString().split('T')[0];
-  document.getElementById('fu-next-method').value = lead.method || 'call';
-}
-
-async function fuSaveAndNext() {
-  const lead = fuQueue[fuIndex];
-  if (!lead) return;
-
-  const method = document.getElementById('fu-method').value;
-  const outcome = document.getElementById('fu-outcome').value;
-  const notes = document.getElementById('fu-notes').value;
-  const nextDate = document.getElementById('fu-next-date').value;
-  const nextMethod = document.getElementById('fu-next-method').value;
-  const today = new Date().toISOString().split('T')[0];
-  const now = new Date();
-
-  // Log activity
-  activities.unshift({
-    id: 'a' + Date.now(),
-    leadId: lead.id,
-    leadName: `${lead.first} ${lead.last}`,
-    date: today,
-    time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-    type: method,
-    direction: 'outbound',
-    outcome: outcome.replace(/_/g, ' '),
-    notes,
-    fuDate: nextDate,
-    fuMethod: nextMethod
-  });
-
-  // Update lead
-  const idx = leads.findIndex(l => l.id === lead.id);
-  if (idx !== -1) {
-    leads[idx] = { ...leads[idx], lastcontact: today, lcmethod: method, followup: nextDate, method: nextMethod };
-  }
-
-  persist();
-  renderAll();
-  toast(`✓ Logged for ${lead.first} ${lead.last}`);
-
-  fuIndex++;
-  if (fuIndex >= fuQueue.length) {
-    closeFollowUpAlert();
-    toast('All follow-ups logged! 🎉');
-  } else {
-    renderFuModal();
-  }
-}
-
-function fuSkip() {
-  fuIndex++;
-  if (fuIndex >= fuQueue.length) { closeFollowUpAlert(); toast('All caught up!'); }
-  else renderFuModal();
-}
-
-function fuQuickEmail() {
-  const lead = fuQueue[fuIndex];
-  if (!lead) return;
-  closeFollowUpAlert();
-  openEmailModal(lead.id);
-}
-
-function fuQuickShowing() {
-  const lead = fuQueue[fuIndex];
-  if (!lead) return;
-  closeFollowUpAlert();
-  // Pre-fill appointment modal with this lead
-  const apptLead = document.getElementById('appt-lead');
-  if (apptLead) {
-    apptLead.value = lead.id;
-    document.getElementById('appt-type').value = 'showing';
-  }
-  openModal('mAppt');
-}
-
-// ── 9AM daily trigger ─────────────────────────────────────────
-(function checkFollowUpAlert() {
-  const now = new Date();
-  const hour = now.getHours();
-  const today = now.toISOString().split('T')[0];
-  const lastShown = localStorage.getItem('mg_followup_alert');
-
-  if (lastShown !== today && hour >= 9) {
-    localStorage.setItem('mg_followup_alert', today);
-    setTimeout(() => {
-      const queue = getFollowUpQueue();
-      if (queue.length > 0) openFollowUpAlert();
-    }, 2000); // slight delay so CRM loads first
-  }
-})();
-</script>
 </body></html>`;
 }
 
@@ -5964,5 +5740,126 @@ function downloadMarketReport(){
   <div class="snooze-opt" onclick="snoozeFor(14)"><i class="ti ti-calendar"></i> 2 weeks</div>
 </div>
 
+
+<!-- ── Follow-Up Alert Modal ─────────────────────────────── -->
+<div id="mFollowUp" class="modal" style="display:none">
+  <div class="modal-box" style="max-width:560px">
+    <div class="mhead">
+      <span id="fu-modal-title">Follow-Up Alert</span>
+      <button class="close-btn" onclick="closeFollowUpAlert()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="mbody">
+      <div id="fu-lead-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div>
+            <div id="fu-lead-name" style="font-size:16px;font-weight:700;color:var(--text)"></div>
+            <div id="fu-lead-meta" style="font-size:12px;color:var(--text2);margin-top:3px"></div>
+          </div>
+          <div id="fu-lead-score" style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(232,104,26,0.15);color:var(--accent)"></div>
+        </div>
+        <div id="fu-lead-notes" style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.5"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;text-align:right" id="fu-progress"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg">
+          <label>Method Used</label>
+          <select id="fu-method">
+            <option value="call">📞 Call</option>
+            <option value="text">💬 Text</option>
+            <option value="email">✉️ Email</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Outcome</label>
+          <select id="fu-outcome">
+            <option value="connected">Connected / Spoke</option>
+            <option value="no_answer">No answer</option>
+            <option value="voicemail">Left voicemail</option>
+            <option value="interested">Interested</option>
+            <option value="not_interested">Not interested</option>
+            <option value="needs_time">Needs more time</option>
+            <option value="appointment_set">Appointment set</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Notes</label>
+        <textarea id="fu-notes" rows="3" placeholder="What happened? Key takeaways..." style="width:100%;resize:vertical"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div class="fg">
+          <label>Next Follow-Up Date</label>
+          <input type="date" id="fu-next-date">
+        </div>
+        <div class="fg">
+          <label>Next Method</label>
+          <select id="fu-next-method">
+            <option value="call">📞 Call</option>
+            <option value="text">💬 Text</option>
+            <option value="email">✉️ Email</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="fuQuickEmail()" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)"><i class="ti ti-mail"></i> Send Email</button>
+        <button class="btn btn-sm" onclick="fuQuickShowing()" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)"><i class="ti ti-home-search"></i> Schedule Showing</button>
+        <button class="btn btn-sm" onclick="fuSkip()" style="background:rgba(255,255,255,0.05);color:var(--text2);border:1px solid var(--border)"><i class="ti ti-player-skip-forward"></i> Skip for now</button>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" style="flex:1" onclick="fuSaveAndNext()"><i class="ti ti-check"></i> Log & Next</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="closeFollowUpAlert()">Done for now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let fuQueue=[];let fuIndex=0;
+function getFollowUpQueue(){return leads.filter(l=>l.temp!=='done'&&l.followup&&du(l.followup)<=0).sort((a,b)=>{const o={hot:0,warm:1,cold:2};if(du(a.followup)!==du(b.followup))return du(a.followup)-du(b.followup);return(o[a.temp]??3)-(o[b.temp]??3);});}
+function openFollowUpAlert(){fuQueue=getFollowUpQueue();if(!fuQueue.length){toast('No follow-ups due today 🎉');return;}fuIndex=0;renderFuModal();document.getElementById('mFollowUp').style.display='flex';}
+function closeFollowUpAlert(){document.getElementById('mFollowUp').style.display='none';}
+function renderFuModal(){
+  const lead=fuQueue[fuIndex];if(!lead){closeFollowUpAlert();toast('All follow-ups logged! 🎉');return;}
+  document.getElementById('fu-modal-title').textContent='Follow-Up Alert';
+  document.getElementById('fu-lead-name').textContent=`${lead.first} ${lead.last}`;
+  document.getElementById('fu-lead-score').textContent=`Score: ${typeof calcLeadScore==='function'?calcLeadScore(lead):'—'}/10`;
+  const days=du(lead.followup);const overdueText=days===0?'Due today':`${Math.abs(days)} day${Math.abs(days)!==1?'s':''} overdue`;
+  document.getElementById('fu-lead-meta').textContent=`${lead.phone||'No phone'} · ${lead.temp.toUpperCase()} · ${overdueText} · ${lead.method||'call'}`;
+  document.getElementById('fu-lead-notes').textContent=lead.notes?`Notes: ${lead.notes.substring(0,120)}`:'';
+  document.getElementById('fu-progress').textContent=`${fuIndex+1} of ${fuQueue.length} follow-ups`;
+  document.getElementById('fu-method').value=lead.method||'call';
+  document.getElementById('fu-outcome').value='connected';
+  document.getElementById('fu-notes').value='';
+  const nd=new Date();nd.setDate(nd.getDate()+3);
+  document.getElementById('fu-next-date').value=nd.toISOString().split('T')[0];
+  document.getElementById('fu-next-method').value=lead.method||'call';
+}
+async function fuSaveAndNext(){
+  const lead=fuQueue[fuIndex];if(!lead)return;
+  const method=document.getElementById('fu-method').value;
+  const outcome=document.getElementById('fu-outcome').value;
+  const notes=document.getElementById('fu-notes').value;
+  const nextDate=document.getElementById('fu-next-date').value;
+  const nextMethod=document.getElementById('fu-next-method').value;
+  const today=new Date().toISOString().split('T')[0];
+  const now=new Date();
+  activities.unshift({id:'a'+Date.now(),leadId:lead.id,leadName:`${lead.first} ${lead.last}`,date:today,time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),type:method,direction:'outbound',outcome:outcome.replace(/_/g,' '),notes,fuDate:nextDate,fuMethod:nextMethod});
+  const idx=leads.findIndex(l=>l.id===lead.id);
+  if(idx!==-1)leads[idx]={...leads[idx],lastcontact:today,lcmethod:method,followup:nextDate,method:nextMethod};
+  persist();renderAll();toast(`✓ Logged for ${lead.first} ${lead.last}`);
+  fuIndex++;
+  if(fuIndex>=fuQueue.length){closeFollowUpAlert();toast('All follow-ups logged! 🎉');}else{renderFuModal();}
+}
+function fuSkip(){fuIndex++;if(fuIndex>=fuQueue.length){closeFollowUpAlert();toast('All caught up!');}else{renderFuModal();}}
+function fuQuickEmail(){const lead=fuQueue[fuIndex];if(!lead)return;closeFollowUpAlert();if(typeof openEmailModal==='function')openEmailModal(lead.id);}
+function fuQuickShowing(){const lead=fuQueue[fuIndex];if(!lead)return;closeFollowUpAlert();const el=document.getElementById('appt-lead');if(el){el.value=lead.id;const t=document.getElementById('appt-type');if(t)t.value='showing';}if(typeof openModal==='function')openModal('mAppt');}
+// Update sidebar badge
+const _origUpdateBadges=typeof updateBadges==='function'?updateBadges:null;
+function updateFollowUpBadge(){const n=getFollowUpQueue().length;const el=document.getElementById('nb-followups');if(el){el.textContent=n;el.style.display=n?'':'none';}}
+// 9AM daily trigger
+(function(){const now=new Date();const today=now.toISOString().split('T')[0];const last=localStorage.getItem('mg_followup_alert');if(last!==today&&now.getHours()>=9){localStorage.setItem('mg_followup_alert',today);setTimeout(()=>{if(getFollowUpQueue().length>0)openFollowUpAlert();},2500);}})();
+// Run badge update after data loads
+document.addEventListener('DOMContentLoaded',()=>{setTimeout(updateFollowUpBadge,1000);});
+</script>
 </body>
 </html>
