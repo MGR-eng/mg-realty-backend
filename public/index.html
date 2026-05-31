@@ -481,6 +481,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="nav-lbl">Main</div>
     <button class="nav-item active" onclick="showPane('dashboard',this)"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></button>
     <button class="nav-item" onclick="showPane('leads',this)"><i class="ti ti-users"></i><span>Leads</span><span class="nb" id="nb-leads">0</span></button>
+    <button class="nav-item" onclick="showPane('sellers',this)"><i class="ti ti-home-dollar"></i><span>Sellers</span><span class="nb" id="nb-sellers">0</span></button>
     <button class="nav-item" onclick="openFollowUpAlert()" id="nav-followups"><i class="ti ti-bell-ringing"></i><span>Follow-ups</span><span class="nb red" id="nb-followups" style="display:none">0</span></button>
     <button class="nav-item" onclick="showPane('activity',this)"><i class="ti ti-activity"></i><span>Activity log</span></button>
     <button class="nav-item" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span><span class="nb" id="nb-appts">0</span></button>
@@ -623,6 +624,18 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     </div>
   </div>
   <div class="content"><div class="tw"><table><thead><tr><th style="width:135px;cursor:pointer" onclick="sortLeads('name')" title="Sort by name">Name <span id="sort-name"></span></th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:52px;cursor:pointer" onclick="sortLeads('score')" title="Sort by score">Score <span id="sort-score"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('followup')" title="Sort by follow-up">Follow-up <span id="sort-followup"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('lastcontact')" title="Sort by last contact">Last contact <span id="sort-lastcontact"></span></th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
+</div>
+
+<div id="pane-sellers" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-home-dollar" style="margin-right:6px;color:var(--accent)"></i>Seller Hub</div>
+    <div class="tba">
+      <button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(()=>{document.getElementById('lf7').value='seller';openAddLead();},50)"><i class="ti ti-user-plus"></i> Add seller</button>
+    </div>
+  </div>
+  <div class="content">
+    <div id="sellerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;padding:4px 0"></div>
+  </div>
 </div>
 
 <div id="pane-activity" class="pane">
@@ -2022,7 +2035,7 @@ async function renderDetailPostClose(leadId){
   }catch(e){sec.style.display='none';}
 }
 
-function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();renderSellers();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
 
 // ── Weekly Client Reports ─────────────────────────────────────
 async function sendClientReport(leadId) {
@@ -3905,6 +3918,7 @@ function showCeTab(tab) {
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
+  if (tab === 'sellers') { renderSellers(); }
 }
 
 function renderCalendar() {
@@ -6528,6 +6542,161 @@ function showAgentLeads(agentName) {
     </div>`).join('')}
   </div>`;
 }
+</script>
+
+
+<!-- ── Open House Recap Modal ─────────────────────────────────── -->
+<div id="mOHRecap" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <div class="mhead">
+      <span>📋 Open House Recap</span>
+      <button class="close-btn" onclick="document.getElementById('mOHRecap').style.display='none'"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="mbody">
+      <div id="recap-seller-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:13px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg">
+          <label>Open House Date</label>
+          <input type="date" id="recap-date">
+        </div>
+        <div class="fg">
+          <label>Total Visitors</label>
+          <input type="number" id="recap-visitors" placeholder="0" min="0">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg">
+          <label>Interested Parties</label>
+          <input type="number" id="recap-interested" placeholder="0" min="0">
+        </div>
+        <div class="fg">
+          <label>Offers Received</label>
+          <input type="number" id="recap-offers" placeholder="0" min="0">
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Buyer Feedback / Comments Heard</label>
+        <textarea id="recap-feedback" rows="2" placeholder="e.g. Love the kitchen, concerned about parking..." style="width:100%;resize:none"></textarea>
+      </div>
+      <div class="fg" style="margin-bottom:14px">
+        <label>Next Steps / Your Recommendation</label>
+        <textarea id="recap-nextsteps" rows="2" placeholder="e.g. Expecting offers by Tuesday, recommend reviewing price..." style="width:100%;resize:none"></textarea>
+      </div>
+      <div id="recap-preview" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px;font-size:13px;line-height:1.6;max-height:200px;overflow-y:auto;color:var(--text2)"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" style="flex:1" id="recap-btn" onclick="generateAndSendRecap()"><i class="ti ti-sparkles"></i> Generate & Send</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="document.getElementById('mOHRecap').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Seller Hub ────────────────────────────────────────────────
+let recapLeadId = null;
+
+function renderSellers() {
+  const grid = document.getElementById('sellerGrid');
+  if (!grid) return;
+  const sellers = leads.filter(l => l.type === 'seller' && l.temp !== 'done');
+  
+  // Update badge
+  const badge = document.getElementById('nb-sellers');
+  if (badge) badge.textContent = sellers.length;
+
+  if (!sellers.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active seller leads. Add a seller to get started.</div>';
+    return;
+  }
+
+  grid.innerHTML = sellers.map(l => {
+    const daysOld = l.added ? Math.floor((new Date() - new Date(l.added)) / 86400000) : null;
+    const lastContact = l.lastcontact ? rel(l.lastcontact) : 'Never';
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;transition:border-color 0.15s" onmouseover="this.style.borderColor='rgba(232,104,26,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-size:15px;font-weight:700">${l.first} ${l.last}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${l.prop || 'No property listed'}</div>
+        </div>
+        ${tb(l.temp)}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text3);margin-bottom:14px">
+        <div>📞 ${l.phone || '—'}</div>
+        <div>✉️ ${l.email || '—'}</div>
+        <div>📅 Last contact: ${lastContact}</div>
+        <div>📍 Stage: ${l.stage || 'new'}</div>
+      </div>
+      ${l.notes ? `<div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5;padding:8px;background:var(--surface2);border-radius:6px">${l.notes.substring(0,100)}${l.notes.length>100?'…':''}</div>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-gold btn-sm" onclick="openOHRecap('${l.id}')"><i class="ti ti-mail-forward" style="font-size:11px"></i> Send Recap</button>
+        <button class="btn btn-sm" onclick="openEmailTemplate('${l.id}');event.stopPropagation()" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)"><i class="ti ti-mail" style="font-size:11px"></i> Email</button>
+        <button class="btn btn-sm" onclick="openAct('${l.id}')"><i class="ti ti-activity" style="font-size:11px"></i> Log</button>
+        <button class="btn btn-sm" onclick="openEdit('${l.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openOHRecap(leadId) {
+  recapLeadId = leadId;
+  const lead = leads.find(l => l.id === leadId);
+  if (!lead) return;
+  
+  document.getElementById('recap-seller-info').innerHTML = `<strong>${lead.first} ${lead.last}</strong> · ${lead.prop || 'No property'} · ${lead.email || 'No email'}`;
+  document.getElementById('recap-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('recap-visitors').value = '';
+  document.getElementById('recap-interested').value = '';
+  document.getElementById('recap-offers').value = '';
+  document.getElementById('recap-feedback').value = '';
+  document.getElementById('recap-nextsteps').value = '';
+  document.getElementById('recap-preview').style.display = 'none';
+  document.getElementById('recap-btn').disabled = false;
+  document.getElementById('recap-btn').innerHTML = '<i class="ti ti-sparkles"></i> Generate & Send';
+  document.getElementById('mOHRecap').style.display = 'flex';
+}
+
+async function generateAndSendRecap() {
+  const lead = leads.find(l => l.id === recapLeadId);
+  if (!lead || !lead.email) { toast('Seller needs an email address first'); return; }
+
+  const btn = document.getElementById('recap-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Generating…';
+
+  const data = {
+    sellerName: lead.first,
+    sellerEmail: lead.email,
+    property: lead.prop || 'your property',
+    date: document.getElementById('recap-date').value,
+    visitors: document.getElementById('recap-visitors').value || '0',
+    interested: document.getElementById('recap-interested').value || '0',
+    offers: document.getElementById('recap-offers').value || '0',
+    feedback: document.getElementById('recap-feedback').value,
+    nextsteps: document.getElementById('recap-nextsteps').value
+  };
+
+  try {
+    const r = await fetch(BACKEND + '/email/oh-recap', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    toast(`✓ Open house recap sent to ${lead.email}`);
+    document.getElementById('mOHRecap').style.display = 'none';
+    // Log activity
+    activities.unshift({ id:'a'+Date.now(), leadId:lead.id, leadName:`${lead.first} ${lead.last}`, date:new Date().toISOString().split('T')[0], time:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}), type:'email', direction:'outbound', outcome:'sent', notes:`Open house recap sent for ${data.property}` });
+    persist(); renderAll();
+  } catch(e) {
+    toast('Error: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate & Send';
+  }
+}
+
+// Hook into renderAll
+const _origRenderAll = typeof renderAll === 'function' ? renderAll : null;
 </script>
 
 </body>

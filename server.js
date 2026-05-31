@@ -560,6 +560,64 @@ app.post('/email/send', async (req, res) => {
   }
 });
 
+// ── Open House Recap Email ────────────────────────────────────
+app.post('/email/oh-recap', async (req, res) => {
+  try {
+    const { sellerName, sellerEmail, property, date, visitors, interested, offers, feedback, nextsteps } = req.body;
+
+    const prompt = `Write a professional, warm open house recap email from real estate agent Matt Golden to his seller client ${sellerName} about their property at ${property}.
+
+Open house details:
+- Date: ${date}
+- Total visitors: ${visitors}
+- Interested parties: ${interested}
+- Offers received: ${offers}
+- Buyer feedback heard: ${feedback || 'Nothing notable'}
+- Next steps/recommendation: ${nextsteps || 'Stay tuned for updates'}
+
+Write 3-4 short paragraphs. Be honest but optimistic. Lead with the highlights, share feedback professionally, and end with clear next steps. Sign off as Matt. No subject line, just the email body as HTML paragraphs.`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const bodyHtml = msg.content[0].text.trim();
+
+    const formattedDate = new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+        <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+      </div>
+      <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+        <h2 style="margin:0 0 6px;font-size:18px;color:#111">Open House Recap</h2>
+        <p style="margin:0 0 20px;font-size:13px;color:#888">${property} · ${formattedDate}</p>
+        <div style="background:#f9f9f9;border-radius:8px;padding:14px;margin-bottom:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${visitors}</div><div style="font-size:11px;color:#888;margin-top:2px">Visitors</div></div>
+          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${interested}</div><div style="font-size:11px;color:#888;margin-top:2px">Interested</div></div>
+          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${offers}</div><div style="font-size:11px;color:#888;margin-top:2px">Offers</div></div>
+        </div>
+        ${bodyHtml}
+        <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · Los Angeles · matt@mgoldenrealty.com</span></p>
+      </div>
+    </div>`;
+
+    const { error } = await resend.emails.send({
+      from: 'Matt Golden | MG Realty <matt@mgoldenrealty.com>',
+      to: sellerEmail,
+      subject: `Open House Recap — ${property}`,
+      html
+    });
+    if (error) throw new Error('Resend: ' + error.message);
+
+    console.log(`OH recap sent to ${sellerEmail} for ${property}`);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('OH RECAP ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Google Sheets: backup leads + activity ───────────────────
 app.post('/drive/backup', async (req, res) => {
   try {
