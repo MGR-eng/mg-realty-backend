@@ -179,7 +179,7 @@ app.get('/auth/google/callback', async (req, res) => {
         <h2 style="color:#27ae60">✅ Authorization successful!</h2>
         <p>Copy this refresh token and paste it into Render as <strong>GOOGLE_REFRESH_TOKEN</strong>:</p>
         <textarea style="width:100%;height:80px;font-family:monospace;font-size:13px;padding:10px;border:2px solid #27ae60;border-radius:6px">${data.refresh_token}</textarea>
-        <p style="margin-top:16px;color:#666;font-size:13px">
+        <p style="margin-top:16px;color:#444;font-size:13px">
           1. Go to <a href="https://render.com" target="_blank">render.com</a> → your service → Environment<br>
           2. Update <strong>GOOGLE_REFRESH_TOKEN</strong> with the value above<br>
           3. Save — Render redeploys automatically
@@ -229,7 +229,7 @@ app.get('/auth/google/compass/callback', async (req, res) => {
         <h2 style="color:#27ae60">✅ Compass account authorized!</h2>
         <p>Copy this and add it to Render as <strong>GOOGLE_REFRESH_TOKEN_COMPASS</strong>:</p>
         <textarea style="width:100%;height:80px;font-family:monospace;font-size:13px;padding:10px;border:2px solid #27ae60;border-radius:6px">${data.refresh_token}</textarea>
-        <p style="margin-top:16px;color:#666;font-size:13px">
+        <p style="margin-top:16px;color:#444;font-size:13px">
           1. Go to <a href="https://render.com" target="_blank">render.com</a> → your service → Environment<br>
           2. Add new variable: <strong>GOOGLE_REFRESH_TOKEN_COMPASS</strong><br>
           3. Save — Render redeploys automatically
@@ -477,15 +477,15 @@ app.post('/gmail/digest', async (req, res) => {
         <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
           <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:64px;max-width:200px;object-fit:contain;display:block;margin:0 auto 12px">
           <h1 style="color:#fff;margin:0;font-size:18px">Daily Digest</h1>
-          <p style="color:#aaa;margin:4px 0 0;font-size:13px">${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+          <p style="color:#666;margin:4px 0 0;font-size:13px">${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
-        <div style="padding:24px;background:#fff;border:1px solid #eee;border-top:none;border-radius:0 0 8px 8px">
+        <div style="padding:24px;background:#ffffff;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px">
           ${section('🔴 Overdue','#c0392b', overdue.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
           ${section('🟡 Due Today','#e67e22', dueToday.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
           ${section('🟢 Due This Week','#27ae60', dueWeek.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
           ${section('📅 Upcoming Appointments','#2980b9', appointments.map(apptFmt).join(''), ['Lead','Type','Date & Time','Address'])}
           ${section('📋 Recent Activity','#8e44ad', recentActivity.slice(0,5).map(actFmt).join(''), ['Lead','Type','Outcome','Date'])}
-          <p style="margin-top:32px;color:#666;font-size:13px">Open your MG Realty CRM to take action.</p>
+          <p style="margin-top:32px;color:#444;font-size:13px">Open your MG Realty CRM to take action.</p>
         </div>
       </div>`;
 
@@ -598,24 +598,24 @@ Return only the email body as HTML paragraphs.`;
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#222;border-radius:8px;overflow:hidden;margin-bottom:0">
           <div style="background:#1A1A1A;padding:14px;text-align:center">
             <div style="font-size:22px;font-weight:800;color:#E8681A">20+</div>
-            <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Deals Closed</div>
+            <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Deals Closed</div>
           </div>
           <div style="background:#1A1A1A;padding:14px;text-align:center">
             <div style="font-size:22px;font-weight:800;color:#E8681A">LA</div>
-            <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Based & Local</div>
+            <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Based & Local</div>
           </div>
           <div style="background:#1A1A1A;padding:14px;text-align:center">
             <div style="font-size:22px;font-weight:800;color:#E8681A">7</div>
-            <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Days/Week</div>
+            <div style="font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Days/Week</div>
           </div>
         </div>
       </div>
-      <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+      <div style="padding:28px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
         <h2 style="margin:0 0 6px;font-size:20px;color:#111">Hi ${sellerName},</h2>
-        <p style="margin:0 0 20px;font-size:12px;color:#888">${address}${price ? ' · ' + price : ''}</p>
+        <p style="margin:0 0 20px;font-size:12px;color:#555">${address}${price ? ' · ' + price : ''}</p>
         ${bodyHtml}
         <div style="margin-top:28px;padding:16px;background:#f9f9f9;border-radius:8px;text-align:center">
-          <div style="font-size:13px;color:#333;margin-bottom:8px">Ready to get started?</div>
+          <div style="font-size:13px;color:#111;margin-bottom:8px">Ready to get started?</div>
           <a href="mailto:matt@mgoldenrealty.com" style="background:#E8681A;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px">Reply to Matt</a>
         </div>
       </div>
@@ -666,16 +666,16 @@ Write 3-4 short paragraphs. Be honest but optimistic. Lead with the highlights, 
       <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
         <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
       </div>
-      <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+      <div style="padding:28px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
         <h2 style="margin:0 0 6px;font-size:18px;color:#111">Open House Recap</h2>
-        <p style="margin:0 0 20px;font-size:13px;color:#888">${property} · ${formattedDate}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:#555">${property} · ${formattedDate}</p>
         <div style="background:#f9f9f9;border-radius:8px;padding:14px;margin-bottom:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
-          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${visitors}</div><div style="font-size:11px;color:#888;margin-top:2px">Visitors</div></div>
-          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${interested}</div><div style="font-size:11px;color:#888;margin-top:2px">Interested</div></div>
-          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${offers}</div><div style="font-size:11px;color:#888;margin-top:2px">Offers</div></div>
+          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${visitors}</div><div style="font-size:11px;color:#555;margin-top:2px">Visitors</div></div>
+          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${interested}</div><div style="font-size:11px;color:#555;margin-top:2px">Interested</div></div>
+          <div><div style="font-size:24px;font-weight:800;color:#E8681A">${offers}</div><div style="font-size:11px;color:#555;margin-top:2px">Offers</div></div>
         </div>
         ${bodyHtml}
-        <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · Los Angeles · matt@mgoldenrealty.com</span></p>
+        <p style="margin-top:28px;color:#111;font-size:13px">— Matt Golden<br><span style="color:#555">MG Realty · Los Angeles · matt@mgoldenrealty.com</span></p>
       </div>
     </div>`;
 
@@ -905,9 +905,9 @@ Return only: {"ok":true}`, [calMcp]);
           <div style="background:#1A1914;padding:20px;text-align:center;border-radius:8px 8px 0 0">
             <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain">
           </div>
-          <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+          <div style="padding:24px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
             <p>${(action.body || '').replace(/\n/g, '<br>')}</p>
-            <p style="margin-top:24px;color:#666;font-size:12px">Matt Golden · MG Realty · matt@mgoldenrealty.com</p>
+            <p style="margin-top:24px;color:#444;font-size:12px">Matt Golden · MG Realty · matt@mgoldenrealty.com</p>
           </div>
         </div>`
       });
@@ -1109,9 +1109,9 @@ app.all('/sequences/process', async (req, res) => {
             <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
               <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
             </div>
-            <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+            <div style="padding:24px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
               ${tpl.body(firstName)}
-              <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · Los Angeles<br>matt@mgoldenrealty.com</span></p>
+              <p style="margin-top:28px;color:#111;font-size:13px">— Matt Golden<br><span style="color:#555">MG Realty · Los Angeles<br>matt@mgoldenrealty.com</span></p>
             </div>
           </div>`;
 
@@ -1289,10 +1289,10 @@ async function processPostCloseEmails(crm, today) {
           <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
             <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
           </div>
-          <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+          <div style="padding:28px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
             ${bodyHtml}
-            <p style="margin-top:28px;color:#333;font-size:13px">— Matt Golden<br>
-            <span style="color:#888">MG Realty · Los Angeles · (323) 555-0100<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
+            <p style="margin-top:28px;color:#111;font-size:13px">— Matt Golden<br>
+            <span style="color:#555">MG Realty · Los Angeles · (323) 555-0100<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
           </div>
         </div>`;
 
@@ -1819,7 +1819,7 @@ app.post('/leads/capture', async (req, res) => {
 });
 
 async function sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notifyEmail = null) {
-  const row = (label, val) => val ? `<tr><td style="padding:6px 0;color:#888;font-size:13px;width:120px">${label}</td><td style="padding:6px 0;font-size:13px;font-weight:500">${val}</td></tr>` : '';
+  const row = (label, val) => val ? `<tr><td style="padding:6px 0;color:#555;font-size:13px;width:120px">${label}</td><td style="padding:6px 0;font-size:13px;font-weight:500">${val}</td></tr>` : '';
   const toAddresses = ['goldenmb@gmail.com'];
   if (notifyEmail && notifyEmail !== 'goldenmb@gmail.com') toAddresses.push(notifyEmail);
   await resend.emails.send({
@@ -1832,7 +1832,7 @@ async function sendLeadEmail(first, last, phone, email, intent, budget, timeline
         <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto 10px">
         <h2 style="color:#fff;margin:0;font-size:18px">New Lead from Contact Form</h2>
       </div>
-      <div style="padding:24px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+      <div style="padding:24px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
         <h3 style="margin:0 0 16px;font-size:20px">${first} ${last}</h3>
         <table style="width:100%;border-collapse:collapse">
           ${row('Phone', phone)}
@@ -3236,14 +3236,14 @@ app.post('/api/book-tour', async (req, res) => {
           html: `
 <div style="font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto;background:#fff;padding:32px 24px">
   <h2 style="margin:0 0 6px;font-size:22px;color:#0D0D0D">Your tour is confirmed! 🏡</h2>
-  <p style="margin:0 0 24px;color:#666;font-size:14px">Here's what you need to know:</p>
+  <p style="margin:0 0 24px;color:#444;font-size:14px">Here's what you need to know:</p>
   <div style="background:#F9F7F3;border-radius:10px;padding:20px;margin-bottom:24px">
-    <div style="margin-bottom:12px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999">Property</strong><div style="font-size:16px;font-weight:700;color:#0D0D0D;margin-top:3px">${address || 'Address to be confirmed'}</div></div>
-    <div style="margin-bottom:12px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999">Date & Time</strong><div style="font-size:16px;font-weight:700;color:#C8973A;margin-top:3px">${friendly} PT</div></div>
-    <div><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999">Your Agent</strong><div style="font-size:15px;font-weight:600;color:#0D0D0D;margin-top:3px">Matt Golden · (323) 555-0100</div></div>
+    <div style="margin-bottom:12px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#666">Property</strong><div style="font-size:16px;font-weight:700;color:#0D0D0D;margin-top:3px">${address || 'Address to be confirmed'}</div></div>
+    <div style="margin-bottom:12px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#666">Date & Time</strong><div style="font-size:16px;font-weight:700;color:#C8973A;margin-top:3px">${friendly} PT</div></div>
+    <div><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#666">Your Agent</strong><div style="font-size:15px;font-weight:600;color:#0D0D0D;margin-top:3px">Matt Golden · (323) 555-0100</div></div>
   </div>
   <p style="font-size:14px;color:#444;line-height:1.6;margin:0 0 16px">I'll meet you at the property. If anything comes up or you need to reschedule, just text or call me directly.</p>
-  <p style="font-size:13px;color:#999;margin:0">Matt Golden · MG Realty · DRE #02130422</p>
+  <p style="font-size:13px;color:#666;margin:0">Matt Golden · MG Realty · DRE #02130422</p>
 </div>`
         });
       } catch(emailErr) { console.error('Tour confirmation email failed:', emailErr.message); }
@@ -3313,12 +3313,12 @@ async function processLeaseReminders(crm, today) {
       <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
         <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
       </div>
-      <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+      <div style="padding:28px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
         <h2 style="margin:0 0 12px;font-size:18px">Hi ${name},</h2>
-        <p style="color:#333;font-size:14px;line-height:1.6">Just a heads-up — your lease at <strong>${lease.address}</strong> expires on <strong>${fmtDate(lease.endDate)}</strong>, which is <strong>${daysLeft} days away</strong>.</p>
-        <p style="color:#333;font-size:14px;line-height:1.6">If you'd like to renew or discuss your options, I'm here to help. Let's connect before the deadline approaches.</p>
-        <p style="margin-top:24px;color:#333;font-size:13px">— Matt Golden<br>
-        <span style="color:#888">MG Realty · Los Angeles · (323) 555-0100<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
+        <p style="color:#111;font-size:14px;line-height:1.6">Just a heads-up — your lease at <strong>${lease.address}</strong> expires on <strong>${fmtDate(lease.endDate)}</strong>, which is <strong>${daysLeft} days away</strong>.</p>
+        <p style="color:#111;font-size:14px;line-height:1.6">If you'd like to renew or discuss your options, I'm here to help. Let's connect before the deadline approaches.</p>
+        <p style="margin-top:24px;color:#111;font-size:13px">— Matt Golden<br>
+        <span style="color:#555">MG Realty · Los Angeles · (323) 555-0100<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
       </div>
     </div>`;
 
@@ -3708,10 +3708,10 @@ app.post('/api/weekly-client-report', async (req, res) => {
 
       const actHTML = leadActs.length ? leadActs.map(a => `
         <tr>
-          <td style="padding:8px 12px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0">${a.date}</td>
+          <td style="padding:8px 12px;font-size:13px;color:#111;border-bottom:1px solid #f0f0f0">${a.date}</td>
           <td style="padding:8px 12px;font-size:13px;text-transform:capitalize;border-bottom:1px solid #f0f0f0">${a.type}</td>
-          <td style="padding:8px 12px;font-size:13px;color:#555;border-bottom:1px solid #f0f0f0">${a.outcome || ''}</td>
-        </tr>`).join('') : `<tr><td colspan="3" style="padding:12px;color:#888;font-size:13px;text-align:center">No activity this week</td></tr>`;
+          <td style="padding:8px 12px;font-size:13px;color:#222;border-bottom:1px solid #f0f0f0">${a.outcome || ''}</td>
+        </tr>`).join('') : `<tr><td colspan="3" style="padding:12px;color:#555;font-size:13px;text-align:center">No activity this week</td></tr>`;
 
       const upcomingHTML = leadAppts.length ? leadAppts.map(a => `
         <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f5f5f5;align-items:flex-start">
@@ -3720,16 +3720,16 @@ app.post('/api/weekly-client-report', async (req, res) => {
             <div style="font-size:20px;font-weight:700;color:#E8681A;line-height:1">${new Date(a.date+'T12:00').getDate()}</div>
           </div>
           <div>
-            <div style="font-size:13px;font-weight:600;color:#333">${a.type}</div>
-            <div style="font-size:12px;color:#888;margin-top:2px">${a.address || ''} ${a.time ? '· '+a.time : ''}</div>
+            <div style="font-size:13px;font-weight:600;color:#111">${a.type}</div>
+            <div style="font-size:12px;color:#555;margin-top:2px">${a.address || ''} ${a.time ? '· '+a.time : ''}</div>
           </div>
-        </div>`).join('') : '<p style="color:#888;font-size:13px">No upcoming appointments scheduled.</p>';
+        </div>`).join('') : '<p style="color:#555;font-size:13px">No upcoming appointments scheduled.</p>';
 
       const offersHTML = leadOffers.length ? leadOffers.map(o => `
         <div style="background:#f9f9f9;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid ${o.status==='accepted'?'#27AE60':o.status==='rejected'?'#E74C3C':'#E8681A'}">
-          <div style="font-size:13px;font-weight:700;color:#333">${o.address}</div>
+          <div style="font-size:13px;font-weight:700;color:#111">${o.address}</div>
           <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap">
-            <span style="font-size:12px;color:#555">💰 ${o.offerPrice}</span>
+            <span style="font-size:12px;color:#222">💰 ${o.offerPrice}</span>
             <span style="font-size:12px;font-weight:600;color:${o.status==='accepted'?'#27AE60':o.status==='rejected'?'#E74C3C':'#E8681A'};text-transform:capitalize">${o.status}</span>
           </div>
         </div>`).join('') : '';
@@ -3737,8 +3737,8 @@ app.post('/api/weekly-client-report', async (req, res) => {
       const feedbackItems = pastAppts.filter(a => a.feedback);
       const feedbackHTML = feedbackItems.length ? feedbackItems.map(a => `
         <div style="background:#f9f9f9;border-radius:8px;padding:10px 12px;margin-bottom:8px">
-          <div style="font-size:12px;font-weight:600;color:#555">${a.address || a.type} · ${a.date}</div>
-          <div style="font-size:16px;margin-top:4px">${STARS[a.feedback.rating]||''} <span style="font-size:12px;color:#888">${a.feedback.comment||''}</span></div>
+          <div style="font-size:12px;font-weight:600;color:#222">${a.address || a.type} · ${a.date}</div>
+          <div style="font-size:16px;margin-top:4px">${STARS[a.feedback.rating]||''} <span style="font-size:12px;color:#555">${a.feedback.comment||''}</span></div>
         </div>`).join('') : '';
 
       const html = `<!DOCTYPE html>
@@ -3767,17 +3767,17 @@ app.post('/api/weekly-client-report', async (req, res) => {
     </div>` : ''}
 
     <div style="margin-bottom:24px">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:10px">📅 Upcoming Appointments</div>
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#222;margin-bottom:10px">📅 Upcoming Appointments</div>
       ${upcomingHTML}
     </div>
 
     <div style="margin-bottom:24px">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:10px">📋 Recent Activity</div>
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#222;margin-bottom:10px">📋 Recent Activity</div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr>
-          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#888;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Date</th>
-          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#888;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Type</th>
-          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#888;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Notes</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#555;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Date</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#555;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Type</th>
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:#555;background:#f9f9f9;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Notes</th>
         </tr></thead>
         <tbody>${actHTML}</tbody>
       </table>
@@ -3785,22 +3785,22 @@ app.post('/api/weekly-client-report', async (req, res) => {
 
     ${feedbackHTML ? `
     <div style="margin-bottom:24px">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:10px">⭐ Showing Feedback</div>
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#222;margin-bottom:10px">⭐ Showing Feedback</div>
       ${feedbackHTML}
     </div>` : ''}
 
     <div style="background:#f9f9f9;border-radius:8px;padding:16px;margin-bottom:24px">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:8px">💬 A Note from Matt</div>
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#222;margin-bottom:8px">💬 A Note from Matt</div>
       <p style="color:#444;font-size:14px;line-height:1.7;margin:0">I'm working hard on your behalf and will keep you posted on any new developments. Don't hesitate to reach out anytime — I'm always happy to chat. Talk soon!</p>
     </div>
 
     <div style="text-align:center;padding-top:16px;border-top:1px solid #f0f0f0">
-      <p style="color:#333;font-size:14px;font-weight:600;margin:0">Matt Golden · MG Realty</p>
-      <p style="color:#888;font-size:12px;margin:4px 0">(323) 688-3855 · matt@mgoldenrealty.com</p>
+      <p style="color:#111;font-size:14px;font-weight:600;margin:0">Matt Golden · MG Realty</p>
+      <p style="color:#555;font-size:12px;margin:4px 0">(323) 688-3855 · matt@mgoldenrealty.com</p>
       <a href="https://mg-realty-backend.onrender.com/portal" style="display:inline-block;margin-top:10px;background:#E8681A;color:#fff;font-size:12px;font-weight:600;padding:8px 18px;border-radius:8px;text-decoration:none">View Your Client Portal →</a>
     </div>
   </div>
-  <div style="text-align:center;padding:14px;color:#aaa;font-size:11px">MG Realty · DRE #02130422 · Los Angeles, CA</div>
+  <div style="text-align:center;padding:14px;color:#666;font-size:11px">MG Realty · DRE #02130422 · Los Angeles, CA</div>
 </div>
 </body></html>`;
 
@@ -3951,11 +3951,11 @@ Rules:
       <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
         <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
       </div>
-      <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+      <div style="padding:28px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
         <h2 style="margin:0 0 16px;font-size:18px;color:#111">${neighborhood} Market Update — Week of ${weekOf}</h2>
         ${bodyHtml}
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;color:#666">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;color:#444">
             <tr>
               ${activeListings ? `<td style="padding:4px 8px;text-align:center"><strong style="color:#111;font-size:15px">${activeListings}</strong><br>Active</td>` : ''}
               ${newThisWeek ? `<td style="padding:4px 8px;text-align:center"><strong style="color:#111;font-size:15px">${newThisWeek}</strong><br>New</td>` : ''}
@@ -3965,7 +3965,7 @@ Rules:
             </tr>
           </table>
         </div>
-        <p style="margin-top:24px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · Los Angeles · matt@mgoldenrealty.com</span></p>
+        <p style="margin-top:24px;color:#111;font-size:13px">— Matt Golden<br><span style="color:#555">MG Realty · Los Angeles · matt@mgoldenrealty.com</span></p>
       </div>
     </div>`;
 
