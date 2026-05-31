@@ -5900,11 +5900,11 @@ async function fuSaveAndNext(){
   activities.unshift({id:'a'+Date.now(),leadId:lead.id,leadName:`${lead.first} ${lead.last}`,date:today,time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),type:method,direction:'outbound',outcome:outcome.replace(/_/g,' '),notes,fuDate:nextDate,fuMethod:nextMethod});
   const idx=leads.findIndex(l=>l.id===lead.id);
   if(idx!==-1)leads[idx]={...leads[idx],lastcontact:today,lcmethod:method,followup:nextDate,method:nextMethod};
-  persist();renderAll();toast(`✓ Logged for ${lead.first} ${lead.last}`);
+  persist();renderAll();if(typeof updateFollowUpBadge==="function")updateFollowUpBadge();toast(`✓ Logged for ${lead.first} ${lead.last}`);
   fuIndex++;
   if(fuIndex>=fuQueue.length){closeFollowUpAlert();toast('All follow-ups logged! 🎉');}else{renderFuModal();}
 }
-function fuSkip(){fuIndex++;if(fuIndex>=fuQueue.length){closeFollowUpAlert();toast('All caught up!');}else{renderFuModal();}}
+function fuSkip(){fuIndex++;if(fuIndex>=fuQueue.length){closeFollowUpAlert();if(typeof updateFollowUpBadge==="function")updateFollowUpBadge();toast('All caught up!');}else{renderFuModal();}}
 function fuQuickEmail(){const lead=fuQueue[fuIndex];if(!lead)return;closeFollowUpAlert();if(typeof openEmailModal==='function')openEmailModal(lead.id);}
 function fuQuickShowing(){const lead=fuQueue[fuIndex];if(!lead)return;closeFollowUpAlert();const el=document.getElementById('appt-lead');if(el){el.value=lead.id;const t=document.getElementById('appt-type');if(t)t.value='showing';}if(typeof openModal==='function')openModal('mAppt');}
 // Update sidebar badge
