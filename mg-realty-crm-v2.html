@@ -601,7 +601,12 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     </div>
 
     <div class="dash2" style="margin-top:16px">
-      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div><div class="tw" id="dashSources"></div></div>
+      <div>
+  <div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div>
+  <div class="tw" id="dashSources"></div>
+  <div style="font-size:13px;font-weight:600;margin:14px 0 9px">Source ROI</div>
+  <div class="tw" id="dashSourceROI"></div>
+</div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Pipeline stages</div><div class="tw" id="dashStages"></div></div>
     </div>
     <div class="dash2" style="margin-top:16px">
@@ -615,6 +620,14 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="topbar">
     <div class="page-title">Leads</div>
     <div class="tba">
+      <div id="bulk-bar" style="display:none;align-items:center;gap:8px;background:rgba(232,104,26,0.1);border:1px solid rgba(232,104,26,0.3);border-radius:8px;padding:6px 12px">
+        <span id="bulk-count" style="font-size:12px;font-weight:600;color:var(--accent)">0 selected</span>
+        <button class="btn btn-sm" onclick="bulkUpdateTemp('hot')" style="background:rgba(239,68,68,0.12);color:#F87171;border:1px solid rgba(239,68,68,0.25)">→ Hot</button>
+        <button class="btn btn-sm" onclick="bulkUpdateTemp('warm')" style="background:rgba(251,191,36,0.12);color:#FBBF24;border:1px solid rgba(251,191,36,0.25)">→ Warm</button>
+        <button class="btn btn-sm" onclick="bulkUpdateTemp('cold')" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)">→ Cold</button>
+        <button class="btn btn-sm" onclick="bulkUpdateTemp('done')" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)">→ Done</button>
+        <button class="btn btn-sm" onclick="clearBulkSelection()" style="background:rgba(255,255,255,0.05);color:var(--text2);border:1px solid var(--border)">✕ Clear</button>
+      </div>
       <div class="sw"><i class="ti ti-search"></i><input type="text" id="srch" placeholder="Search…" style="width:150px" oninput="renderLeads()"></div>
       <select id="ftemp" onchange="renderLeads()" style="width:auto"><option value="">All temps</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select>
       <select id="ftype" onchange="renderLeads()" style="width:auto"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
@@ -623,7 +636,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
   </div>
-  <div class="content"><div class="tw"><table><thead><tr><th style="width:135px;cursor:pointer" onclick="sortLeads('name')" title="Sort by name">Name <span id="sort-name"></span></th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:52px;cursor:pointer" onclick="sortLeads('score')" title="Sort by score">Score <span id="sort-score"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('followup')" title="Sort by follow-up">Follow-up <span id="sort-followup"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('lastcontact')" title="Sort by last contact">Last contact <span id="sort-lastcontact"></span></th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
+  <div class="content"><div class="tw"><table><thead><tr><th style="width:30px"><input type="checkbox" id="selectAllLeads" onchange="toggleSelectAll(this)" style="accent-color:var(--accent)"></th><th style="width:135px;cursor:pointer" onclick="sortLeads('name')" title="Sort by name">Name <span id="sort-name"></span></th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:52px;cursor:pointer" onclick="sortLeads('score')" title="Sort by score">Score <span id="sort-score"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('followup')" title="Sort by follow-up">Follow-up <span id="sort-followup"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('lastcontact')" title="Sort by last contact">Last contact <span id="sort-lastcontact"></span></th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
 </div>
 
 <div id="pane-sellers" class="pane">
@@ -1948,7 +1961,7 @@ function renderLeads(){
   tbody.innerHTML=f.map(l=>{
     const d=du(l.followup),rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
     const score = calcLeadScore(l);
-    return`<tr class="${rc}" onclick="openLeadDetail('${l.id}')" style="cursor:pointer"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${scoreTag(score)}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?(()=>{const days=Math.floor((new Date()-new Date(l.lastcontact))/86400000);const color=days<=3?'var(--green)':days<=7?'var(--amber)':'var(--red)';const dot=l.temp!=='done'?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:4px;vertical-align:middle"></span>`:'';return dot+rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:'');})():'—'}</td><td style="white-space:nowrap">${l.phone?`<a class="btn btn-sm" title="Call" href="tel:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:#4ADE80;margin-right:3px"><i class="ti ti-phone" style="font-size:11px"></i></a><a class="btn btn-sm" title="Text" href="sms:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA;margin-right:3px"><i class="ti ti-message" style="font-size:11px"></i></a>`:""}<button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
+    return`<tr class="${rc}" style="cursor:pointer"><td onclick="openLeadDetail('${l.id}')" style="width:30px;cursor:default"><input type="checkbox" class="lead-cb" value="${l.id}" onchange="updateBulkBar()" onclick="event.stopPropagation()" style="accent-color:var(--accent)"></td><td onclick="openLeadDetail('${l.id}')"><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${scoreTag(score)}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?(()=>{const days=Math.floor((new Date()-new Date(l.lastcontact))/86400000);const color=days<=3?'var(--green)':days<=7?'var(--amber)':'var(--red)';const dot=l.temp!=='done'?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:4px;vertical-align:middle"></span>`:'';return dot+rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:'');})():'—'}</td><td style="white-space:nowrap">${l.phone?`<a class="btn btn-sm" title="Call" href="tel:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:#4ADE80;margin-right:3px"><i class="ti ti-phone" style="font-size:11px"></i></a><a class="btn btn-sm" title="Text" href="sms:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA;margin-right:3px"><i class="ti ti-message" style="font-size:11px"></i></a>`:""}<button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
   }).join('');
 }
 
@@ -6697,6 +6710,107 @@ async function generateAndSendRecap() {
 
 // Hook into renderAll
 const _origRenderAll = typeof renderAll === 'function' ? renderAll : null;
+</script>
+
+
+<script>
+// ── Lead Source ROI ───────────────────────────────────────────
+function renderDashSourceROI() {
+  const el = document.getElementById('dashSourceROI');
+  if (!el) return;
+  const active = leads.filter(l => l.temp !== 'done');
+  if (!active.length) { el.innerHTML = '<div class="empty">No leads yet</div>'; return; }
+
+  const stageOrder = { new: 0, contacted: 1, showing: 2, offer: 3, closed: 4 };
+  const stageLabel = { new: 'New', contacted: 'Contacted', showing: 'Showing', offer: 'Offer', closed: 'Closed' };
+  const sources = {};
+
+  active.forEach(l => {
+    const src = l.source || 'Unknown';
+    const stage = l.stage || 'new';
+    if (!sources[src]) sources[src] = { total: 0, maxStage: 0, closed: 0, showing: 0 };
+    sources[src].total++;
+    const so = stageOrder[stage] ?? 0;
+    if (so > sources[src].maxStage) sources[src].maxStage = so;
+    if (stage === 'closed') sources[src].closed++;
+    if (stage === 'showing' || stage === 'offer' || stage === 'closed') sources[src].showing++;
+  });
+
+  const sorted = Object.entries(sources).sort((a, b) => b[1].showing - a[1].showing || b[1].total - a[1].total);
+
+  el.innerHTML = `<div style="padding:12px 16px">
+    <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 12px;align-items:center;font-size:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em">Source</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em">Conversion</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;text-align:center">Leads</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;text-align:center">Active</div>
+      ${sorted.map(([src, d]) => {
+        const pct = Math.round((d.showing / d.total) * 100);
+        const barColor = pct >= 50 ? 'var(--green)' : pct >= 25 ? 'var(--amber)' : 'var(--accent)';
+        return `<div style="font-weight:600;white-space:nowrap">${src}</div>
+          <div style="background:var(--surface2);border-radius:99px;height:6px;overflow:hidden">
+            <div style="background:${barColor};height:100%;width:${pct}%;border-radius:99px;transition:width 0.4s"></div>
+          </div>
+          <div style="text-align:center;color:var(--text2)">${d.total}</div>
+          <div style="text-align:center;color:${barColor};font-weight:600">${pct}%</div>`;
+      }).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:10px">Active = reached showing, offer, or closed stage</div>
+  </div>`;
+}
+
+// ── Bulk Lead Actions ─────────────────────────────────────────
+function getSelectedLeadIds() {
+  return [...document.querySelectorAll('.lead-cb:checked')].map(cb => cb.value);
+}
+
+function updateBulkBar() {
+  const selected = getSelectedLeadIds();
+  const bar = document.getElementById('bulk-bar');
+  const count = document.getElementById('bulk-count');
+  if (bar) bar.style.display = selected.length ? 'flex' : 'none';
+  if (count) count.textContent = `${selected.length} selected`;
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.lead-cb').forEach(el => { el.checked = cb.checked; });
+  updateBulkBar();
+}
+
+function clearBulkSelection() {
+  document.querySelectorAll('.lead-cb').forEach(el => { el.checked = false; });
+  const selectAll = document.getElementById('selectAllLeads');
+  if (selectAll) selectAll.checked = false;
+  updateBulkBar();
+}
+
+function bulkUpdateTemp(temp) {
+  const ids = getSelectedLeadIds();
+  if (!ids.length) return;
+  if (!confirm(`Mark ${ids.length} lead${ids.length !== 1 ? 's' : ''} as ${temp}?`)) return;
+  ids.forEach(id => {
+    const idx = leads.findIndex(l => l.id === id);
+    if (idx !== -1) leads[idx] = { ...leads[idx], temp };
+  });
+  persist();
+  renderAll();
+  clearBulkSelection();
+  toast(`✓ ${ids.length} lead${ids.length !== 1 ? 's' : ''} marked as ${temp}`);
+}
+
+// Hook into renderAll
+const _origRenderDashSources = typeof renderDashSources === 'function' ? renderDashSources : null;
+const _wrappedRenderDashSources = function() {
+  if (_origRenderDashSources) _origRenderDashSources();
+  renderDashSourceROI();
+};
+if (typeof renderAll === 'function') {
+  const _origRA = renderAll;
+  renderAll = function() {
+    _origRA();
+    renderDashSourceROI();
+  };
+}
 </script>
 
 </body>
