@@ -5911,7 +5911,7 @@ function fuQuickShowing(){const lead=fuQueue[fuIndex];if(!lead)return;closeFollo
 const _origUpdateBadges=typeof updateBadges==='function'?updateBadges:null;
 function updateFollowUpBadge(){const n=getFollowUpQueue().length;const el=document.getElementById('nb-followups');if(el){el.textContent=n;el.style.display=n?'':'none';}}
 // 9AM daily trigger
-(function(){const now=new Date();const today=now.toISOString().split('T')[0];const last=localStorage.getItem('mg_followup_alert');if(last!==today&&now.getHours()>=9){localStorage.setItem('mg_followup_alert',today);setTimeout(()=>{if(getFollowUpQueue().length>0)openFollowUpAlert();},2500);}})();
+// Auto follow-up alert disabled — use sidebar button manually
 // Run badge update after data loads
 document.addEventListener('DOMContentLoaded',()=>{setTimeout(updateFollowUpBadge,1000);});
 </script>
