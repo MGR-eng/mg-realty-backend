@@ -1136,7 +1136,7 @@ async function processPostCloseEmails(crm, today) {
 // ── Static page routes ────────────────────────────────────────
 // Root: www subdomain → public homepage, root domain → CRM
 app.get('/', (req, res) => {
-  const host = req.hostname || '';
+  const host = (req.headers['x-forwarded-host'] || req.headers['host'] || req.hostname || '').split(',')[0].trim();
   if (host.startsWith('www.')) {
     return res.sendFile(path.join(__dirname, 'public', 'home.html'));
   }
