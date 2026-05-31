@@ -5868,53 +5868,169 @@ function downloadMarketReport(){
 </div>
 
 <script>
-let fuQueue=[];let fuIndex=0;
-function getFollowUpQueue(){return leads.filter(l=>l.temp!=='done'&&l.followup&&du(l.followup)<=0).sort((a,b)=>{const o={hot:0,warm:1,cold:2};if(du(a.followup)!==du(b.followup))return du(a.followup)-du(b.followup);return(o[a.temp]??3)-(o[b.temp]??3);});}
-function openFollowUpAlert(){fuQueue=getFollowUpQueue();if(!fuQueue.length){toast('No follow-ups due today 🎉');return;}fuIndex=0;renderFuModal();document.getElementById('mFollowUp').style.display='flex';}
-function closeFollowUpAlert(){document.getElementById('mFollowUp').style.display='none';}
-function renderFuModal(){
-  const lead=fuQueue[fuIndex];if(!lead){closeFollowUpAlert();toast('All follow-ups logged! 🎉');return;}
-  document.getElementById('fu-modal-title').textContent='Follow-Up Alert';
-  document.getElementById('fu-lead-name').textContent=`${lead.first} ${lead.last}`;
-  document.getElementById('fu-lead-score').textContent=`Score: ${typeof calcLeadScore==='function'?calcLeadScore(lead):'—'}/10`;
-  const days=du(lead.followup);const overdueText=days===0?'Due today':`${Math.abs(days)} day${Math.abs(days)!==1?'s':''} overdue`;
-  document.getElementById('fu-lead-meta').textContent=`${lead.phone||'No phone'} · ${lead.temp.toUpperCase()} · ${overdueText} · ${lead.method||'call'}`;
-  document.getElementById('fu-lead-notes').textContent=lead.notes?`Notes: ${lead.notes.substring(0,120)}`:'';
-  document.getElementById('fu-progress').textContent=`${fuIndex+1} of ${fuQueue.length} follow-ups`;
-  document.getElementById('fu-method').value=lead.method||'call';
-  document.getElementById('fu-outcome').value='connected';
-  document.getElementById('fu-notes').value='';
-  const nd=new Date();nd.setDate(nd.getDate()+3);
-  document.getElementById('fu-next-date').value=nd.toISOString().split('T')[0];
-  document.getElementById('fu-next-method').value=lead.method||'call';
+// ── Follow-Up Alert System (backend-driven) ───────────────────
+let fuQueue = [];
+let fuIndex = 0;
+
+async function loadFollowUpQueue() {
+  try {
+    const r = await fetch(BACKEND + '/crm/followups');
+    const d = await r.json();
+    return d.ok ? d.leads : [];
+  } catch(e) { return []; }
 }
-async function fuSaveAndNext(){
-  const lead=fuQueue[fuIndex];if(!lead)return;
-  const method=document.getElementById('fu-method').value;
-  const outcome=document.getElementById('fu-outcome').value;
-  const notes=document.getElementById('fu-notes').value;
-  const nextDate=document.getElementById('fu-next-date').value;
-  const nextMethod=document.getElementById('fu-next-method').value;
-  const today=new Date().toISOString().split('T')[0];
-  const now=new Date();
-  activities.unshift({id:'a'+Date.now(),leadId:lead.id,leadName:`${lead.first} ${lead.last}`,date:today,time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),type:method,direction:'outbound',outcome:outcome.replace(/_/g,' '),notes,fuDate:nextDate,fuMethod:nextMethod});
-  const idx=leads.findIndex(l=>l.id===lead.id);
-  if(idx!==-1)leads[idx]={...leads[idx],lastcontact:today,lcmethod:method,followup:nextDate,method:nextMethod};
-  persist();renderAll();if(typeof updateFollowUpBadge==="function")updateFollowUpBadge();toast(`✓ Logged for ${lead.first} ${lead.last}`);
+
+async function updateFollowUpBadge() {
+  try {
+    const r = await fetch(BACKEND + '/crm/followups');
+    const d = await r.json();
+    const count = d.ok ? d.count : 0;
+    const el = document.getElementById('nb-followups');
+    if (el) { el.textContent = count; el.style.display = count ? '' : 'none'; }
+  } catch(e) {}
+}
+
+async function openFollowUpAlert() {
+  fuQueue = await loadFollowUpQueue();
+  if (!fuQueue.length) { toast('No follow-ups due today 🎉'); return; }
+  fuIndex = 0;
+  renderFuModal();
+  document.getElementById('mFollowUp').style.display = 'flex';
+}
+
+function closeFollowUpAlert() {
+  document.getElementById('mFollowUp').style.display = 'none';
+  updateFollowUpBadge();
+}
+
+function renderFuModal() {
+  const lead = fuQueue[fuIndex];
+  if (!lead) { closeFollowUpAlert(); toast('All follow-ups logged! 🎉'); return; }
+
+  document.getElementById('fu-modal-title').textContent = 'Follow-Up Alert';
+  const scoreEl = document.getElementById('fu-lead-score');
+  const score = typeof calcLeadScore === 'function' ? calcLeadScore(lead) : '—';
+  if (scoreEl) scoreEl.textContent = `Score: ${score}/10`;
+
+  document.getElementById('fu-lead-name').textContent = `${lead.first} ${lead.last}`;
+  const days = Math.floor((new Date() - new Date(lead.followup)) / 86400000);
+  const overdueText = days === 0 ? 'Due today' : `${days} day${days !== 1 ? 's' : ''} overdue`;
+  document.getElementById('fu-lead-meta').textContent = `${lead.phone || 'No phone'} · ${(lead.temp||'').toUpperCase()} · ${overdueText}`;
+  document.getElementById('fu-lead-notes').textContent = lead.notes ? `Notes: ${lead.notes.substring(0, 100)}` : '';
+  document.getElementById('fu-progress').textContent = `${fuIndex + 1} of ${fuQueue.length}`;
+
+  document.getElementById('fu-method').value = lead.method || 'call';
+  document.getElementById('fu-outcome').value = 'connected';
+  document.getElementById('fu-notes').value = '';
+
+  const nd = new Date(); nd.setDate(nd.getDate() + 3);
+  document.getElementById('fu-next-date').value = nd.toISOString().split('T')[0];
+  document.getElementById('fu-next-method').value = lead.method || 'call';
+}
+
+async function fuSaveAndNext() {
+  const lead = fuQueue[fuIndex];
+  if (!lead) return;
+
+  const btn = document.querySelector('#mFollowUp .btn-gold');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  try {
+    const r = await fetch(BACKEND + '/crm/followup-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        leadId: lead.id,
+        method: document.getElementById('fu-method').value,
+        outcome: document.getElementById('fu-outcome').value,
+        notes: document.getElementById('fu-notes').value,
+        nextDate: document.getElementById('fu-next-date').value,
+        nextMethod: document.getElementById('fu-next-method').value
+      })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+
+    toast(`✓ Logged for ${lead.first} ${lead.last}`);
+    // Also update in-memory leads so the CRM reflects it immediately
+    const idx = leads.findIndex(l => l.id === lead.id);
+    if (idx !== -1) {
+      const today = new Date().toISOString().split('T')[0];
+      leads[idx] = { ...leads[idx], lastcontact: today, followup: document.getElementById('fu-next-date').value };
+      persist();
+      renderAll();
+    }
+  } catch(e) {
+    toast('Error saving — try again');
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Log & Next'; }
+    return;
+  }
+
   fuIndex++;
-  if(fuIndex>=fuQueue.length){closeFollowUpAlert();toast('All follow-ups logged! 🎉');}else{renderFuModal();}
+  if (fuIndex >= fuQueue.length) {
+    closeFollowUpAlert();
+    toast('All follow-ups logged! 🎉');
+  } else {
+    renderFuModal();
+    const btn2 = document.querySelector('#mFollowUp .btn-gold');
+    if (btn2) { btn2.disabled = false; btn2.textContent = '✓ Log & Next'; }
+  }
 }
-function fuSkip(){fuIndex++;if(fuIndex>=fuQueue.length){closeFollowUpAlert();if(typeof updateFollowUpBadge==="function")updateFollowUpBadge();toast('All caught up!');}else{renderFuModal();}}
-function fuQuickEmail(){const lead=fuQueue[fuIndex];if(!lead)return;closeFollowUpAlert();if(typeof openEmailModal==='function')openEmailModal(lead.id);}
-function fuQuickShowing(){const lead=fuQueue[fuIndex];if(!lead)return;closeFollowUpAlert();const el=document.getElementById('appt-lead');if(el){el.value=lead.id;const t=document.getElementById('appt-type');if(t)t.value='showing';}if(typeof openModal==='function')openModal('mAppt');}
-// Update sidebar badge
-const _origUpdateBadges=typeof updateBadges==='function'?updateBadges:null;
-function updateFollowUpBadge(){const n=getFollowUpQueue().length;const el=document.getElementById('nb-followups');if(el){el.textContent=n;el.style.display=n?'':'none';}}
-// 9AM daily trigger
-// Auto follow-up alert disabled — use sidebar button manually
-// Run badge update after data loads
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(updateFollowUpBadge,1000);});
+
+function fuSkip() {
+  fuIndex++;
+  if (fuIndex >= fuQueue.length) { closeFollowUpAlert(); toast('All caught up!'); }
+  else renderFuModal();
+}
+
+function fuQuickEmail() {
+  const lead = fuQueue[fuIndex];
+  if (!lead) return;
+  closeFollowUpAlert();
+  if (typeof openEmailModal === 'function') openEmailModal(lead.id);
+}
+
+function fuQuickShowing() {
+  const lead = fuQueue[fuIndex];
+  if (!lead) return;
+  closeFollowUpAlert();
+  const el = document.getElementById('appt-lead');
+  if (el) { el.value = lead.id; }
+  const t = document.getElementById('appt-type');
+  if (t) t.value = 'showing';
+  if (typeof openModal === 'function') openModal('mAppt');
+}
+
+// Update badge on load
+document.addEventListener('DOMContentLoaded', () => { setTimeout(updateFollowUpBadge, 1500); });
 </script>
+ollowUpAlert(); toast('All caught up!'); }
+  else renderFuModal();
+}
+
+function fuQuickEmail() {
+  const lead = fuQueue[fuIndex];
+  if (!lead) return;
+  closeFollowUpAlert();
+  if (typeof openEmailModal === 'function') openEmailModal(lead.id);
+}
+
+function fuQuickShowing() {
+  const lead = fuQueue[fuIndex];
+  if (!lead) return;
+  closeFollowUpAlert();
+  const el = document.getElementById('appt-lead');
+  if (el) { el.value = lead.id; }
+  const t = document.getElementById('appt-type');
+  if (t) t.value = 'showing';
+  if (typeof openModal === 'function') openModal('mAppt');
+}
+
+// Update badge on load
+document.addEventListener('DOMContentLoaded', () => { setTimeout(updateFollowUpBadge, 1500); });
+</script>
+
+
 
 <!-- ── Open House Debrief Modal ──────────────────────────────── -->
 <div id="mDebrief" class="modal" style="display:none">

@@ -241,6 +241,68 @@ app.get('/auth/google/compass/callback', async (req, res) => {
   }
 });
 
+// ── Follow-up alerts — reads live from Supabase ───────────────
+app.get('/crm/followups', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const today = new Date().toISOString().split('T')[0];
+    const due = crm.leads.filter(l =>
+      l.temp !== 'done' && l.followup && l.followup <= today
+    ).sort((a, b) => {
+      const order = { hot: 0, warm: 1, cold: 2 };
+      if (a.followup !== b.followup) return a.followup < b.followup ? -1 : 1;
+      return (order[a.temp] ?? 3) - (order[b.temp] ?? 3);
+    });
+    res.json({ ok: true, leads: due, count: due.length });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Log a follow-up action + update lead's next follow-up date in Supabase
+app.post('/crm/followup-log', async (req, res) => {
+  try {
+    const { leadId, method, outcome, notes, nextDate, nextMethod } = req.body;
+    const crm = await readCRM();
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+
+    // Update the lead
+    const lead = crm.leads.find(l => l.id === leadId);
+    if (!lead) return res.status(404).json({ ok: false, error: 'Lead not found' });
+
+    crm.leads = crm.leads.map(l => l.id === leadId ? {
+      ...l,
+      lastcontact: today,
+      lcmethod: method,
+      followup: nextDate || '',
+      method: nextMethod || l.method
+    } : l);
+
+    // Log activity
+    crm.activities.unshift({
+      id: 'a' + Date.now(),
+      leadId,
+      leadName: `${lead.first} ${lead.last}`,
+      date: today,
+      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      type: method,
+      direction: 'outbound',
+      outcome: outcome || 'connected',
+      notes: notes || '',
+      fuDate: nextDate || '',
+      fuMethod: nextMethod || ''
+    });
+
+    await writeCRM(crm);
+    console.log(`Follow-up logged for ${lead.first} ${lead.last}`);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('FOLLOWUP LOG ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── CRM sync ──────────────────────────────────────────────────
 app.get('/crm/pull', async (req, res) => {
   try {
