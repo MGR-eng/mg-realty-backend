@@ -2452,7 +2452,6 @@ function openLeadDetail(id){
     <button class="btn" onclick="sendPortalLink('${id}')" title="Send client portal link via SMS" style="background:rgba(52,152,219,.12);border-color:var(--blue);color:var(--blue)"><i class="ti ti-link"></i> Portal Link</button>
     <button class="btn" onclick="openAddOffer('${id}')" style="background:rgba(232,104,26,.12);border-color:var(--accent);color:var(--accent)"><i class="ti ti-file-dollar"></i> Add Offer</button>
     <button class="btn" onclick="sendClientReport('${id}')" style="background:rgba(139,92,246,.1);border-color:#8b5cf6;color:#8b5cf6"><i class="ti ti-mail-forward"></i> Weekly Report</button>
-    <button class="btn" onclick="openOHAnnounce('${id}')" style="background:rgba(39,174,96,.12);border-color:var(--green);color:var(--green)"><i class="ti ti-home-move"></i> Open House Email</button>
     <button class="btn btn-red" onclick="closeLeadDetail();delLead('${id}')"><i class="ti ti-trash"></i></button>`;
 
   document.getElementById('detailPanel').classList.add('open');
