@@ -1030,6 +1030,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
   <div class="topbar">
     <div class="page-title"><i class="ti ti-brand-instagram" style="margin-right:6px;color:#E8681A"></i>Instagram Content Engine</div>
     <div class="tba">
+      <button class="btn btn-sm" onclick="openHashtagSets()" style="background:rgba(232,104,26,0.12);border:1px solid rgba(232,104,26,0.3);color:var(--accent)"><i class="ti ti-bookmark"></i> Hashtag Sets</button>
       <button class="btn btn-sm btn-primary" onclick="clearContentForm()"><i class="ti ti-refresh"></i> Reset</button>
     </div>
   </div>
@@ -3603,6 +3604,7 @@ function buildOutputHTML(caption, reelsScript, hashtags, hashtagGroups) {
       <div class="ce-output-hd">
         <div class="ce-output-title"><i class="ti ti-hash" style="font-size:14px;color:#185FA5"></i> Hashtags <span style="font-weight:400;color:var(--text3);font-size:10px;text-transform:none;letter-spacing:0">${tagCount} tags</span></div>
         <button class="btn btn-sm btn-primary" id="copy-hashtags" onclick="copyContent('hashtags','copy-hashtags')"><i class="ti ti-copy" style="font-size:11px"></i> Copy All</button>
+        <button class="btn btn-sm" onclick="saveHashtagSet()" style="background:rgba(232,104,26,0.12);border:1px solid rgba(232,104,26,0.3);color:var(--accent)"><i class="ti ti-bookmark" style="font-size:11px"></i> Save Set</button>
       </div>
       <div class="htag-groups" id="out-hashtags">${groupsHTML}</div>
     </div>
@@ -6178,6 +6180,136 @@ async function generateMarketReport() {
     btn.disabled = false; btn.textContent = '✨ Generate & Send';
   }
 }
+</script>
+
+
+<!-- ── Hashtag Sets Modal ──────────────────────────────────── -->
+<div id="mHashtagSets" class="modal" style="display:none">
+  <div class="modal-box" style="max-width:540px">
+    <div class="mhead"><span>💾 Save Hashtag Set</span><button class="close-btn" onclick="closeModal('mHashtagSets')"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <div class="fg" style="margin-bottom:14px">
+        <label>Set Name</label>
+        <input type="text" id="hset-name" placeholder="e.g. New Listing — WeHo" style="width:100%">
+      </div>
+      <div class="fg" style="margin-bottom:16px">
+        <label>Content Type</label>
+        <select id="hset-type" style="width:100%">
+          <option value="new_listing">🏡 New Listing</option>
+          <option value="price_drop">💰 Price Drop</option>
+          <option value="open_house">🔑 Open House</option>
+          <option value="just_sold">🏆 Just Sold</option>
+          <option value="neighborhood">🏘️ Neighborhood Spotlight</option>
+          <option value="market_tip">📊 Market Tip</option>
+          <option value="buyer_tip">🎯 Buyer Tip</option>
+          <option value="seller_tip">📋 Seller Tip</option>
+          <option value="general">🔖 General</option>
+        </select>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:16px;font-size:12px;color:var(--text2);max-height:120px;overflow-y:auto" id="hset-preview"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" style="flex:1" onclick="confirmSaveHashtagSet()"><i class="ti ti-bookmark"></i> Save Set</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="closeModal('mHashtagSets')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Saved Hashtag Sets Viewer ─────────────────────────────── -->
+<div id="mViewHashtagSets" class="modal" style="display:none">
+  <div class="modal-box" style="max-width:580px">
+    <div class="mhead"><span>🔖 Saved Hashtag Sets</span><button class="close-btn" onclick="closeModal('mViewHashtagSets')"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <div id="hsets-list" style="display:flex;flex-direction:column;gap:10px;max-height:480px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Hashtag Sets ──────────────────────────────────────────────
+const HSETS_KEY = 'mg_hashtag_sets';
+let hashtagSets = [];
+let pendingHashtags = '';
+
+function loadHashtagSets() {
+  try { hashtagSets = JSON.parse(localStorage.getItem(HSETS_KEY) || '[]'); } catch(e) { hashtagSets = []; }
+}
+function saveHashtagSetsToStorage() {
+  localStorage.setItem(HSETS_KEY, JSON.stringify(hashtagSets));
+}
+
+function saveHashtagSet() {
+  // Grab current hashtags from output
+  const el = document.getElementById('out-hashtags');
+  if (!el || !el.textContent.trim()) { toast('Generate content first'); return; }
+  pendingHashtags = el.textContent.trim();
+  document.getElementById('hset-preview').textContent = pendingHashtags;
+  document.getElementById('hset-name').value = '';
+  // Pre-fill type from current content type
+  const ceType = document.getElementById('ce-type');
+  if (ceType) document.getElementById('hset-type').value = ceType.value;
+  document.getElementById('mHashtagSets').style.display = 'flex';
+  setTimeout(() => document.getElementById('hset-name').focus(), 100);
+}
+
+function confirmSaveHashtagSet() {
+  const name = document.getElementById('hset-name').value.trim();
+  if (!name) { toast('Enter a name for this set'); return; }
+  loadHashtagSets();
+  hashtagSets.unshift({
+    id: 'hs' + Date.now(),
+    name,
+    type: document.getElementById('hset-type').value,
+    hashtags: pendingHashtags,
+    saved: new Date().toISOString().split('T')[0]
+  });
+  saveHashtagSetsToStorage();
+  closeModal('mHashtagSets');
+  toast('✓ Hashtag set saved!');
+}
+
+function openHashtagSets() {
+  loadHashtagSets();
+  const el = document.getElementById('hsets-list');
+  const typeLabels = {new_listing:'🏡 New Listing',price_drop:'💰 Price Drop',open_house:'🔑 Open House',just_sold:'🏆 Just Sold',neighborhood:'🏘️ Neighborhood',market_tip:'📊 Market Tip',buyer_tip:'🎯 Buyer Tip',seller_tip:'📋 Seller Tip',general:'🔖 General'};
+  if (!hashtagSets.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">No saved sets yet.<br>Generate content and click Save Set to start.</div>';
+  } else {
+    el.innerHTML = hashtagSets.map(s => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            <div style="font-weight:600;font-size:14px">${s.name}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${typeLabels[s.type]||s.type} · Saved ${s.saved}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="useHashtagSet('${s.id}')" style="background:rgba(232,104,26,0.12);color:var(--accent);border:1px solid rgba(232,104,26,0.3)"><i class="ti ti-copy" style="font-size:11px"></i> Use</button>
+            <button class="btn btn-sm btn-red" onclick="deleteHashtagSet('${s.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--blue);line-height:1.8;max-height:80px;overflow-y:auto">${s.hashtags}</div>
+      </div>`).join('');
+  }
+  document.getElementById('mViewHashtagSets').style.display = 'flex';
+}
+
+function useHashtagSet(id) {
+  const set = hashtagSets.find(s => s.id === id);
+  if (!set) return;
+  navigator.clipboard.writeText(set.hashtags).then(() => {
+    toast('✓ Hashtags copied to clipboard!');
+    closeModal('mViewHashtagSets');
+  });
+}
+
+function deleteHashtagSet(id) {
+  if (!confirm('Delete this hashtag set?')) return;
+  hashtagSets = hashtagSets.filter(s => s.id !== id);
+  saveHashtagSetsToStorage();
+  openHashtagSets();
+}
+
+loadHashtagSets();
 </script>
 
 </body>
