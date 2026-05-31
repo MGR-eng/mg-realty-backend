@@ -43,17 +43,36 @@ async function readCRM() {
 }
 
 async function writeCRM(data) {
-  const r = await fetch(`${SB_URL}/rest/v1/crm_state`, {
-    method: 'POST',
+  // PATCH updates existing row explicitly — more reliable than POST upsert
+  const r = await fetch(`${SB_URL}/rest/v1/crm_state?id=eq.main`, {
+    method: 'PATCH',
     headers: {
       'Authorization': `Bearer ${SB_KEY}`,
       'apikey': SB_KEY,
       'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates'
+      'Prefer': 'return=minimal'
     },
-    body: JSON.stringify({ id: 'main', ...data, updated_at: new Date().toISOString() })
+    body: JSON.stringify({ ...data, updated_at: new Date().toISOString() })
   });
-  if (!r.ok) throw new Error(`Supabase write failed: ${r.status} ${await r.text()}`);
+  if (!r.ok) {
+    const errText = await r.text();
+    // If PATCH fails (row doesn't exist), fall back to POST insert
+    if (r.status === 404 || errText.includes('0 rows')) {
+      const r2 = await fetch(`${SB_URL}/rest/v1/crm_state`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SB_KEY}`,
+          'apikey': SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({ id: 'main', ...data, updated_at: new Date().toISOString() })
+      });
+      if (!r2.ok) throw new Error(`Supabase write failed: ${r2.status} ${await r2.text()}`);
+    } else {
+      throw new Error(`Supabase write failed: ${r.status} ${errText}`);
+    }
+  }
 }
 
 // Google OAuth — auto-refresh using refresh token
