@@ -1,11 +1,11 @@
-const CACHE = 'mg-realty-v8';
+const CACHE = 'mg-realty-v9';
 const STATIC = ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', '/icons/mg-logo.jpg', '/manifest.json'];
 
-// Never cache HTML pages — always fetch fresh
-const HTML_PATTERNS = ['/', '/contact', '/privacy', '/terms'];
+// Always fetch these fresh
+const HTML_PATTERNS = ['/', '/crm', '/contact', '/privacy', '/terms', '/portal', '/home-value'];
 
 // Never cache API calls
-const API_PATTERNS = ['/crm/', '/calendar/', '/gmail/', '/drive/', '/email/', '/sms', '/backup', '/sequences/', '/leads/'];
+const API_PATTERNS = ['/calendar/', '/gmail/', '/drive/', '/email/', '/sms', '/backup', '/sequences/', '/leads/', '/market-report'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
@@ -30,9 +30,7 @@ self.addEventListener('fetch', e => {
 
   // Always fetch HTML fresh — never serve from cache
   if (e.request.mode === 'navigate' || HTML_PATTERNS.includes(path) || path.endsWith('.html')) {
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match('/'))
-    );
+    e.respondWith(fetch(e.request));
     return;
   }
 
