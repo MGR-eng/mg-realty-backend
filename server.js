@@ -560,6 +560,83 @@ app.post('/email/send', async (req, res) => {
   }
 });
 
+// ── Listing Presentation ─────────────────────────────────────
+app.post('/listing-presentation', async (req, res) => {
+  try {
+    const { sellerName, sellerEmail, address, price, neighborhood, features, strategy } = req.body;
+
+    const prompt = `Write a compelling listing presentation email from real estate agent Matt Golden at MG Realty to ${sellerName}, a homeowner considering listing their property at ${address}${neighborhood ? ' in ' + neighborhood : ''}.
+
+Property details:
+- Suggested list price: ${price || 'TBD'}
+- Key features: ${features || 'N/A'}
+- Matt's marketing strategy: ${strategy || 'Aggressive digital marketing, open houses, strong buyer network'}
+
+Matt's credentials to highlight:
+- Local LA expert focused on West Hollywood, Beverly Hills, Silver Lake, Los Feliz
+- 20+ deals closed
+- Uses cutting-edge digital marketing including Instagram and targeted buyer outreach
+- Personal, hands-on approach — not a team, just Matt
+
+Write 4-5 paragraphs covering: warm intro, why Matt is the right agent, specific strategy for their home, what to expect in the process, and a clear call to action.
+Professional but conversational tone. Sign off as Matt Golden, MG Realty, matt@mgoldenrealty.com, DRE #02130422.
+Return only the email body as HTML paragraphs.`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const bodyHtml = msg.content[0].text.trim();
+
+    const html = `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto">
+      <div style="background:#0A0A0A;padding:24px;border-radius:8px 8px 0 0;text-align:center">
+        <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:60px;object-fit:contain;display:block;margin:0 auto 12px">
+        <div style="color:#fff;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;font-weight:600">Listing Presentation</div>
+      </div>
+      <div style="background:#111;padding:20px 28px;border-left:1px solid #222;border-right:1px solid #222">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#222;border-radius:8px;overflow:hidden;margin-bottom:0">
+          <div style="background:#1A1A1A;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:800;color:#E8681A">20+</div>
+            <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Deals Closed</div>
+          </div>
+          <div style="background:#1A1A1A;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:800;color:#E8681A">LA</div>
+            <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Based & Local</div>
+          </div>
+          <div style="background:#1A1A1A;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:800;color:#E8681A">7</div>
+            <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Days/Week</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+        <h2 style="margin:0 0 6px;font-size:20px;color:#111">Hi ${sellerName},</h2>
+        <p style="margin:0 0 20px;font-size:12px;color:#888">${address}${price ? ' · ' + price : ''}</p>
+        ${bodyHtml}
+        <div style="margin-top:28px;padding:16px;background:#f9f9f9;border-radius:8px;text-align:center">
+          <div style="font-size:13px;color:#333;margin-bottom:8px">Ready to get started?</div>
+          <a href="mailto:matt@mgoldenrealty.com" style="background:#E8681A;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px">Reply to Matt</a>
+        </div>
+      </div>
+    </div>`;
+
+    const { error } = await resend.emails.send({
+      from: 'Matt Golden | MG Realty <matt@mgoldenrealty.com>',
+      to: sellerEmail,
+      subject: `My Plan to Sell ${address} — Matt Golden, MG Realty`,
+      html
+    });
+    if (error) throw new Error('Resend: ' + error.message);
+
+    console.log(`Listing presentation sent to ${sellerEmail}`);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('LISTING PRESENTATION ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Open House Recap Email ────────────────────────────────────
 app.post('/email/oh-recap', async (req, res) => {
   try {

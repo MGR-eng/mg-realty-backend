@@ -643,6 +643,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="topbar">
     <div class="page-title"><i class="ti ti-home-dollar" style="margin-right:6px;color:var(--accent)"></i>Seller Hub</div>
     <div class="tba">
+      <button class="btn" onclick="openListingPresentation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA"><i class="ti ti-presentation"></i> Listing Presentation</button>
       <button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(()=>{document.getElementById('lf7').value='seller';openAddLead();},50)"><i class="ti ti-user-plus"></i> Add seller</button>
     </div>
   </div>
@@ -3048,6 +3049,8 @@ function renderProperties(){
             ${(p.docs||[]).length?`<span style="position:absolute;top:-4px;right:-4px;background:var(--amber);color:#000;font-size:8px;font-weight:800;border-radius:999px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 2px">${(p.docs||[]).length}</span>`:''}
           </button>
           <button class="btn btn-sm" onclick="openDebrief('${p.id}')" title="Open House Debrief" style="background:rgba(232,104,26,0.12);border-color:rgba(232,104,26,0.3);color:var(--accent)"><i class="ti ti-clipboard-list" style="font-size:11px"></i></button>
+          <button class="btn btn-sm" onclick="openShowingFeedback('${p.id}')" title="Log showing feedback" style="background:rgba(167,139,250,0.12);border-color:rgba(167,139,250,0.3);color:#A78BFA"><i class="ti ti-eye" style="font-size:11px"></i></button>
+          <button class="btn btn-sm" onclick="openPriceDrop('${p.id}')" title="Price drop alert" style="background:rgba(248,113,113,0.12);border-color:rgba(248,113,113,0.3);color:#F87171"><i class="ti ti-trending-down" style="font-size:11px"></i></button>
           <button class="btn btn-sm" onclick="openEditProp('${p.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
           <button class="btn btn-red btn-sm" onclick="delProp('${p.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
         </div>
@@ -6810,6 +6813,308 @@ if (typeof renderAll === 'function') {
     _origRA();
     renderDashSourceROI();
   };
+}
+</script>
+
+
+<!-- ── Showing Feedback Modal ─────────────────────────────────── -->
+<div id="mShowingFeedback" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:500px">
+    <div class="mhead"><span>👁 Showing Feedback</span><button class="close-btn" onclick="document.getElementById('mShowingFeedback').style.display='none'"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <div id="sf-prop-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:14px;font-size:13px;font-weight:600"></div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Buyer (Lead)</label>
+        <select id="sf-lead" style="width:100%"><option value="">— select lead —</option></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg">
+          <label>Overall Reaction</label>
+          <select id="sf-reaction">
+            <option value="loved_it">❤️ Loved it</option>
+            <option value="liked_it">👍 Liked it</option>
+            <option value="maybe">🤔 Maybe</option>
+            <option value="not_a_fit">❌ Not a fit</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Offer Likelihood</label>
+          <select id="sf-likelihood">
+            <option value="5">5 — Very likely</option>
+            <option value="4">4 — Likely</option>
+            <option value="3">3 — Possible</option>
+            <option value="2">2 — Unlikely</option>
+            <option value="1">1 — No</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>What they liked</label>
+        <textarea id="sf-likes" rows="2" placeholder="e.g. Kitchen, natural light, location..." style="width:100%;resize:none"></textarea>
+      </div>
+      <div class="fg" style="margin-bottom:14px">
+        <label>Concerns / objections</label>
+        <textarea id="sf-concerns" rows="2" placeholder="e.g. Too small, price, parking..." style="width:100%;resize:none"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" style="flex:1" onclick="saveShowingFeedback()"><i class="ti ti-check"></i> Save Feedback</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="document.getElementById('mShowingFeedback').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Price Drop Modal ───────────────────────────────────────── -->
+<div id="mPriceDrop" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:520px">
+    <div class="mhead"><span>📉 Price Drop Alert</span><button class="close-btn" onclick="document.getElementById('mPriceDrop').style.display='none'"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <div id="pd-prop-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:14px;font-size:13px;font-weight:600"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="fg">
+          <label>New Price</label>
+          <input type="text" id="pd-new-price" placeholder="e.g. $895,000">
+        </div>
+        <div class="fg">
+          <label>Old Price</label>
+          <input type="text" id="pd-old-price" placeholder="e.g. $950,000">
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:14px">
+        <label>Tagged Leads to Notify</label>
+        <div id="pd-leads-list" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);padding:8px;background:var(--surface2);display:flex;flex-direction:column;gap:6px"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Only leads with this property listed in their profile</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" style="flex:1" onclick="sendPriceDropAlert()"><i class="ti ti-send"></i> Send Price Drop Alert</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="document.getElementById('mPriceDrop').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Listing Presentation Modal ─────────────────────────────── -->
+<div id="mListingPresentation" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <div class="mhead"><span>📊 Listing Presentation</span><button class="close-btn" onclick="document.getElementById('mListingPresentation').style.display='none'"><i class="ti ti-x"></i></button></div>
+    <div class="mbody">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.5">Generate a polished listing presentation to send to a seller prospect. AI writes it, you review, then send as email + PDF link.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Seller Name *</label><input type="text" id="lp-name" placeholder="Sarah Johnson"></div>
+        <div class="fg"><label>Seller Email *</label><input type="email" id="lp-email" placeholder="sarah@email.com"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label>Property Address *</label><input type="text" id="lp-address" placeholder="1234 Sunset Blvd, West Hollywood"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Suggested List Price</label><input type="text" id="lp-price" placeholder="e.g. $1.2M"></div>
+        <div class="fg"><label>Neighborhood</label><input type="text" id="lp-hood" placeholder="e.g. West Hollywood"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Key selling points</label>
+        <textarea id="lp-features" rows="2" placeholder="e.g. Newly renovated kitchen, pool, walkable to restaurants..." style="width:100%;resize:none"></textarea>
+      </div>
+      <div class="fg" style="margin-bottom:14px">
+        <label>Your strategy / why list with you</label>
+        <textarea id="lp-strategy" rows="2" placeholder="e.g. Aggressive Instagram marketing, open house every weekend, strong buyer network..." style="width:100%;resize:none"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" style="flex:1" id="lp-btn" onclick="generateListingPresentation()"><i class="ti ti-sparkles"></i> Generate & Send</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="document.getElementById('mListingPresentation').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Showing Feedback ──────────────────────────────────────────
+let sfPropId = null;
+
+function openShowingFeedback(propId) {
+  sfPropId = propId;
+  const prop = props.find(p => p.id === propId);
+  if (!prop) return;
+  document.getElementById('sf-prop-info').textContent = prop.address + (prop.price ? ' · $' + Number(prop.price).toLocaleString() : '');
+  
+  // Populate lead dropdown with leads that have this property or are buyers
+  const sel = document.getElementById('sf-lead');
+  sel.innerHTML = '<option value="">— select lead —</option>' +
+    leads.filter(l => l.temp !== 'done').map(l =>
+      `<option value="${l.id}">${l.first} ${l.last}${l.prop ? ' · ' + l.prop.substring(0,20) : ''}</option>`
+    ).join('');
+  
+  document.getElementById('sf-reaction').value = 'liked_it';
+  document.getElementById('sf-likelihood').value = '3';
+  document.getElementById('sf-likes').value = '';
+  document.getElementById('sf-concerns').value = '';
+  document.getElementById('mShowingFeedback').style.display = 'flex';
+}
+
+function saveShowingFeedback() {
+  const leadId = document.getElementById('sf-lead').value;
+  const reaction = document.getElementById('sf-reaction').value;
+  const likelihood = document.getElementById('sf-likelihood').value;
+  const likes = document.getElementById('sf-likes').value;
+  const concerns = document.getElementById('sf-concerns').value;
+  const prop = props.find(p => p.id === sfPropId);
+  if (!prop) return;
+
+  const reactionLabel = { loved_it: 'Loved it', liked_it: 'Liked it', maybe: 'Maybe', not_a_fit: 'Not a fit' };
+  const today = new Date().toISOString().split('T')[0];
+  const lead = leadId ? leads.find(l => l.id === leadId) : null;
+
+  const notes = [
+    `Showing: ${prop.address}`,
+    `Reaction: ${reactionLabel[reaction]}`,
+    `Offer likelihood: ${likelihood}/5`,
+    likes ? `Liked: ${likes}` : '',
+    concerns ? `Concerns: ${concerns}` : ''
+  ].filter(Boolean).join(' · ');
+
+  if (leadId && lead) {
+    activities.unshift({
+      id: 'a' + Date.now(),
+      leadId,
+      leadName: `${lead.first} ${lead.last}`,
+      date: today,
+      time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      type: 'showing',
+      direction: 'inbound',
+      outcome: reactionLabel[reaction],
+      notes
+    });
+    // Update lead lastcontact
+    const idx = leads.findIndex(l => l.id === leadId);
+    if (idx !== -1) leads[idx] = { ...leads[idx], lastcontact: today, lcmethod: 'showing' };
+  }
+
+  persist(); renderAll();
+  document.getElementById('mShowingFeedback').style.display = 'none';
+  toast(`✓ Showing feedback saved${lead ? ' for ' + lead.first : ''}`);
+}
+
+// ── Price Drop Alert ──────────────────────────────────────────
+let pdPropId = null;
+
+function openPriceDrop(propId) {
+  pdPropId = propId;
+  const prop = props.find(p => p.id === propId);
+  if (!prop) return;
+  
+  document.getElementById('pd-prop-info').textContent = prop.address;
+  document.getElementById('pd-new-price').value = '';
+  document.getElementById('pd-old-price').value = prop.price ? '$' + Number(prop.price).toLocaleString() : '';
+
+  // Show leads with this property tagged
+  const tagged = leads.filter(l => l.prop && (l.prop.toLowerCase().includes(prop.address.toLowerCase().substring(0,15)) || prop.address.toLowerCase().includes((l.prop||'').toLowerCase().substring(0,15))) && l.email && l.temp !== 'done');
+  
+  document.getElementById('pd-leads-list').innerHTML = tagged.length
+    ? tagged.map(l => `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+        <input type="checkbox" value="${l.id}" checked style="accent-color:var(--accent)">
+        <span>${l.first} ${l.last}</span>
+        <span style="font-size:11px;color:var(--text3)">${l.email}</span>
+      </label>`).join('')
+    : '<div style="font-size:12px;color:var(--text3)">No tagged leads found for this property. Make sure leads have this property listed in their profile.</div>';
+
+  document.getElementById('mPriceDrop').style.display = 'flex';
+}
+
+async function sendPriceDropAlert() {
+  const prop = props.find(p => p.id === pdPropId);
+  if (!prop) return;
+  const newPrice = document.getElementById('pd-new-price').value.trim();
+  if (!newPrice) { toast('Enter the new price first'); return; }
+
+  const checkedIds = [...document.querySelectorAll('#pd-leads-list input:checked')].map(el => el.value);
+  const recipients = leads.filter(l => checkedIds.includes(l.id) && l.email);
+  if (!recipients.length) { toast('No recipients with email addresses'); return; }
+
+  const btn = document.querySelector('#mPriceDrop .btn-gold');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  let sent = 0;
+  for (const lead of recipients) {
+    try {
+      await fetch(BACKEND + '/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: lead.email,
+          subject: `Price reduced: ${prop.address}`,
+          from: 'business',
+          html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+            <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
+              <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto">
+            </div>
+            <div style="padding:28px;background:#fff;border:1px solid #eee;border-radius:0 0 8px 8px">
+              <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin-bottom:20px;text-align:center">
+                <div style="font-size:13px;color:#B91C1C;font-weight:600;margin-bottom:4px">PRICE REDUCED</div>
+                <div style="font-size:24px;font-weight:800;color:#111">${newPrice}</div>
+                ${document.getElementById('pd-old-price').value ? `<div style="font-size:12px;color:#888;text-decoration:line-through">${document.getElementById('pd-old-price').value}</div>` : ''}
+              </div>
+              <p>Hi ${lead.first},</p>
+              <p>Great news — the price has just been reduced on <strong>${prop.address}</strong>. This is a great opportunity if you've had it on your radar.</p>
+              <p>I'd love to set up a showing or answer any questions. Just reply to this email or give me a call.</p>
+              <p style="margin-top:24px;color:#333;font-size:13px">— Matt Golden<br><span style="color:#888">MG Realty · matt@mgoldenrealty.com</span></p>
+            </div>
+          </div>`
+        })
+      });
+      sent++;
+    } catch(e) { console.error('Price drop email failed:', e); }
+  }
+
+  // Update property price
+  const idx = props.findIndex(p => p.id === pdPropId);
+  if (idx !== -1) props[idx] = { ...props[idx], price: newPrice.replace(/[^0-9.]/g, '') };
+  persist(); renderAll();
+  document.getElementById('mPriceDrop').style.display = 'none';
+  if (btn) { btn.disabled = false; btn.textContent = '📉 Send Price Drop Alert'; }
+  toast(`✓ Price drop alert sent to ${sent} lead${sent !== 1 ? 's' : ''}`);
+}
+
+// ── Listing Presentation ──────────────────────────────────────
+function openListingPresentation() {
+  ['lp-name','lp-email','lp-address','lp-price','lp-hood','lp-features','lp-strategy'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const btn = document.getElementById('lp-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate & Send'; }
+  document.getElementById('mListingPresentation').style.display = 'flex';
+}
+
+async function generateListingPresentation() {
+  const name = document.getElementById('lp-name').value.trim();
+  const email = document.getElementById('lp-email').value.trim();
+  const address = document.getElementById('lp-address').value.trim();
+  if (!name || !email || !address) { toast('Name, email and address are required'); return; }
+
+  const btn = document.getElementById('lp-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> Generating…';
+
+  try {
+    const r = await fetch(BACKEND + '/listing-presentation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sellerName: name,
+        sellerEmail: email,
+        address,
+        price: document.getElementById('lp-price').value,
+        neighborhood: document.getElementById('lp-hood').value,
+        features: document.getElementById('lp-features').value,
+        strategy: document.getElementById('lp-strategy').value
+      })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    toast(`✓ Listing presentation sent to ${email}`);
+    document.getElementById('mListingPresentation').style.display = 'none';
+  } catch(e) {
+    toast('Error: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate & Send';
+  }
 }
 </script>
 
