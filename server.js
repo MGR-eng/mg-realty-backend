@@ -1138,6 +1138,7 @@ async function processPostCloseEmails(crm, today) {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 // CRM moved to /crm
 app.get('/crm', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/home-value', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home-value.html')));
 app.get('/contact', (req, res) => res.sendFile(path.join(__dirname, 'public', 'contact.html')));
 app.get('/open-house', (req, res) => res.sendFile(path.join(__dirname, 'public', 'open-house-sign.html')));
 app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal.html')));
