@@ -505,6 +505,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
     <button class="nav-item" onclick="openMarketReport()"><i class="ti ti-chart-bar"></i><span>Market Report</span></button>
     <a class="nav-item" href="/open-house" target="_blank"><i class="ti ti-qrcode"></i><span>Open House Sign</span></a>
+    <button class="nav-item" onclick="showPane('scheduled',this)"><i class="ti ti-clock-send"></i><span>Scheduled</span><span class="nb" id="nb-scheduled" style="display:none">0</span></button>
   </nav>
   <div class="sidebar-foot">
     <div class="sync-row"><div class="sdot" id="sdot"></div><span id="slbl">Ready</span></div>
@@ -650,6 +651,14 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="content">
     <div id="sellerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;padding:4px 0"></div>
   </div>
+</div>
+
+<div id="pane-scheduled" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-clock-send" style="margin-right:6px;color:var(--accent)"></i>Scheduled Outbox</div>
+    <div class="tba"><button class="btn btn-sm" onclick="renderScheduledPane()"><i class="ti ti-refresh"></i> Refresh</button></div>
+  </div>
+  <div class="content"><div id="scheduled-list" style="max-width:800px"></div></div>
 </div>
 
 <div id="pane-activity" class="pane">
@@ -1568,7 +1577,19 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <textarea id="ef3" style="min-height:200px"></textarea>
     </div>
   </div>
-  <div class="mfoot"><button class="btn" onclick="closeModal('mEmail')">Cancel</button><button class="btn btn-gold" onclick="sendEmailTemplate()"><i class="ti ti-send"></i> Send</button></div>
+  <div style="padding:0 20px 14px">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2);margin-bottom:10px">
+      <input type="checkbox" id="email-schedule-toggle" onchange="toggleEmailSchedule(this)" style="accent-color:var(--accent)">
+      <span>Schedule for later</span>
+    </label>
+    <div id="email-schedule-fields" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg"><label style="font-size:10px">Send Date</label><input type="date" id="email-sched-date" style="font-size:13px;padding:8px 10px"></div>
+        <div class="fg"><label style="font-size:10px">Send Time</label><input type="time" id="email-sched-time" style="font-size:13px;padding:8px 10px"></div>
+      </div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mEmail')">Cancel</button><button class="btn btn-gold" id="email-send-btn" onclick="handleEmailSend()"><i class="ti ti-send"></i> Send</button></div>
 </div></div>
 
 <!-- Activity Modal -->
@@ -5887,6 +5908,8 @@ function downloadMarketReport(){
         <button class="btn btn-sm" onclick="fuQuickEmail()" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)"><i class="ti ti-mail"></i> Email</button>
         <button class="btn btn-sm" onclick="fuQuickShowing()" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)"><i class="ti ti-home-search"></i> Showing</button>
         <button class="btn btn-sm" onclick="fuSkip()" style="background:rgba(255,255,255,0.05);color:var(--text2);border:1px solid var(--border)"><i class="ti ti-player-skip-forward"></i> Skip</button>
+        <button class="btn btn-sm" onclick="fuSnooze(2)" style="background:rgba(96,165,250,0.10);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)"><i class="ti ti-clock"></i> 2h</button>
+        <button class="btn btn-sm" onclick="fuSnooze(24)" style="background:rgba(96,165,250,0.10);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)"><i class="ti ti-clock"></i> Tomorrow</button>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-gold" style="flex:1;padding:10px" onclick="fuSaveAndNext()"><i class="ti ti-check"></i> Log & Next</button>
@@ -7116,6 +7139,164 @@ async function generateListingPresentation() {
     btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate & Send';
   }
 }
+</script>
+
+
+<script>
+// ── Scheduled Send System ─────────────────────────────────────
+
+function toggleEmailSchedule(cb) {
+  const fields = document.getElementById('email-schedule-fields');
+  const btn = document.getElementById('email-send-btn');
+  if (cb.checked) {
+    fields.style.display = 'block';
+    // Default to tomorrow 9am
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('email-sched-date').value = tomorrow.toISOString().split('T')[0];
+    document.getElementById('email-sched-time').value = '09:00';
+    btn.innerHTML = '<i class="ti ti-clock-send"></i> Schedule';
+  } else {
+    fields.style.display = 'none';
+    btn.innerHTML = '<i class="ti ti-send"></i> Send';
+  }
+}
+
+async function handleEmailSend() {
+  const isScheduled = document.getElementById('email-schedule-toggle')?.checked;
+  if (isScheduled) {
+    await scheduleEmail();
+  } else {
+    sendEmailTemplate();
+  }
+}
+
+async function scheduleEmail() {
+  const to = document.getElementById('ef1').value.trim();
+  const subject = document.getElementById('ef2').value.trim();
+  const text = document.getElementById('ef3').value.trim();
+  const from = document.getElementById('ef-from')?.value || 'business';
+  const date = document.getElementById('email-sched-date').value;
+  const time = document.getElementById('email-sched-time').value;
+
+  if (!to || !to.includes('@')) { toast('Enter a valid email address'); return; }
+  if (!date || !time) { toast('Pick a date and time'); return; }
+
+  const sendAt = new Date(date + 'T' + time + ':00').toISOString();
+  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center"><img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:56px;object-fit:contain;display:block;margin:0 auto"></div><div style="padding:24px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">${text.replace(/\n/g,'<br>')}<p style="margin-top:24px;color:#111;font-size:13px">— Matt Golden<br><span style="color:#444">MG Realty · matt@mgoldenrealty.com</span></p></div></div>`;
+
+  const btn = document.getElementById('email-send-btn');
+  btn.disabled = true; btn.textContent = 'Scheduling…';
+
+  try {
+    const r = await fetch(BACKEND + '/scheduled-messages/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'email', to, subject, html, from, sendAt, leadName: to })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    closeModal('mEmail');
+    toast(`✓ Email scheduled for ${new Date(sendAt).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })}`);
+    updateScheduledBadge();
+  } catch(e) {
+    toast('Error: ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="ti ti-clock-send"></i> Schedule';
+}
+
+async function updateScheduledBadge() {
+  try {
+    const r = await fetch(BACKEND + '/scheduled-messages/pending');
+    const d = await r.json();
+    const count = d.ok ? d.messages.length : 0;
+    const el = document.getElementById('nb-scheduled');
+    if (el) { el.textContent = count; el.style.display = count ? '' : 'none'; }
+  } catch(e) {}
+}
+
+async function renderScheduledPane() {
+  const el = document.getElementById('scheduled-list');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px">Loading…</div>';
+  try {
+    const r = await fetch(BACKEND + '/scheduled-messages/pending');
+    const d = await r.json();
+    if (!d.ok || !d.messages.length) {
+      el.innerHTML = '<div class="empty">No scheduled messages. Use "Schedule for later" when composing an email.</div>';
+      return;
+    }
+    el.innerHTML = d.messages.map(m => `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:14px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${m.type === 'email' ? '✉️' : '💬'} ${m.subject || 'Message'}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px">To: ${m.to} · ${m.leadName || ''}</div>
+          <div style="font-size:12px;color:var(--accent);margin-top:4px;font-weight:600">
+            📅 Sends: ${new Date(m.sendAt).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })}
+          </div>
+        </div>
+        <button class="btn btn-red btn-sm" onclick="cancelScheduled('${m.id}')"><i class="ti ti-trash" style="font-size:11px"></i> Cancel</button>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="empty">Could not load scheduled messages</div>';
+  }
+}
+
+async function cancelScheduled(id) {
+  if (!confirm('Cancel this scheduled message?')) return;
+  try {
+    await fetch(BACKEND + '/scheduled-messages/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    toast('Scheduled message cancelled');
+    renderScheduledPane();
+    updateScheduledBadge();
+  } catch(e) { toast('Error cancelling'); }
+}
+
+// ── Follow-up Snooze ──────────────────────────────────────────
+async function fuSnooze(hours) {
+  const lead = fuQueue[fuIndex];
+  if (!lead) return;
+  const snoozeUntil = new Date(Date.now() + hours * 3600000).toISOString().split('T')[0];
+  try {
+    await fetch(BACKEND + '/crm/followup-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        leadId: lead.id,
+        method: lead.method || 'call',
+        outcome: 'snoozed',
+        notes: `Snoozed for ${hours < 24 ? hours + ' hours' : '1 day'}`,
+        nextDate: snoozeUntil,
+        nextMethod: lead.method || 'call'
+      })
+    });
+    toast(`⏱ Snoozed — follow-up set for ${hours < 24 ? 'later today' : 'tomorrow'}`);
+  } catch(e) { console.error('Snooze failed:', e); }
+  fuIndex++;
+  if (fuIndex >= fuQueue.length) { closeFollowUpAlert(); }
+  else { renderFuModal(); }
+}
+
+// ── Phone number formatting ───────────────────────────────────
+function formatPhoneNumber(input) {
+  let val = input.value.replace(/\D/g, '').substring(0, 10);
+  if (val.length >= 7) val = '(' + val.substring(0,3) + ') ' + val.substring(3,6) + '-' + val.substring(6);
+  else if (val.length >= 4) val = '(' + val.substring(0,3) + ') ' + val.substring(3);
+  else if (val.length > 0) val = '(' + val;
+  input.value = val;
+}
+
+// Auto-attach phone formatting to lead phone field
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const phoneField = document.getElementById('lf3');
+    if (phoneField) phoneField.addEventListener('input', () => formatPhoneNumber(phoneField));
+    updateScheduledBadge();
+  }, 500);
+});
 </script>
 
 </body>

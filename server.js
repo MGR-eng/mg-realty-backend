@@ -241,6 +241,109 @@ app.get('/auth/google/compass/callback', async (req, res) => {
   }
 });
 
+// ── Scheduled Messages ────────────────────────────────────────
+app.post('/scheduled-messages/add', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const msg = {
+      id: 'sm_' + Date.now(),
+      type: req.body.type || 'email',
+      to: req.body.to,
+      subject: req.body.subject || '',
+      html: req.body.html || '',
+      from: req.body.from || 'business',
+      sendAt: req.body.sendAt,
+      leadName: req.body.leadName || '',
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    };
+    const messages = crm.scheduled_messages || [];
+    messages.push(msg);
+    await writeCRM({ ...crm, scheduled_messages: messages });
+    console.log(`Scheduled message added: ${msg.subject} → ${msg.to} at ${msg.sendAt}`);
+    res.json({ ok: true, id: msg.id });
+  } catch(e) {
+    console.error('SCHEDULE ADD ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/scheduled-messages/pending', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const pending = (crm.scheduled_messages || []).filter(m => m.status === 'pending');
+    res.json({ ok: true, messages: pending });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/scheduled-messages/cancel', async (req, res) => {
+  try {
+    const { id } = req.body;
+    const crm = await readCRM();
+    crm.scheduled_messages = (crm.scheduled_messages || []).map(m =>
+      m.id === id ? { ...m, status: 'cancelled' } : m
+    );
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Process scheduled messages — call every 30 min via UptimeRobot
+app.all('/scheduled-messages/process', async (req, res) => {
+  const key = req.headers['x-api-key'] || req.query.key;
+  if (key !== process.env.NUDGE_SECRET) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  try {
+    const crm = await readCRM();
+    const now = new Date();
+    let sent = 0;
+    const messages = crm.scheduled_messages || [];
+
+    for (const msg of messages) {
+      if (msg.status !== 'pending') continue;
+      if (new Date(msg.sendAt) > now) continue;
+
+      // Send the message
+      try {
+        if (msg.type === 'email') {
+          const { error } = await resend.emails.send({
+            from: 'Matt Golden | MG Realty <matt@mgoldenrealty.com>',
+            to: msg.to,
+            subject: msg.subject,
+            html: msg.html
+          });
+          if (error) throw new Error(error.message);
+        }
+        msg.status = 'sent';
+        msg.sentAt = now.toISOString();
+        sent++;
+        console.log(`Scheduled message sent: ${msg.subject} → ${msg.to}`);
+
+        // Notify Matt by email
+        await resend.emails.send({
+          from: 'MG Realty CRM <matt@mgoldenrealty.com>',
+          to: 'goldenmb@gmail.com',
+          subject: `📬 Scheduled email sent: "${msg.subject}" → ${msg.to}`,
+          html: `<p>Your scheduled email was just sent.</p><p><strong>To:</strong> ${msg.to}<br><strong>Subject:</strong> ${msg.subject}<br><strong>Sent at:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PT</p>`
+        });
+      } catch(e) {
+        msg.status = 'failed';
+        msg.error = e.message;
+        console.error(`Scheduled message failed: ${e.message}`);
+      }
+    }
+
+    await writeCRM({ ...crm, scheduled_messages: messages });
+    res.json({ ok: true, sent });
+  } catch(e) {
+    console.error('SCHEDULE PROCESS ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Follow-up alerts — reads live from Supabase ───────────────
 app.get('/crm/followups', async (req, res) => {
   try {
