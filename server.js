@@ -1134,15 +1134,8 @@ async function processPostCloseEmails(crm, today) {
 }
 
 // ── Static page routes ────────────────────────────────────────
-// Root: www subdomain → public homepage, root domain → CRM
-app.get('/', (req, res) => {
-  const host = (req.headers['x-forwarded-host'] || req.headers['host'] || req.hostname || '').split(',')[0].trim();
-  if (host.startsWith('www.')) {
-    return res.sendFile(path.join(__dirname, 'public', 'home.html'));
-  }
-  return res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-// /crm always serves CRM (backward compat)
+// Root → CRM, www handled by DNS forwarding to /home
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/crm', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 // Public homepage also accessible at /home
 app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
