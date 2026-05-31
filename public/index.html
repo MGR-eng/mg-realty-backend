@@ -4138,7 +4138,7 @@ function escHtml(str) {
   const lastSent = localStorage.getItem('mg_digest_sent');
   if(lastSent === today) return; // already sent today
   const hour = new Date().getHours();
-  if(hour < 7 || hour > 11) return; // only auto-send between 7am–11am
+  if(hour !== 8) return; // only auto-send at 8am
   const overdue = leads.filter(l=>l.temp!=='done'&&du(l.followup)<0);
   const dueToday = leads.filter(l=>l.temp!=='done'&&du(l.followup)===0);
   const dueWeek = leads.filter(l=>{const d=du(l.followup);return d>0&&d<=7&&l.temp!=='done';});
