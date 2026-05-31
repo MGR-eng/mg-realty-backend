@@ -1134,10 +1134,18 @@ async function processPostCloseEmails(crm, today) {
 }
 
 // ── Static page routes ────────────────────────────────────────
-// Public homepage at root
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
-// CRM moved to /crm
+// Root: www subdomain → public homepage, root domain → CRM
+app.get('/', (req, res) => {
+  const host = req.hostname || '';
+  if (host.startsWith('www.')) {
+    return res.sendFile(path.join(__dirname, 'public', 'home.html'));
+  }
+  return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+// /crm always serves CRM (backward compat)
 app.get('/crm', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+// Public homepage also accessible at /home
+app.get('/home', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home.html')));
 app.get('/home-value', (req, res) => res.sendFile(path.join(__dirname, 'public', 'home-value.html')));
 app.get('/contact', (req, res) => res.sendFile(path.join(__dirname, 'public', 'contact.html')));
 app.get('/open-house', (req, res) => res.sendFile(path.join(__dirname, 'public', 'open-house-sign.html')));
@@ -3025,7 +3033,7 @@ app.post('/api/book-tour', async (req, res) => {
       const friendly = tourDate.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
       try {
         await resend.emails.send({
-          from: 'Matt Golden <matt@mg-realty.co>',
+          from: 'Matt Golden | MG Realty <matt@mgoldenrealty.com>',
           to: email,
           subject: `Tour confirmed: ${address || 'Property Tour'} — ${friendly}`,
           html: `
