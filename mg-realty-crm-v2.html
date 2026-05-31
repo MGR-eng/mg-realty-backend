@@ -617,11 +617,12 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div class="sw"><i class="ti ti-search"></i><input type="text" id="srch" placeholder="Search…" style="width:150px" oninput="renderLeads()"></div>
       <select id="ftemp" onchange="renderLeads()" style="width:auto"><option value="">All temps</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select>
       <select id="ftype" onchange="renderLeads()" style="width:auto"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
+      <select id="fstage" onchange="renderLeads()" style="width:auto"><option value="">All stages</option><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select>
       <button class="btn" onclick="openImportCSV()"><i class="ti ti-upload"></i> Import CSV</button>
       <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
   </div>
-  <div class="content"><div class="tw"><table><thead><tr><th style="width:135px">Name</th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:52px">Score</th><th style="width:103px">Follow-up</th><th style="width:103px">Last contact</th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
+  <div class="content"><div class="tw"><table><thead><tr><th style="width:135px;cursor:pointer" onclick="sortLeads('name')" title="Sort by name">Name <span id="sort-name"></span></th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:52px;cursor:pointer" onclick="sortLeads('score')" title="Sort by score">Score <span id="sort-score"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('followup')" title="Sort by follow-up">Follow-up <span id="sort-followup"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('lastcontact')" title="Sort by last contact">Last contact <span id="sort-lastcontact"></span></th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
 </div>
 
 <div id="pane-activity" class="pane">
@@ -1928,13 +1929,13 @@ function renderDashStages(){
 
 function renderLeads(){
   const s=document.getElementById('srch').value.toLowerCase(),ft=document.getElementById('ftemp').value,fty=document.getElementById('ftype').value;
-  let f=leads.filter(l=>{if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;if(ft&&l.temp!==ft)return false;if(fty&&l.type!==fty)return false;return true;}).sort((a,b)=>{const la=(a.last||'').toLowerCase(),lb=(b.last||'').toLowerCase();if(la!==lb)return la<lb?-1:1;return(a.first||'').toLowerCase()<(b.first||'').toLowerCase()?-1:1;});
+  const fst=document.getElementById('fstage')?.value||'';let f=leads.filter(l=>{if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;if(ft&&l.temp!==ft)return false;if(fty&&l.type!==fty)return false;if(fst&&(l.stage||'new')!==fst)return false;return true;});f=sortLeadsArr(f);
   const tbody=document.getElementById('ltbody');
   if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">No leads match</div></td></tr>`;return;}
   tbody.innerHTML=f.map(l=>{
     const d=du(l.followup),rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
     const score = calcLeadScore(l);
-    return`<tr class="${rc}" onclick="openLeadDetail('${l.id}')" style="cursor:pointer"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${scoreTag(score)}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td><td style="white-space:nowrap">${l.phone?`<a class="btn btn-sm" title="Call" href="tel:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:#4ADE80;margin-right:3px"><i class="ti ti-phone" style="font-size:11px"></i></a><a class="btn btn-sm" title="Text" href="sms:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA;margin-right:3px"><i class="ti ti-message" style="font-size:11px"></i></a>`:""}<button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
+    return`<tr class="${rc}" onclick="openLeadDetail('${l.id}')" style="cursor:pointer"><td><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${scoreTag(score)}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?(()=>{const days=Math.floor((new Date()-new Date(l.lastcontact))/86400000);const color=days<=3?'var(--green)':days<=7?'var(--amber)':'var(--red)';const dot=l.temp!=='done'?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:4px;vertical-align:middle"></span>`:'';return dot+rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:'');})():'—'}</td><td style="white-space:nowrap">${l.phone?`<a class="btn btn-sm" title="Call" href="tel:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:#4ADE80;margin-right:3px"><i class="ti ti-phone" style="font-size:11px"></i></a><a class="btn btn-sm" title="Text" href="sms:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA;margin-right:3px"><i class="ti ti-message" style="font-size:11px"></i></a>`:""}<button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button></td></tr>`;
   }).join('');
 }
 
@@ -6318,6 +6319,48 @@ function deleteHashtagSet(id) {
 }
 
 loadHashtagSets();
+</script>
+
+
+<script>
+// ── Lead sorting ──────────────────────────────────────────────
+let leadSortKey = 'name';
+let leadSortDir = 1;
+
+function sortLeads(key) {
+  if (leadSortKey === key) leadSortDir *= -1;
+  else { leadSortKey = key; leadSortDir = 1; }
+  ['name','score','followup','lastcontact'].forEach(k => {
+    const el = document.getElementById('sort-' + k);
+    if (el) el.textContent = k === leadSortKey ? (leadSortDir === 1 ? ' ↑' : ' ↓') : '';
+  });
+  renderLeads();
+}
+
+function sortLeadsArr(arr) {
+  return arr.sort((a, b) => {
+    let av, bv;
+    if (leadSortKey === 'name') {
+      av = (a.last + a.first).toLowerCase();
+      bv = (b.last + b.first).toLowerCase();
+    } else if (leadSortKey === 'score') {
+      av = typeof calcLeadScore === 'function' ? calcLeadScore(a) : 0;
+      bv = typeof calcLeadScore === 'function' ? calcLeadScore(b) : 0;
+    } else if (leadSortKey === 'followup') {
+      av = a.followup || '9999';
+      bv = b.followup || '9999';
+    } else if (leadSortKey === 'lastcontact') {
+      av = a.lastcontact || '0000';
+      bv = b.lastcontact || '0000';
+    } else {
+      av = (a.last + a.first).toLowerCase();
+      bv = (b.last + b.first).toLowerCase();
+    }
+    if (av < bv) return -leadSortDir;
+    if (av > bv) return leadSortDir;
+    return 0;
+  });
+}
 </script>
 
 </body>
