@@ -2926,7 +2926,7 @@ function openEmailTemplate(id) {
     applyEmailTemplate();
     // Reset schedule toggle
     const toggle = document.getElementById('email-schedule-toggle');
-    if (toggle) { toggle.checked = false; toggleEmailSchedule(toggle); }
+    if (toggle) { toggle.checked = false; const sf = document.getElementById('email-schedule-fields'); if(sf) sf.style.display='none'; const btn=document.getElementById('email-send-btn'); if(btn) btn.innerHTML='<i class="ti ti-send"></i> Send'; }
     openModal('mEmail');
   } catch(e) {
     console.error('openEmailTemplate error:', e);
