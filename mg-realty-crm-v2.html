@@ -1852,13 +1852,13 @@ function renderDashActs(){
   const el=document.getElementById('dashActs');
   const recent=[...acts].slice(-5).reverse();
   if(!recent.length){el.innerHTML='<div class="empty">No activity logged yet</div>';return;}
-  el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Outcome</th></tr></thead><tbody>${recent.map(a=>`<tr><td><div class="ns">${a.leadName}</div><div class="nsb" style="font-family:var(--mono)">${a.date}</div></td><td>${tyb(a.type)}</td><td style="font-size:12px;color:var(--text2)">${a.outcome}</td></tr>`).join('')}</tbody></table>`;
+  el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Outcome</th></tr></thead><tbody>${recent.map(a=>`<tr style="cursor:pointer" onclick="openLeadDetail('${a.leadId}')"><td><div class="ns" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px">${a.leadName}</div><div class="nsb" style="font-family:var(--mono)">${a.date}</div></td><td>${tyb(a.type)}</td><td style="font-size:12px;color:var(--text2)">${a.outcome}</td></tr>`).join('')}</tbody></table>`;
 }
 function renderDashAppts(){
   const el=document.getElementById('dashAppts');
   const up=appts.filter(a=>du(a.date)>=0&&du(a.date)<=14).sort((a,b)=>a.date>b.date?1:-1).slice(0,5);
   if(!up.length){el.innerHTML='<div class="empty">No upcoming appointments</div>';return;}
-  el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Date</th><th>Time</th></tr></thead><tbody>${up.map(a=>`<tr><td class="ns">${a.leadName}</td><td><span class="badge b-showing">${a.type}</span></td><td style="font-size:12px;font-family:var(--mono)">${a.date}</td><td style="font-size:12px;color:var(--text2)">${a.time}</td></tr>`).join('')}</tbody></table>`;
+  el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Date</th><th>Time</th></tr></thead><tbody>${up.map(a=>`<tr><td class="ns" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;cursor:pointer" onclick="openLeadDetail('${a.leadId}')">${a.leadName}</td><td><span class="badge b-showing">${a.type}</span></td><td style="font-size:12px;font-family:var(--mono)">${a.date}</td><td style="font-size:12px;color:var(--text2)">${a.time}</td></tr>`).join('')}</tbody></table>`;
 }
 
 function renderDashReferrals(){
