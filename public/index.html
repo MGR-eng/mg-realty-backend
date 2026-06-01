@@ -2938,7 +2938,8 @@ function applyEmailTemplate() {
   const l = leads.find(x => x.id === emailLeadId);
   if (!l) return;
   const key = document.getElementById('ef0').value;
-  const tpl = EMAIL_TEMPLATES[key] ? EMAIL_TEMPLATES[key](l) : { subject: '', body: '' };
+  const templates = (typeof EMAIL_TEMPLATES !== 'undefined' && EMAIL_TEMPLATES) || {};
+  const tpl = templates[key] ? templates[key](l) : { subject: '', body: '' };
   document.getElementById('ef2').value = tpl.subject;
   document.getElementById('ef3').value = tpl.body;
 }
