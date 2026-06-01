@@ -1625,6 +1625,94 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
 </div></div>
 
 <script>
+
+// ── Email templates ───────────────────────────────────────────
+var emailLeadId = null;
+
+var EMAIL_TEMPLATES = {
+  openhouse: l => ({
+    subject: `Thank you for visiting the open house!`,
+    body:
+`Hi ${l.first},
+
+Thank you so much for stopping by the open house${l.prop ? ' for ' + l.prop : ''}! It was great meeting you.
+
+${l.notes ? 'Based on what you shared — ' + l.notes.substring(0, 100) + (l.notes.length > 100 ? '…' : '') + '\n\n' : ''}I'd love to help you find the perfect property. Feel free to reach out anytime with questions or to schedule a private showing.
+
+Looking forward to working with you!
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  followup: l => ({
+    subject: `Checking in — ${l.prop || 'your home search'}`,
+    body:
+`Hi ${l.first},
+
+Just wanted to check in and see how things are going on your end${l.prop ? ' with ' + l.prop : ''}.
+
+The market has been moving quickly, and I want to make sure you're getting the right opportunities before they're gone.
+
+Do you have 10 minutes this week for a quick call? I have a few ideas I think would be a great fit for you.
+
+Talk soon,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  showing: l => ({
+    subject: `How did you feel about the showing?`,
+    body:
+`Hi ${l.first},
+
+Thanks for taking the time to tour${l.prop ? ' ' + l.prop : ' the property'} — I hope it gave you a good feel for what's possible!
+
+I'd love to hear your honest thoughts. Did it check the boxes, or should we keep looking? Even a quick reply helps me zero in on exactly what's right for you.
+
+Happy to set up more showings this week if you're ready to keep moving.
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  pricedrop: l => ({
+    subject: `Price reduction on a property you might love`,
+    body:
+`Hi ${l.first},
+
+Good news — a property that matches what you're looking for just had a price reduction.
+
+${l.prop ? 'Property: ' + l.prop + '\n\n' : ''}This kind of move usually signals the seller is motivated and ready to deal. It's worth a look before other buyers jump on it.
+
+Want me to book a showing this week? Reply here or give me a call.
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  listing: l => ({
+    subject: `Let's talk about getting your home sold`,
+    body:
+`Hi ${l.first},
+
+I wanted to reach out personally — if you're thinking about selling${l.prop ? ' ' + l.prop : ' your home'}, now is a great time to have a conversation.
+
+I've been working the ${l.prop ? l.prop.split(',').pop()?.trim() || 'LA' : 'LA'} market closely and I have a clear picture of what buyers are looking for right now and how to get you top dollar.
+
+I'd love to put together a no-pressure market analysis for you. Would you be open to a 20-minute call or meeting this week?
+
+Best,
+Matt Golden
+MG Realty
+(323) 688-3855`
+  }),
+  custom: () => ({ subject: '', body: '' })
+};
+
 // ── CONFIG — paste your Render URL here after deploying ───────
 const BACKEND = 'https://mg-realty-backend.onrender.com';
 const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
@@ -2826,92 +2914,6 @@ async function sendOHAnnouncement() {
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-send"></i> Send to Seller'; }
 }
 
-// ── Email templates ───────────────────────────────────────────
-var emailLeadId = null;
-
-var EMAIL_TEMPLATES = {
-  openhouse: l => ({
-    subject: `Thank you for visiting the open house!`,
-    body:
-`Hi ${l.first},
-
-Thank you so much for stopping by the open house${l.prop ? ' for ' + l.prop : ''}! It was great meeting you.
-
-${l.notes ? 'Based on what you shared — ' + l.notes.substring(0, 100) + (l.notes.length > 100 ? '…' : '') + '\n\n' : ''}I'd love to help you find the perfect property. Feel free to reach out anytime with questions or to schedule a private showing.
-
-Looking forward to working with you!
-
-Best,
-Matt Golden
-MG Realty
-(323) 688-3855`
-  }),
-  followup: l => ({
-    subject: `Checking in — ${l.prop || 'your home search'}`,
-    body:
-`Hi ${l.first},
-
-Just wanted to check in and see how things are going on your end${l.prop ? ' with ' + l.prop : ''}.
-
-The market has been moving quickly, and I want to make sure you're getting the right opportunities before they're gone.
-
-Do you have 10 minutes this week for a quick call? I have a few ideas I think would be a great fit for you.
-
-Talk soon,
-Matt Golden
-MG Realty
-(323) 688-3855`
-  }),
-  showing: l => ({
-    subject: `How did you feel about the showing?`,
-    body:
-`Hi ${l.first},
-
-Thanks for taking the time to tour${l.prop ? ' ' + l.prop : ' the property'} — I hope it gave you a good feel for what's possible!
-
-I'd love to hear your honest thoughts. Did it check the boxes, or should we keep looking? Even a quick reply helps me zero in on exactly what's right for you.
-
-Happy to set up more showings this week if you're ready to keep moving.
-
-Best,
-Matt Golden
-MG Realty
-(323) 688-3855`
-  }),
-  pricedrop: l => ({
-    subject: `Price reduction on a property you might love`,
-    body:
-`Hi ${l.first},
-
-Good news — a property that matches what you're looking for just had a price reduction.
-
-${l.prop ? 'Property: ' + l.prop + '\n\n' : ''}This kind of move usually signals the seller is motivated and ready to deal. It's worth a look before other buyers jump on it.
-
-Want me to book a showing this week? Reply here or give me a call.
-
-Best,
-Matt Golden
-MG Realty
-(323) 688-3855`
-  }),
-  listing: l => ({
-    subject: `Let's talk about getting your home sold`,
-    body:
-`Hi ${l.first},
-
-I wanted to reach out personally — if you're thinking about selling${l.prop ? ' ' + l.prop : ' your home'}, now is a great time to have a conversation.
-
-I've been working the ${l.prop ? l.prop.split(',').pop()?.trim() || 'LA' : 'LA'} market closely and I have a clear picture of what buyers are looking for right now and how to get you top dollar.
-
-I'd love to put together a no-pressure market analysis for you. Would you be open to a 20-minute call or meeting this week?
-
-Best,
-Matt Golden
-MG Realty
-(323) 688-3855`
-  }),
-  custom: () => ({ subject: '', body: '' })
-};
 
 function openEmailTemplate(id) {
   try {
