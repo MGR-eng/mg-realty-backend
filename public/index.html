@@ -7178,7 +7178,7 @@ function toggleEmailSchedule(cb) {
   }
 }
 
-async async function handleEmailSend() {
+async function handleEmailSend() {
   const isScheduled = document.getElementById('email-schedule-toggle')?.checked;
   if (isScheduled) {
     await scheduleEmail();
