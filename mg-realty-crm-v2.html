@@ -2159,7 +2159,7 @@ async function renderDetailPostClose(leadId){
   }catch(e){sec.style.display='none';}
 }
 
-function renderAll(){renderStats();renderDashDue();renderSellers();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();if(typeof renderSellers==="function")renderSellers();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
 
 // ── Weekly Client Reports ─────────────────────────────────────
 async function sendClientReport(leadId) {
@@ -3967,7 +3967,7 @@ function showCeTab(tab) {
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
-  if (tab === 'sellers') { renderSellers(); }
+  if (tab === 'sellers') { if(typeof renderSellers==="function") renderSellers(); }
 }
 
 function renderCalendar() {
