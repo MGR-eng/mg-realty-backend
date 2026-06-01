@@ -1845,7 +1845,7 @@ function renderDashDue(){
   const urgent=leads.filter(l=>l.temp!=='done'&&du(l.followup)!==null&&du(l.followup)<=0).sort((a,b)=>(du(a.followup)||0)-(du(b.followup)||0));
   const el=document.getElementById('dashDue');
   if(!urgent.length){el.innerHTML='<div class="empty">Nothing overdue — nice work!</div>';return;}
-  el.innerHTML=`<table><thead><tr><th>Name</th><th>Temp</th><th>Follow-up</th></tr></thead><tbody>${urgent.slice(0,6).map(l=>`<tr class="${du(l.followup)<0?'ov-row':'td-row'}" onclick="openAct('${l.id}')"><td><div class="ns">${l.first} ${l.last}</div></td><td>${tb(l.temp)}</td><td>${ffu(l.followup,l.method)}</td></tr>`).join('')}</tbody></table>`;
+  el.innerHTML=`<table><thead><tr><th>Name</th><th>Temp</th><th>Follow-up</th></tr></thead><tbody>${urgent.slice(0,6).map(l=>`<tr class="${du(l.followup)<0?'ov-row':'td-row'}" style="cursor:pointer" onclick="openLeadDetail('${l.id}')"><td><div class="ns" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px">${l.first} ${l.last}</div></td><td>${tb(l.temp)}</td><td>${ffu(l.followup,l.method)}</td></tr>`).join('')}</tbody></table>`;
 }
 function renderDashActs(){
   const el=document.getElementById('dashActs');
@@ -6286,10 +6286,15 @@ async function saveDebrief() {
             from: 'business'
           })
         });
-        sent++;
-      } catch(e) { console.error('Debrief email failed:', e); }
+        const d = await r.json().catch(() => ({}));
+        if (d.ok !== false) sent++;
+        else toast('Send failed for ' + lead.first + ': ' + (d.error || 'unknown error'));
+      } catch(e) { toast('Error sending to ' + lead.first + ': ' + e.message); }
     }
-    toast(`✓ Debrief saved · ${sent} follow-up email${sent !== 1 ? 's' : ''} sent`);
+    const noEmail = selectedLeads.filter(l => !l.email).map(l => l.first);
+    let msg = `✓ Debrief saved · ${sent} email${sent !== 1 ? 's' : ''} sent`;
+    if (noEmail.length) msg += ` (${noEmail.join(', ')} skipped — no email)`;
+    toast(msg);
   } else {
     toast(`✓ Open house debrief saved`);
   }
