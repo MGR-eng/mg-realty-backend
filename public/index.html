@@ -1491,7 +1491,11 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Email</label><input id="agf6" placeholder="agent@brokerage.com"></div>
     <div class="fgg"><label>License #</label><input id="agf7" placeholder="CA DRE #"></div>
     <div class="fgg"><label>Rating</label><select id="agf8"><option value="">— none —</option><option value="⭐⭐⭐ Preferred">⭐⭐⭐ Preferred</option><option value="⭐⭐ Good">⭐⭐ Good</option><option value="⭐ Neutral">⭐ Neutral</option><option value="⚠️ Avoid">⚠️ Avoid</option></select></div>
-    <div class="fgg full"><label>Notes</label><textarea id="agf9" placeholder="Communication style, specialties, past deals…" style="min-height:60px"></textarea></div>
+    <div class="fgg"><label>Preferred contact</label><select id="agf10"><option value="">— select —</option><option value="Call">📞 Call</option><option value="Text">💬 Text</option><option value="Email">✉️ Email</option></select></div>
+    <div class="fgg"><label>Response style</label><select id="agf11"><option value="">— select —</option><option value="Very responsive">⚡ Very responsive</option><option value="Responsive">👍 Responsive</option><option value="Slow">🐢 Slow</option><option value="Difficult">⚠️ Difficult</option></select></div>
+    <div class="fgg"><label>Last deal date</label><input type="date" id="agf12"></div>
+    <div class="fgg"><label>Years in business</label><input id="agf13" placeholder="e.g. 10 years"></div>
+    <div class="fgg full"><label>Notes</label><textarea id="agf9" placeholder="Communication style, specialties, deal history…" style="min-height:60px"></textarea></div>
   </div>
   <div class="mfoot"><button class="btn" onclick="closeModal('mAgent')">Cancel</button><button class="btn btn-primary" onclick="saveAgent()">Save agent</button></div>
 </div></div>
@@ -2921,13 +2925,17 @@ function openEditAgent(id){
   document.getElementById('agf3').value=a.brokerage||'';document.getElementById('agf4').value=a.agentType||"Buyer's Agent";
   document.getElementById('agf5').value=a.phone||'';document.getElementById('agf6').value=a.email||'';
   document.getElementById('agf7').value=a.license||'';document.getElementById('agf8').value=a.rating||'';
+  if(document.getElementById('agf10'))document.getElementById('agf10').value=a.preferredContact||'';
+  if(document.getElementById('agf11'))document.getElementById('agf11').value=a.responseStyle||'';
+  if(document.getElementById('agf12'))document.getElementById('agf12').value=a.lastDealDate||'';
+  if(document.getElementById('agf13'))document.getElementById('agf13').value=a.yearsInBusiness||'';
   document.getElementById('agf9').value=a.notes||'';
   openModal('mAgent');
 }
 function saveAgent(){
   const g=id=>document.getElementById(id).value.trim();
   if(!g('agf1')&&!g('agf2')){alert('Name required');return;}
-  const agent={id:editAgentId||'ag'+Date.now(),first:g('agf1'),last:g('agf2'),brokerage:g('agf3'),agentType:document.getElementById('agf4').value,phone:g('agf5'),email:g('agf6'),license:g('agf7'),rating:document.getElementById('agf8').value,notes:g('agf9')};
+  const agent={id:editAgentId||'ag'+Date.now(),first:g('agf1'),last:g('agf2'),brokerage:g('agf3'),agentType:document.getElementById('agf4').value,phone:g('agf5'),email:g('agf6'),license:g('agf7'),rating:document.getElementById('agf8').value,notes:g('agf9'),preferredContact:document.getElementById('agf10')?.value||'',responseStyle:document.getElementById('agf11')?.value||'',lastDealDate:document.getElementById('agf12')?.value||'',yearsInBusiness:g('agf13')};
   if(editAgentId){agents=agents.map(a=>a.id===editAgentId?agent:a);}else{agents.push(agent);}
   editAgentId=null;persist();closeModal('mAgent');renderAgents();toast(editAgentId?'Agent updated':'Agent added');
 }
