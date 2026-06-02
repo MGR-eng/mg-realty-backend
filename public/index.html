@@ -6041,9 +6041,29 @@ async function fuSaveAndNext() {
   }
 }
 
-function fuSkip() {
+async function fuSkip() {
+  const lead = fuQueue[fuIndex];
+  if (lead) {
+    // Push tomorrow's date to Supabase so it doesn't keep appearing
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextDate = tomorrow.toISOString().split('T')[0];
+    try {
+      await fetch(BACKEND + '/crm/followup-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead.id,
+          method: lead.method || 'call',
+          outcome: 'skipped',
+          notes: 'Skipped — follow up tomorrow',
+          nextDate,
+          nextMethod: lead.method || 'call'
+        })
+      });
+    } catch(e) { console.error('Skip update failed:', e); }
+  }
   fuIndex++;
-  if (fuIndex >= fuQueue.length) { closeFollowUpAlert(); toast('All caught up!'); }
+  if (fuIndex >= fuQueue.length) { closeFollowUpAlert(); toast('Skipped — follow-up set for tomorrow'); }
   else renderFuModal();
 }
 
