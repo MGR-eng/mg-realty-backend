@@ -643,6 +643,19 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     </div>
   </div>
 
+<div id="pane-sellers" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-home-dollar" style="margin-right:6px;color:var(--accent)"></i>Seller Hub</div>
+    <div class="tba">
+      <button class="btn" onclick="openListingPresentation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA"><i class="ti ti-presentation"></i> Listing Presentation</button>
+      <button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(()=>{document.getElementById('lf7').value='seller';openAddLead();},50)"><i class="ti ti-user-plus"></i> Add seller</button>
+    </div>
+  </div>
+  <div class="content">
+    <div id="sellerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;padding:4px 0"></div>
+  </div>
+</div>
+
 <div id="pane-activity" class="pane">
   <div class="topbar"><div class="page-title">Activity log</div><div class="tba"><select id="fact" onchange="renderActs()" style="width:auto"><option value="">All types</option><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option><option value="showing">Showing</option><option value="open house">Open house</option><option value="offer">Offer</option></select></div></div>
   <div class="content"><div class="tw"><div id="actList"></div></div></div>
