@@ -489,6 +489,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('activity',this)"><i class="ti ti-activity"></i><span>Activity log</span></button>
     <button class="nav-item" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span><span class="nb" id="nb-appts">0</span></button>
     <button class="nav-item" onclick="showPane('pipeline',this)"><i class="ti ti-layout-kanban"></i><span>Pipeline</span></button>
+    <button class="nav-item" onclick="showPane('transactions',this)"><i class="ti ti-home-move"></i><span>Transactions</span><span class="nb" id="nb-transactions" style="display:none">0</span></button>
     <button class="nav-item" onclick="showPane('properties',this)"><i class="ti ti-building"></i><span>Properties</span></button>
     <button class="nav-item" onclick="showPane('tasks',this)"><i class="ti ti-checkbox"></i><span>Tasks</span><span class="nb" id="nb-tasks">0</span></button>
     <button class="nav-item" onclick="showPane('commission',this)"><i class="ti ti-coin"></i><span>Commission</span></button>
@@ -683,6 +684,19 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <div id="pane-pipeline" class="pane">
   <div class="topbar"><div class="page-title">Pipeline</div></div>
   <div class="content"><div class="pipeline" id="pipelineBoard"></div></div>
+</div>
+
+<!-- Transactions pane -->
+<div id="pane-transactions" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-home-move" style="margin-right:6px;color:var(--accent)"></i>Transactions</div>
+    <div class="tba">
+      <button class="btn btn-gold" onclick="openNewTransaction()"><i class="ti ti-plus"></i> New Transaction</button>
+    </div>
+  </div>
+  <div class="content">
+    <div id="transactions-pipeline" style="overflow-x:auto;padding-bottom:16px"></div>
+  </div>
 </div>
 
 <!-- Properties pane -->
@@ -2316,7 +2330,7 @@ async function renderDetailPostClose(leadId){
   }catch(e){sec.style.display='none';}
 }
 
-function renderAll(){renderStats();renderDashDue();if(typeof renderSellers==="function")renderSellers();if(typeof renderActiveLeads==="function")renderActiveLeads();if(typeof renderDashSellers==="function")renderDashSellers();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();if(typeof renderSellers==="function")renderSellers();if(typeof renderActiveLeads==="function")renderActiveLeads();if(typeof renderDashSellers==="function")renderDashSellers();if(typeof renderTransactions==="function")renderTransactions();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
 
 // ── Weekly Client Reports ─────────────────────────────────────
 async function sendClientReport(leadId) {
@@ -4144,6 +4158,7 @@ function showCeTab(tab) {
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
   if (tab === 'sellers') { if(typeof renderSellers==="function") renderSellers(); }
+  if (tab === 'transactions') { if(typeof renderTransactions==="function") renderTransactions(); }
 }
 
 function renderCalendar() {
@@ -7902,6 +7917,237 @@ async function syncGmailSent(silent) {
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() { syncGmailSent(true); }, 3000);
 });
+</script>
+
+
+<!-- ── Transaction Modal ──────────────────────────────────────── -->
+<div id="mTransaction" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:600px">
+    <div class="mhead"><span id="tx-modal-title">New Transaction</span><button class="close-btn" onclick="document.getElementById('mTransaction').style.display='none'"><i class="ti ti-x"></i></button></div>
+    <div class="mbody" style="max-height:70vh;overflow-y:auto">
+      <!-- Address + Stage -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg" style="grid-column:1/-1"><label>Property Address *</label><input id="tx-address" placeholder="1234 Sunset Blvd, West Hollywood"></div>
+        <div class="fg"><label>Stage</label><select id="tx-stage"><option value="Offer Submitted">Offer Submitted</option><option value="Under Contract">Under Contract</option><option value="Inspection">Inspection</option><option value="Appraisal">Appraisal</option><option value="Loan Approval">Loan Approval</option><option value="Clear to Close">Clear to Close</option><option value="Closed">Closed</option></select></div>
+        <div class="fg"><label>Side</label><select id="tx-side"><option>Buyer side</option><option>Seller side</option><option>Both sides</option></select></div>
+        <div class="fg"><label>Client (Lead)</label><select id="tx-lead"><option value="">— none —</option></select></div>
+        <div class="fg"><label>Sale Price</label><input id="tx-price" placeholder="$1,200,000"></div>
+        <div class="fg"><label>Commission %</label><input id="tx-commission" placeholder="2.5%"></div>
+      </div>
+      <!-- Key Dates -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Key Dates</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Offer Date</label><input type="date" id="tx-offer-date"></div>
+        <div class="fg"><label>Close Date</label><input type="date" id="tx-closingdate"></div>
+        <div class="fg"><label>Inspection Deadline</label><input type="date" id="tx-inspection-date"></div>
+        <div class="fg"><label>Contingency Removal</label><input type="date" id="tx-contingency-date"></div>
+        <div class="fg"><label>Loan Approval Deadline</label><input type="date" id="tx-loan-date"></div>
+      </div>
+      <!-- Co-op Agent -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Co-op Agent (Other Side)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Agent Name</label><input id="tx-coop-agent" placeholder="Jane Smith"></div>
+        <div class="fg"><label>Brokerage</label><input id="tx-coop-brokerage" placeholder="Compass"></div>
+      </div>
+      <!-- Checklist -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Document Checklist</div>
+      <div id="tx-checklist" style="margin-bottom:12px"></div>
+      <!-- Notes -->
+      <div class="fg" style="margin-bottom:14px"><label>Notes</label><textarea id="tx-notes" rows="2" style="width:100%;resize:none"></textarea></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gold" style="flex:1" onclick="saveTransaction()"><i class="ti ti-check"></i> Save</button>
+        <button class="btn btn-red btn-sm" onclick="deleteTx(editTxId)" id="tx-delete-btn"><i class="ti ti-trash"></i></button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="document.getElementById('mTransaction').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Transactions Pipeline ─────────────────────────────────────
+var TX_STAGES = ['Offer Submitted','Under Contract','Inspection','Appraisal','Loan Approval','Clear to Close','Closed'];
+var TX_COLORS = {
+  'Offer Submitted':'rgba(96,165,250,0.15)',
+  'Under Contract':'rgba(167,139,250,0.15)',
+  'Inspection':'rgba(251,191,36,0.15)',
+  'Appraisal':'rgba(232,104,26,0.15)',
+  'Loan Approval':'rgba(248,113,113,0.15)',
+  'Clear to Close':'rgba(74,222,128,0.15)',
+  'Closed':'rgba(74,222,128,0.25)'
+};
+var TX_BORDER = {
+  'Offer Submitted':'rgba(96,165,250,0.4)',
+  'Under Contract':'rgba(167,139,250,0.4)',
+  'Inspection':'rgba(251,191,36,0.4)',
+  'Appraisal':'rgba(232,104,26,0.4)',
+  'Loan Approval':'rgba(248,113,113,0.4)',
+  'Clear to Close':'rgba(74,222,128,0.4)',
+  'Closed':'rgba(74,222,128,0.6)'
+};
+var TX_DOCS = [
+  'Purchase Agreement','Seller Disclosures','Buyer Pre-Approval',
+  'Inspection Report','Inspection Contingency Removal',
+  'Appraisal','Loan Contingency Removal',
+  'Final Walk-Through','Grant Deed','Closing Statement'
+];
+
+var editTxId = null;
+
+function renderTransactions() {
+  var board = document.getElementById('transactions-pipeline');
+  if (!board) return;
+  var txs = deals.filter(function(d) { return d.txStage; });
+  var allTxs = deals;
+
+  // Update badge
+  var badge = document.getElementById('nb-transactions');
+  var active = allTxs.filter(function(d) { return d.txStage && d.txStage !== 'Closed'; }).length;
+  if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
+
+  if (!allTxs.length) {
+    board.innerHTML = '<div class="empty">No transactions yet. Click "New Transaction" to start tracking a deal.</div>';
+    return;
+  }
+
+  // Pipeline columns
+  board.innerHTML = '<div style="display:flex;gap:16px;min-width:max-content;padding:4px 0">'
+    + TX_STAGES.map(function(stage) {
+        var stageTxs = allTxs.filter(function(d) { return (d.txStage || 'Offer Submitted') === stage; });
+        return '<div style="width:280px;flex-shrink:0">'
+          + '<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;justify-content:space-between">'
+          + '<span>' + stage + '</span><span style="color:var(--text3)">' + stageTxs.length + '</span></div>'
+          + stageTxs.map(function(d) { return renderTxCard(d); }).join('')
+          + '<button class="btn btn-sm" onclick="openNewTransaction('' + stage + '')" style="width:100%;margin-top:8px;background:var(--surface2);color:var(--text3);border:1px dashed var(--border);font-size:11px">+ Add deal</button>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
+function renderTxCard(d) {
+  var lead = leads.find(function(l) { return l.id === d.leadId; });
+  var daysToClose = d.closeDate ? Math.ceil((new Date(d.closeDate) - new Date()) / 86400000) : null;
+  var checklist = d.checklist || {};
+  var checkCount = TX_DOCS.filter(function(doc) { return checklist[doc]; }).length;
+  var price = d.salePrice ? '$' + Number(d.salePrice).toLocaleString() : '—';
+  var stage = d.txStage || 'Offer Submitted';
+  var bg = TX_COLORS[stage] || 'var(--surface)';
+  var border = TX_BORDER[stage] || 'var(--border)';
+  var closeDayText = daysToClose !== null
+    ? (daysToClose < 0 ? '<span style="color:var(--red)">Closed ' + Math.abs(daysToClose) + 'd ago</span>'
+      : daysToClose === 0 ? '<span style="color:var(--amber)">Closes TODAY</span>'
+      : '<span style="color:' + (daysToClose <= 7 ? 'var(--amber)' : 'var(--text2)') + '">Closes in ' + daysToClose + 'd</span>')
+    : '';
+
+  return '<div style="background:' + bg + ';border:1px solid ' + border + ';border-radius:var(--rl);padding:14px;margin-bottom:10px;cursor:pointer" onclick="openEditTransaction('' + d.id + '')">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+    + '<div style="font-size:13px;font-weight:700;line-height:1.3">' + (d.address || 'No address') + '</div>'
+    + '<span style="font-size:11px;font-weight:600;color:var(--accent)">' + (d.side || '') + '</span>'
+    + '</div>'
+    + (lead ? '<div style="font-size:11px;color:var(--text2);margin-bottom:6px">👤 ' + lead.first + ' ' + lead.last + '</div>' : '')
+    + '<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px">' + price + '</div>'
+    + (d.closeDate ? '<div style="font-size:11px;margin-bottom:6px">' + closeDayText + ' · ' + d.closeDate + '</div>' : '')
+    + (d.coopAgent ? '<div style="font-size:11px;color:var(--text2);margin-bottom:6px">🤝 ' + d.coopAgent + (d.coopBrokerage ? ' · ' + d.coopBrokerage : '') + '</div>' : '')
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'
+    + '<div style="font-size:10px;color:var(--text3)">Docs: ' + checkCount + '/' + TX_DOCS.length + '</div>'
+    + '<div style="width:80px;height:4px;background:var(--border);border-radius:99px;overflow:hidden"><div style="width:' + Math.round(checkCount/TX_DOCS.length*100) + '%;height:100%;background:var(--accent);border-radius:99px"></div></div>'
+    + '</div>'
+    + '</div>';
+}
+
+function openNewTransaction(stage) {
+  editTxId = null;
+  document.getElementById('tx-modal-title').textContent = 'New Transaction';
+  ['tx-address','tx-price','tx-commission','tx-closingdate','tx-offer-date','tx-inspection-date','tx-contingency-date','tx-loan-date','tx-coop-agent','tx-coop-brokerage','tx-notes'].forEach(function(id) {
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  var stageEl = document.getElementById('tx-stage');
+  if (stageEl) stageEl.value = stage || 'Offer Submitted';
+  var sideEl = document.getElementById('tx-side');
+  if (sideEl) sideEl.value = 'Buyer side';
+  var leadEl = document.getElementById('tx-lead');
+  if (leadEl) {
+    leadEl.innerHTML = '<option value="">— none —</option>' + leads.map(function(l) {
+      return '<option value="' + l.id + '">' + l.first + ' ' + l.last + '</option>';
+    }).join('');
+  }
+  renderTxChecklist({});
+  document.getElementById('mTransaction').style.display = 'flex';
+}
+
+function openEditTransaction(id) {
+  editTxId = id;
+  var d = deals.find(function(x) { return x.id === id; });
+  if (!d) return;
+  document.getElementById('tx-modal-title').textContent = 'Edit Transaction';
+  var fields = {
+    'tx-address': d.address||'', 'tx-price': d.salePrice||'', 'tx-commission': d.commissionPct||'',
+    'tx-closingdate': d.closeDate||'', 'tx-offer-date': d.offerDate||'',
+    'tx-inspection-date': d.inspectionDeadline||'', 'tx-contingency-date': d.contingencyRemoval||'',
+    'tx-loan-date': d.loanApprovalDeadline||'', 'tx-coop-agent': d.coopAgent||'',
+    'tx-coop-brokerage': d.coopBrokerage||'', 'tx-notes': d.notes||''
+  };
+  Object.entries(fields).forEach(function(e) { var el=document.getElementById(e[0]); if(el) el.value=e[1]; });
+  var stageEl = document.getElementById('tx-stage'); if(stageEl) stageEl.value = d.txStage||'Offer Submitted';
+  var sideEl = document.getElementById('tx-side'); if(sideEl) sideEl.value = d.side||'Buyer side';
+  var leadEl = document.getElementById('tx-lead');
+  if (leadEl) {
+    leadEl.innerHTML = '<option value="">— none —</option>' + leads.map(function(l) {
+      return '<option value="' + l.id + '"' + (l.id===d.leadId?' selected':'') + '>' + l.first + ' ' + l.last + '</option>';
+    }).join('');
+  }
+  renderTxChecklist(d.checklist||{});
+  document.getElementById('mTransaction').style.display = 'flex';
+}
+
+function renderTxChecklist(checked) {
+  var el = document.getElementById('tx-checklist');
+  if (!el) return;
+  el.innerHTML = TX_DOCS.map(function(doc) {
+    return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer">'
+      + '<input type="checkbox" id="chk_' + doc.replace(/\s/g,'_') + '" ' + (checked[doc]?'checked':'') + ' style="accent-color:var(--accent);width:14px;height:14px">'
+      + '<span>' + doc + '</span></label>';
+  }).join('');
+}
+
+function saveTransaction() {
+  var g = function(id) { var el=document.getElementById(id); return el ? el.value.trim() : ''; };
+  if (!g('tx-address')) { toast('Address required'); return; }
+  var checklist = {};
+  TX_DOCS.forEach(function(doc) {
+    var el = document.getElementById('chk_' + doc.replace(/\s/g,'_'));
+    if (el) checklist[doc] = el.checked;
+  });
+  var tx = {
+    id: editTxId || 'tx_' + Date.now(),
+    address: g('tx-address'),
+    salePrice: g('tx-price').replace(/[^0-9.]/g,''),
+    commissionPct: g('tx-commission'),
+    closeDate: g('tx-closingdate'),
+    offerDate: g('tx-offer-date'),
+    inspectionDeadline: g('tx-inspection-date'),
+    contingencyRemoval: g('tx-contingency-date'),
+    loanApprovalDeadline: g('tx-loan-date'),
+    coopAgent: g('tx-coop-agent'),
+    coopBrokerage: g('tx-coop-brokerage'),
+    notes: g('tx-notes'),
+    txStage: g('tx-stage'),
+    side: document.getElementById('tx-side')?.value || 'Buyer side',
+    leadId: document.getElementById('tx-lead')?.value || '',
+    checklist: checklist
+  };
+  if (editTxId) { deals = deals.map(function(d) { return d.id===editTxId ? tx : d; }); }
+  else { deals.push(tx); }
+  persist(); renderAll();
+  document.getElementById('mTransaction').style.display = 'none';
+  toast('✓ Transaction saved');
+}
+
+function deleteTx(id) {
+  if (!confirm('Delete this transaction?')) return;
+  deals = deals.filter(function(d) { return d.id !== id; });
+  persist(); renderAll();
+  document.getElementById('mTransaction').style.display = 'none';
+}
 </script>
 
 </body>
