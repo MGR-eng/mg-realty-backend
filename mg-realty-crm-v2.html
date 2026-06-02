@@ -7805,31 +7805,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script>
 function renderDashSellers() {
-  var grid = document.getElementById('dash-sellers-grid');
+  var dashGrid = document.getElementById('dash-sellers-grid');
   var countEl = document.getElementById('dash-sellers-count');
-  if (!grid) return;
+  if (!dashGrid) return;
+  // Temporarily swap grids, render, swap back
+  var sellerGrid = document.getElementById('sellerGrid');
+  if (!sellerGrid || typeof renderSellers !== 'function') return;
+  var origId = sellerGrid.id;
+  sellerGrid.id = 'sellerGrid_bak';
+  dashGrid.id = 'sellerGrid';
+  renderSellers();
+  dashGrid.id = 'dash-sellers-grid';
+  sellerGrid.id = origId;
   var sellers = leads.filter(function(l) { return l.type === 'seller' && l.temp !== 'done'; });
   if (countEl) countEl.textContent = '· ' + sellers.length + ' active';
-  if (!sellers.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active sellers.</div>'; return; }
-  grid.innerHTML = sellers.map(function(l) {
-    var dom = l.added ? Math.floor((Date.now() - new Date(l.added).getTime()) / 86400000) : null;
-    var lastC = l.lastcontact ? rel(l.lastcontact) : 'Never';
-    return '<div style="background:var(--surface);border:1px solid rgba(232,104,26,0.3);border-radius:var(--rl);padding:16px;cursor:pointer" onclick="openLeadDetail(\'' + l.id + '\')">'
-      + '<div style="display:flex;justify-content:space-between;margin-bottom:8px">'
-      + '<div><div style="font-size:15px;font-weight:700">' + l.first + ' ' + l.last + '</div>'
-      + '<div style="font-size:12px;color:var(--text2)">' + (l.prop || 'No property') + '</div></div>'
-      + '<span style="font-size:10px;font-weight:700;color:var(--accent);background:rgba(232,104,26,0.12);padding:2px 8px;border-radius:99px">' + (l.stage || 'New') + '</span>'
-      + '</div>'
-      + '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">'
-      + (l.askingPrice ? '<span>Price: ' + l.askingPrice + '</span> &nbsp;' : '')
-      + (dom !== null ? '<span>DOM: ' + dom + 'd</span> &nbsp;' : '')
-      + '<span>Last: ' + lastC + '</span>'
-      + '</div>'
-      + '<div style="display:flex;gap:5px" onclick="event.stopPropagation()">'
-      + '<button class="btn btn-gold btn-sm" onclick="openOHRecap(\'' + l.id + '\')" style="font-size:10px">Recap</button>'
-      + '<button class="btn btn-sm" onclick="openAct(\'' + l.id + '\')" style="font-size:10px">Log</button>'
-      + '</div></div>';
-  }).join('');
 }
 
 function renderAgentsCards() {
