@@ -638,29 +638,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
   </div>
-  <div class="content"><div class="tw"><table><thead><tr><th style="width:30px"><input type="checkbox" id="selectAllLeads" onchange="toggleSelectAll(this)" style="accent-color:var(--accent)"></th><th style="width:135px;cursor:pointer" onclick="sortLeads('name')" title="Sort by name">Name <span id="sort-name"></span></th><th style="width:115px">Property</th><th style="width:63px">Temp</th><th style="width:58px">Type</th><th style="width:103px;cursor:pointer" onclick="sortLeads('followup')" title="Sort by follow-up">Follow-up <span id="sort-followup"></span></th><th style="width:103px;cursor:pointer" onclick="sortLeads('lastcontact')" title="Sort by last contact">Last contact <span id="sort-lastcontact"></span></th><th style="width:92px"></th></tr></thead><tbody id="ltbody"></tbody></table></div></div>
-</div>
-
-<div id="pane-sellers" class="pane">
-  <div class="topbar">
-    <div class="page-title"><i class="ti ti-home-dollar" style="margin-right:6px;color:var(--accent)"></i>Seller Hub</div>
-    <div class="tba">
-      <button class="btn" onclick="openListingPresentation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA"><i class="ti ti-presentation"></i> Listing Presentation</button>
-      <button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(()=>{document.getElementById('lf7').value='seller';openAddLead();},50)"><i class="ti ti-user-plus"></i> Add seller</button>
+  <div class="content">
+      <div id="leads-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:4px 0"></div>
     </div>
   </div>
-  <div class="content">
-    <div id="sellerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;padding:4px 0"></div>
-  </div>
-</div>
-
-<div id="pane-scheduled" class="pane">
-  <div class="topbar">
-    <div class="page-title"><i class="ti ti-clock-send" style="margin-right:6px;color:var(--accent)"></i>Scheduled Outbox</div>
-    <div class="tba"><button class="btn btn-sm" onclick="renderScheduledPane()"><i class="ti ti-refresh"></i> Refresh</button></div>
-  </div>
-  <div class="content"><div id="scheduled-list" style="max-width:800px"></div></div>
-</div>
 
 <div id="pane-activity" class="pane">
   <div class="topbar"><div class="page-title">Activity log</div><div class="tba"><select id="fact" onchange="renderActs()" style="width:auto"><option value="">All types</option><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option><option value="showing">Showing</option><option value="open house">Open house</option><option value="offer">Offer</option></select></div></div>
@@ -2147,13 +2128,71 @@ function renderDashStages(){
 }
 
 function renderLeads(){
-  const s=document.getElementById('srch').value.toLowerCase(),ft=document.getElementById('ftemp').value,fty=document.getElementById('ftype').value;
-  const fst=document.getElementById('fstage')?.value||'';let f=leads.filter(l=>{if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;if(ft&&l.temp!==ft)return false;if(fty&&l.type!==fty)return false;if(fst&&(l.stage||'new')!==fst)return false;return true;});f=typeof sortLeadsArr==="function"?sortLeadsArr(f):f.sort((a,b)=>{const la=(a.last||"").toLowerCase(),lb=(b.last||"").toLowerCase();if(la!==lb)return la<lb?-1:1;return(a.first||"").toLowerCase()<(b.first||"").toLowerCase()?-1:1;});
-  const tbody=document.getElementById('ltbody');
-  if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">No leads match</div></td></tr>`;return;}
-  tbody.innerHTML=f.map(l=>{
-    const d=du(l.followup),rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
-    return`<tr class="${rc}" style="cursor:pointer"><td onclick="openLeadDetail('${l.id}')" style="width:30px;cursor:default"><input type="checkbox" class="lead-cb" value="${l.id}" onchange="updateBulkBar()" onclick="event.stopPropagation()" style="accent-color:var(--accent)"></td><td onclick="openLeadDetail('${l.id}')"><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?(()=>{const days=Math.floor((new Date()-new Date(l.lastcontact))/86400000);const color=days<=3?'var(--green)':days<=7?'var(--amber)':'var(--red)';const dot=l.temp!=='done'?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:4px;vertical-align:middle"></span>`:'';return dot+rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:'');})():'—'}</td><td style="white-space:nowrap">${l.phone?`<a class="btn btn-sm" title="Call" href="tel:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:#4ADE80;margin-right:3px"><i class="ti ti-phone" style="font-size:11px"></i></a><a class="btn btn-sm" title="Text" href="sms:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA;margin-right:3px"><i class="ti ti-message" style="font-size:11px"></i></a>`:""}<button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-sm" style="margin-left:3px;position:relative" onclick="openLeadDocs('${l.id}');event.stopPropagation()" title="Documents">${(l.docs||[]).length?`<span style="position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;font-size:8px;font-weight:800;border-radius:999px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 2px">${(l.docs||[]).length}</span>`:""}<i class="ti ti-paperclip" style="font-size:11px"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()" title="Delete lead"><i class="ti ti-trash"></i></button></td></tr>`;
+  const s=document.getElementById('srch')?.value.toLowerCase()||'';
+  const ft=document.getElementById('ftemp')?.value||'';
+  const fty=document.getElementById('ftype')?.value||'';
+  const fst=document.getElementById('fstage')?.value||'';
+  let f=leads.filter(l=>{
+    if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;
+    if(ft&&l.temp!==ft)return false;
+    if(fty&&l.type!==fty)return false;
+    if(fst&&(l.stage||'new')!==fst)return false;
+    return true;
+  });
+  f=typeof sortLeadsArr==='function'?sortLeadsArr(f):f.sort((a,b)=>{const la=(a.last||'').toLowerCase(),lb=(b.last||'').toLowerCase();if(la!==lb)return la<lb?-1:1;return(a.first||'').toLowerCase()<(b.first||'').toLowerCase()?-1:1;});
+
+  // Update nb-leads badge
+  const ov=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0).length;
+  const nbLeads=document.getElementById('nb-leads');
+  if(nbLeads){nbLeads.textContent=ov||leads.length;nbLeads.className='nb'+(ov?' red':'');}
+
+  const grid=document.getElementById('leads-grid');
+  if(!grid)return;
+
+  if(!f.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">No leads match</div>';return;}
+
+  const today=new Date().toISOString().split('T')[0];
+  const tempColors={
+    hot:{bg:'rgba(239,68,68,0.08)',border:'rgba(239,68,68,0.3)'},
+    warm:{bg:'rgba(251,191,36,0.08)',border:'rgba(251,191,36,0.3)'},
+    cold:{bg:'rgba(96,165,250,0.08)',border:'rgba(96,165,250,0.25)'},
+    done:{bg:'rgba(74,222,128,0.06)',border:'rgba(74,222,128,0.2)'}
+  };
+
+  grid.innerHTML=f.map(l=>{
+    const tc=tempColors[l.temp]||{bg:'var(--surface)',border:'var(--border)'};
+    const phone=l.phone||'';
+    const followupText=l.followup?(l.followup<=today?`<span style="color:var(--red);font-weight:600">⚠ Overdue</span>`:`📅 ${ffu(l.followup,l.method)}`):'<span style="color:var(--text3)">No follow-up</span>';
+    const lcText=l.lastcontact?(()=>{const days=Math.floor((new Date()-new Date(l.lastcontact))/86400000);const col=days<=3?'var(--green)':days<=7?'var(--amber)':'var(--red)';return`<span style="color:${col}">●</span> ${rel(l.lastcontact)}${l.lcmethod?' · '+l.lcmethod:''}`})():'<span style="color:var(--text3)">Never</span>';
+    const docCount=(l.docs||[]).length+(l.sellerDocs||[]).length;
+
+    return `<div style="background:${tc.bg};border:1px solid ${tc.border};border-radius:var(--rl);padding:16px;transition:transform 0.15s,box-shadow 0.15s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div style="cursor:pointer;flex:1;min-width:0" onclick="openLeadDetail('${l.id}')">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${l.first} ${l.last}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${phone||'No phone'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          ${tb(l.temp)}
+          <input type="checkbox" class="lead-cb" value="${l.id}" onchange="updateBulkBar()" onclick="event.stopPropagation()" style="accent-color:var(--accent);width:14px;height:14px">
+        </div>
+      </div>
+      ${l.prop?`<div style="font-size:12px;color:var(--text2);margin-bottom:8px"><i class="ti ti-home" style="font-size:11px;margin-right:3px"></i>${l.prop}</div>`:''}
+      <div style="display:flex;flex-direction:column;gap:4px;font-size:11px;margin-bottom:12px">
+        <div>${followupText}</div>
+        <div>${lcText}</div>
+        <div style="color:var(--text3);text-transform:capitalize">${l.type||'buyer'} · ${l.stage||'new'}${l.source?' · '+l.source:''}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap" onclick="event.stopPropagation()">
+        ${phone?`<a href="tel:${phone}" class="btn btn-sm" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)" title="Call"><i class="ti ti-phone" style="font-size:11px"></i></a>`:''}
+        ${phone?`<a href="sms:${phone}" class="btn btn-sm" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)" title="Text"><i class="ti ti-message" style="font-size:11px"></i></a>`:''}
+        <button class="btn btn-sm" onclick="openEmailTemplate('${l.id}')" style="background:rgba(232,104,26,0.12);color:var(--accent);border:1px solid rgba(232,104,26,0.3)" title="Email"><i class="ti ti-mail" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" onclick="openAct('${l.id}')" title="Log activity"><i class="ti ti-activity" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" onclick="openLeadDocs('${l.id}')" title="Documents" style="position:relative">${docCount?`<span style="position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;font-size:8px;font-weight:800;border-radius:999px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 2px">${docCount}</span>`:''}<i class="ti ti-paperclip" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" onclick="openEdit('${l.id}')" title="Edit"><i class="ti ti-edit" style="font-size:11px"></i></button>
+        <button class="btn btn-red btn-sm" onclick="delLead('${l.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -2481,10 +2520,25 @@ function openEdit(id){
   document.getElementById('lf11').value=l.notes||'';
   document.getElementById('lf12').value=l.stage||'new';
   document.getElementById('lf13').value=l.source||'Open House';
-  populateAgentDropdown('lf14',l.agentName||'');document.getElementById('lf15').value=l.referredBy||'';
-  document.getElementById('agentContactRows').innerHTML='';
-  const agContacts=l.agentContacts||[];
-  if(agContacts.length){agContacts.forEach(c=>addAgentContactRow(c.type,c.value));}else{addAgentContactRow();}
+  document.getElementById('lf15').value=l.referredBy||'';
+  // Seller-specific fields
+  const lf5b = document.getElementById('lf5b');
+  const lf6b = document.getElementById('lf6b');
+  if(lf5b) lf5b.value = l.askingPrice||'';
+  if(lf6b) lf6b.value = l.listDate||'';
+  const sfMap = {
+    'lf-motivation': l.motivation||'',
+    'lf-timeline': l.sellerTimeline||'',
+    'lf-proptype': l.propType||'',
+    'lf-bedbath': l.bedbath||'',
+    'lf-targetnet': l.targetNet||'',
+    'lf-priorlisting': l.priorListing||'',
+    'lf-competing': l.competing||''
+  };
+  Object.entries(sfMap).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.value=val; });
+  window.pendingSellerDocs = [...(l.sellerDocs||[])];
+  if(typeof renderSellerDocRows==='function') setTimeout(renderSellerDocRows,50);
+  if(typeof toggleSellerFields==='function') setTimeout(toggleSellerFields,50);
   openModal('mLead');
 }
 function saveLead(){
