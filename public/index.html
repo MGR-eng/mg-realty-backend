@@ -8030,7 +8030,7 @@ function renderTransactions() {
           + '<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;justify-content:space-between">'
           + '<span>' + stage + '</span><span style="color:var(--text3)">' + stageTxs.length + '</span></div>'
           + stageTxs.map(function(d) { return renderTxCard(d); }).join('')
-          + '<button class="btn btn-sm" onclick="openNewTransaction('' + stage + '')" style="width:100%;margin-top:8px;background:var(--surface2);color:var(--text3);border:1px dashed var(--border);font-size:11px">+ Add deal</button>'
+          + '<button class="btn btn-sm" onclick="openNewTransactionFn('" + stage + "')" style="width:100%;margin-top:8px;background:var(--surface2);color:var(--text3);border:1px dashed var(--border);font-size:11px">+ Add deal</button>'
           + '</div>';
       }).join('')
     + '</div>';
