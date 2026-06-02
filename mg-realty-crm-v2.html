@@ -7993,6 +7993,19 @@ var TX_DOCS = [
 
 var editTxId = null;
 
+window.openNewTransaction = function(stage) {
+  openNewTransactionFn(stage);
+};
+window.openEditTransaction = function(id) {
+  openEditTransactionFn(id);
+};
+window.saveTransaction = function() {
+  saveTransactionFn();
+};
+window.deleteTx = function(id) {
+  deleteTxFn(id);
+};
+
 function renderTransactions() {
   var board = document.getElementById('transactions-pipeline');
   if (!board) return;
@@ -8038,7 +8051,7 @@ function renderTxCard(d) {
       : '<span style="color:' + (daysToClose <= 7 ? 'var(--amber)' : 'var(--text2)') + '">Closes in ' + daysToClose + 'd</span>')
     : '';
 
-  return '<div style="background:' + bg + ';border:1px solid ' + border + ';border-radius:var(--rl);padding:14px;margin-bottom:10px;cursor:pointer" onclick="openEditTransaction('' + d.id + '')">'
+  return '<div style="background:' + bg + ';border:1px solid ' + border + ';border-radius:var(--rl);padding:14px;margin-bottom:10px;cursor:pointer" onclick="openEditTransactionFn('' + d.id + '')">'
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
     + '<div style="font-size:13px;font-weight:700;line-height:1.3">' + (d.address || 'No address') + '</div>'
     + '<span style="font-size:11px;font-weight:600;color:var(--accent)">' + (d.side || '') + '</span>'
@@ -8054,7 +8067,7 @@ function renderTxCard(d) {
     + '</div>';
 }
 
-function openNewTransaction(stage) {
+function openNewTransactionFn(stage) {
   editTxId = null;
   document.getElementById('tx-modal-title').textContent = 'New Transaction';
   ['tx-address','tx-price','tx-commission','tx-closingdate','tx-offer-date','tx-inspection-date','tx-contingency-date','tx-loan-date','tx-coop-agent','tx-coop-brokerage','tx-notes'].forEach(function(id) {
@@ -8074,7 +8087,7 @@ function openNewTransaction(stage) {
   document.getElementById('mTransaction').style.display = 'flex';
 }
 
-function openEditTransaction(id) {
+function openEditTransactionFn(id) {
   editTxId = id;
   var d = deals.find(function(x) { return x.id === id; });
   if (!d) return;
@@ -8109,7 +8122,7 @@ function renderTxChecklist(checked) {
   }).join('');
 }
 
-function saveTransaction() {
+function saveTransactionFn() {
   var g = function(id) { var el=document.getElementById(id); return el ? el.value.trim() : ''; };
   if (!g('tx-address')) { toast('Address required'); return; }
   var checklist = {};
@@ -8142,7 +8155,7 @@ function saveTransaction() {
   toast('✓ Transaction saved');
 }
 
-function deleteTx(id) {
+function deleteTxFn(id) {
   if (!confirm('Delete this transaction?')) return;
   deals = deals.filter(function(d) { return d.id !== id; });
   persist(); renderAll();
