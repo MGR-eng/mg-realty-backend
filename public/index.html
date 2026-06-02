@@ -1498,7 +1498,9 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Last name</label><input id="lf2" placeholder="Smith"></div>
     <div class="fgg"><label>Phone</label><input id="lf3" placeholder="(310) 555-0100"></div>
     <div class="fgg"><label>Email</label><input id="lf4" placeholder="jane@email.com"></div>
-    <div class="fgg"><label>Property interest</label><input id="lf5" placeholder="Address or budget range"></div>
+    <div class="fgg"><label>Property address / interest</label><input id="lf5" placeholder="Address or budget range"></div>
+    <div class="fgg"><label>Asking price <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf5b" placeholder="e.g. $1,200,000"></div>
+    <div class="fgg"><label>List date <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf6b" type="date"></div>
     <div class="fgg"><label>Open house date</label><input id="lf6" type="date"></div>
     <div class="fgg"><label>Type</label><select id="lf7"><option value="buyer">Buyer</option><option value="seller">Seller</option></select></div>
     <div class="fgg"><label>Temp</label><select id="lf8"><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select></div>
@@ -6669,99 +6671,74 @@ function renderSellers() {
   if (!grid) return;
   const sellers = leads.filter(l => l.type === 'seller' && l.temp !== 'done');
   
-  // Update badge
   const badge = document.getElementById('nb-sellers');
   if (badge) badge.textContent = sellers.length;
 
   if (!sellers.length) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active seller leads. Add a seller to get started.</div>';
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active sellers yet. Add a seller to get started.</div>';
     return;
   }
 
   grid.innerHTML = sellers.map(l => {
-    const daysOld = l.added ? Math.floor((new Date() - new Date(l.added)) / 86400000) : null;
-    const lastContact = l.lastcontact ? rel(l.lastcontact) : 'Never';
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;transition:border-color 0.15s" onmouseover="this.style.borderColor='rgba(232,104,26,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+    // Calculate days on market from added date
+    const dom = l.added ? Math.floor((new Date() - new Date(l.added)) / 86400000) : null;
+    const domText = dom !== null ? `${dom} days` : '—';
+    
+    // Count showings and open houses from activities
+    const leadActs = acts.filter(a => a.leadId === l.id);
+    const showingCount = leadActs.filter(a => a.type === 'showing').length;
+    const ohCount = leadActs.filter(a => a.type === 'open house').length;
+    
+    // Linked property for asking price
+    const linkedProp = props.find(p => p.leadId === l.id || (l.prop && p.address && p.address.toLowerCase().includes((l.prop||'').toLowerCase().substring(0,10))));
+    const askingPrice = linkedProp?.price ? '$' + Number(linkedProp.price).toLocaleString() : (l.askingPrice || '—');
+    
+    const stageColors = { new:'var(--text3)', contacted:'var(--blue)', showing:'var(--purple)', offer:'var(--amber)', closed:'var(--green)' };
+    const stageColor = stageColors[(l.stage||'new').toLowerCase()] || 'var(--text3)';
+    const docCount = (l.docs||[]).length;
+
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;transition:border-color 0.15s,transform 0.15s" 
+        onmouseover="this.style.borderColor='rgba(232,104,26,0.4)';this.style.transform='translateY(-2px)'" 
+        onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
+      
+      <!-- Header: Name + Stage -->
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-        <div>
-          <div style="font-size:15px;font-weight:700">${l.first} ${l.last}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px">${l.prop || 'No property listed'}</div>
+        <div style="cursor:pointer" onclick="openLeadDetail('${l.id}')">
+          <div style="font-size:16px;font-weight:700;color:var(--text)">${l.first} ${l.last}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${l.phone||''} ${l.phone&&l.email?'·':''} ${l.email||''}</div>
         </div>
-        ${tb(l.temp)}
+        <span style="font-size:11px;font-weight:700;color:${stageColor};background:${stageColor}22;padding:3px 10px;border-radius:99px;border:1px solid ${stageColor}44;text-transform:capitalize">${l.stage||'New'}</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:var(--text3);margin-bottom:14px">
-        <div>📞 ${l.phone || '—'}</div>
-        <div>✉️ ${l.email || '—'}</div>
-        <div>📅 Last contact: ${lastContact}</div>
-        <div>📍 Stage: ${l.stage || 'new'}</div>
+
+      <!-- Property Info -->
+      <div style="background:var(--surface2);border-radius:var(--r);padding:12px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px"><i class="ti ti-home" style="color:var(--accent);margin-right:4px"></i>${l.prop || 'No property address'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--text2)">
+          <div>💰 Asking: <strong style="color:var(--text)">${askingPrice}</strong></div>
+          <div>📅 DOM: <strong style="color:var(--text)">${domText}</strong></div>
+          <div>🏠 Showings: <strong style="color:var(--text)">${showingCount}</strong></div>
+          <div>🔑 Open Houses: <strong style="color:var(--text)">${ohCount}</strong></div>
+        </div>
       </div>
-      ${l.notes ? `<div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5;padding:8px;background:var(--surface2);border-radius:6px">${l.notes.substring(0,100)}${l.notes.length>100?'…':''}</div>` : ''}
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+
+      <!-- Last contact + notes -->
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;display:flex;justify-content:space-between">
+        <span>Last contact: ${l.lastcontact ? rel(l.lastcontact) + (l.lcmethod?' · '+l.lcmethod:'') : 'Never'}</span>
+        ${docCount ? `<span style="color:var(--accent)">📎 ${docCount} doc${docCount!==1?'s':''}</span>` : ''}
+      </div>
+      ${l.notes ? `<div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5;padding:8px;background:var(--surface2);border-radius:6px">${l.notes.substring(0,120)}${l.notes.length>120?'…':''}</div>` : ''}
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn btn-gold btn-sm" onclick="openOHRecap('${l.id}')"><i class="ti ti-mail-forward" style="font-size:11px"></i> Send Recap</button>
-        <button class="btn btn-sm" onclick="openEmailTemplate('${l.id}');event.stopPropagation()" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)"><i class="ti ti-mail" style="font-size:11px"></i> Email</button>
-        <button class="btn btn-sm" onclick="openAct('${l.id}')"><i class="ti ti-activity" style="font-size:11px"></i> Log</button>
-        <button class="btn btn-sm" onclick="openEdit('${l.id}')"><i class="ti ti-edit" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" onclick="openPriceDrop('${l.id}')" style="background:rgba(248,113,113,0.12);color:#F87171;border:1px solid rgba(248,113,113,0.3)" title="Price drop"><i class="ti ti-trending-down" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" onclick="openLeadDocs('${l.id}')" style="background:rgba(232,104,26,0.12);color:var(--accent);border:1px solid rgba(232,104,26,0.3)" title="Documents"><i class="ti ti-paperclip" style="font-size:11px"></i>${docCount?`<span style="background:var(--accent);color:#fff;font-size:8px;font-weight:800;border-radius:999px;padding:0 4px;margin-left:2px">${docCount}</span>`:''}</button>
+        <button class="btn btn-sm" onclick="openEmailTemplate('${l.id}')" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)" title="Email"><i class="ti ti-mail" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" onclick="openAct('${l.id}')" title="Log activity"><i class="ti ti-activity" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" onclick="openEdit('${l.id}')" title="Edit"><i class="ti ti-edit" style="font-size:11px"></i></button>
       </div>
     </div>`;
   }).join('');
-}
-
-function openOHRecap(leadId) {
-  recapLeadId = leadId;
-  const lead = leads.find(l => l.id === leadId);
-  if (!lead) return;
-  
-  document.getElementById('recap-seller-info').innerHTML = `<strong>${lead.first} ${lead.last}</strong> · ${lead.prop || 'No property'} · ${lead.email || 'No email'}`;
-  document.getElementById('recap-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('recap-visitors').value = '';
-  document.getElementById('recap-interested').value = '';
-  document.getElementById('recap-offers').value = '';
-  document.getElementById('recap-feedback').value = '';
-  document.getElementById('recap-nextsteps').value = '';
-  document.getElementById('recap-preview').style.display = 'none';
-  document.getElementById('recap-btn').disabled = false;
-  document.getElementById('recap-btn').innerHTML = '<i class="ti ti-sparkles"></i> Generate & Send';
-  document.getElementById('mOHRecap').style.display = 'flex';
-}
-
-async function generateAndSendRecap() {
-  const lead = leads.find(l => l.id === recapLeadId);
-  if (!lead || !lead.email) { toast('Seller needs an email address first'); return; }
-
-  const btn = document.getElementById('recap-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="ti ti-loader"></i> Generating…';
-
-  const data = {
-    sellerName: lead.first,
-    sellerEmail: lead.email,
-    property: lead.prop || 'your property',
-    date: document.getElementById('recap-date').value,
-    visitors: document.getElementById('recap-visitors').value || '0',
-    interested: document.getElementById('recap-interested').value || '0',
-    offers: document.getElementById('recap-offers').value || '0',
-    feedback: document.getElementById('recap-feedback').value,
-    nextsteps: document.getElementById('recap-nextsteps').value
-  };
-
-  try {
-    const r = await fetch(BACKEND + '/email/oh-recap', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    const d = await r.json();
-    if (!d.ok) throw new Error(d.error);
-    toast(`✓ Open house recap sent to ${lead.email}`);
-    document.getElementById('mOHRecap').style.display = 'none';
-    // Log activity
-    activities.unshift({ id:'a'+Date.now(), leadId:lead.id, leadName:`${lead.first} ${lead.last}`, date:new Date().toISOString().split('T')[0], time:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}), type:'email', direction:'outbound', outcome:'sent', notes:`Open house recap sent for ${data.property}` });
-    persist(); renderAll();
-  } catch(e) {
-    toast('Error: ' + e.message);
-    btn.disabled = false;
-    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate & Send';
-  }
 }
 
 // Hook into renderAll
