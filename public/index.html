@@ -2072,7 +2072,7 @@ function renderLeads(){
   tbody.innerHTML=f.map(l=>{
     const d=du(l.followup),rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
     const score = calcLeadScore(l);
-    return`<tr class="${rc}" style="cursor:pointer"><td onclick="openLeadDetail('${l.id}')" style="width:30px;cursor:default"><input type="checkbox" class="lead-cb" value="${l.id}" onchange="updateBulkBar()" onclick="event.stopPropagation()" style="accent-color:var(--accent)"></td><td onclick="openLeadDetail('${l.id}')"><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${scoreTag(score)}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?(()=>{const days=Math.floor((new Date()-new Date(l.lastcontact))/86400000);const color=days<=3?'var(--green)':days<=7?'var(--amber)':'var(--red)';const dot=l.temp!=='done'?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:4px;vertical-align:middle"></span>`:'';return dot+rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:'');})():'—'}</td><td style="white-space:nowrap">${l.phone?`<a class="btn btn-sm" title="Call" href="tel:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:#4ADE80;margin-right:3px"><i class="ti ti-phone" style="font-size:11px"></i></a><a class="btn btn-sm" title="Text" href="sms:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA;margin-right:3px"><i class="ti ti-message" style="font-size:11px"></i></a>`:""}<button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()" title="Delete lead"><i class="ti ti-trash"></i></button></td></tr>`;
+    return`<tr class="${rc}" style="cursor:pointer"><td onclick="openLeadDetail('${l.id}')" style="width:30px;cursor:default"><input type="checkbox" class="lead-cb" value="${l.id}" onchange="updateBulkBar()" onclick="event.stopPropagation()" style="accent-color:var(--accent)"></td><td onclick="openLeadDetail('${l.id}')"><div class="ns">${l.first} ${l.last}</div><div class="nsb">${l.phone||''}</div></td><td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td><td>${tb(l.temp)}</td><td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td><td>${scoreTag(score)}</td><td>${ffu(l.followup,l.method)}</td><td style="font-size:12px;color:var(--text2)">${l.lastcontact?(()=>{const days=Math.floor((new Date()-new Date(l.lastcontact))/86400000);const color=days<=3?'var(--green)':days<=7?'var(--amber)':'var(--red)';const dot=l.temp!=='done'?`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:4px;vertical-align:middle"></span>`:'';return dot+rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:'');})():'—'}</td><td style="white-space:nowrap">${l.phone?`<a class="btn btn-sm" title="Call" href="tel:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);color:#4ADE80;margin-right:3px"><i class="ti ti-phone" style="font-size:11px"></i></a><a class="btn btn-sm" title="Text" href="sms:${l.phone}" onclick="event.stopPropagation()" style="background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.25);color:#60A5FA;margin-right:3px"><i class="ti ti-message" style="font-size:11px"></i></a>`:""}<button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button><button class="btn btn-gold btn-sm" style="margin-left:3px" title="Send email" onclick="openEmailTemplate('${l.id}');event.stopPropagation()"><i class="ti ti-mail"></i></button><button class="btn btn-sm" style="margin-left:3px" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button><button class="btn btn-sm" style="margin-left:3px;position:relative" onclick="openLeadDocs('${l.id}');event.stopPropagation()" title="Documents">${(l.docs||[]).length?`<span style="position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;font-size:8px;font-weight:800;border-radius:999px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center;padding:0 2px">${(l.docs||[]).length}</span>`:""}<i class="ti ti-paperclip" style="font-size:11px"></i></button><button class="btn btn-red btn-sm" style="margin-left:3px" onclick="delLead('${l.id}');event.stopPropagation()" title="Delete lead"><i class="ti ti-trash"></i></button></td></tr>`;
   }).join('');
 }
 
@@ -7413,6 +7413,114 @@ function renderActiveLeads() {
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(renderActiveLeads, 800);
 });
+</script>
+
+
+<!-- ── Lead Documents Modal ───────────────────────────────────── -->
+<div class="modal-overlay" id="mLeadDocs">
+  <div class="modal" style="max-width:500px">
+    <div class="mhead"><span id="leadDocsTitle">📎 Lead Documents</span><button class="close-btn" onclick="closeModal('mLeadDocs')"><i class="ti ti-x"></i></button></div>
+    <div style="padding:0 0 8px">
+      <input type="file" id="leadDocFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadLeadDocs(this)">
+      <button class="btn" id="leadDocUploadBtn" onclick="document.getElementById('leadDocFile').click()" style="width:100%;border:1.5px dashed var(--border);background:var(--surface2);color:var(--text2);font-size:12px;padding:10px;gap:6px;margin-bottom:8px">
+        <i class="ti ti-cloud-upload"></i> Upload documents (PDF, Word, images)
+      </button>
+      <div id="leadDocStatus" style="display:none;font-size:11px;text-align:center;margin-bottom:8px;color:var(--amber)"></div>
+    </div>
+    <div id="leadDocList" style="max-height:320px;overflow-y:auto"></div>
+    <div style="padding-top:8px;text-align:right">
+      <button class="btn" onclick="closeModal('mLeadDocs')">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Lead Documents ────────────────────────────────────────────
+var leadDocsId = null;
+
+function openLeadDocs(leadId) {
+  leadDocsId = leadId;
+  const l = leads.find(x => x.id === leadId);
+  if (!l) return;
+  document.getElementById('leadDocsTitle').textContent = `📎 ${l.first} ${l.last} — Documents`;
+  document.getElementById('leadDocStatus').style.display = 'none';
+  renderLeadDocList(l);
+  openModal('mLeadDocs');
+}
+
+function renderLeadDocList(l) {
+  const el = document.getElementById('leadDocList');
+  const docs = l.docs || [];
+  if (!docs.length) {
+    el.innerHTML = '<div class="empty" style="padding:20px 0">No documents yet — upload contracts, offers, inspection reports, or anything relevant to this lead.</div>';
+    return;
+  }
+  const iconFor = name => {
+    const ext = name.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'ti-file-type-pdf';
+    if (['doc','docx'].includes(ext)) return 'ti-file-type-doc';
+    if (['jpg','jpeg','png'].includes(ext)) return 'ti-photo';
+    return 'ti-file';
+  };
+  const fmtSize = b => b > 1048576 ? `${(b/1048576).toFixed(1)} MB` : `${Math.round(b/1024)} KB`;
+  el.innerHTML = docs.map(doc => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <i class="ti ${iconFor(doc.name)}" style="font-size:20px;color:var(--accent);flex-shrink:0"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${doc.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${fmtSize(doc.size)} · ${new Date(doc.uploadedAt).toLocaleDateString()}</div>
+      </div>
+      <a href="${doc.data}" download="${doc.name}" class="btn btn-sm" title="Download"><i class="ti ti-download" style="font-size:11px"></i></a>
+      <button class="btn btn-red btn-sm" onclick="deleteLeadDoc('${doc.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
+    </div>`).join('');
+}
+
+async function uploadLeadDocs(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const statusEl = document.getElementById('leadDocStatus');
+  const btnEl = document.getElementById('leadDocUploadBtn');
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--amber)';
+  statusEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}…`;
+  btnEl.disabled = true;
+  try {
+    const l = leads.find(x => x.id === leadDocsId);
+    if (!l) throw new Error('Lead not found');
+    if (!l.docs) l.docs = [];
+    for (const file of files) {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      l.docs.push({ id: 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name: file.name, size: file.size, data, uploadedAt: new Date().toISOString() });
+    }
+    persist();
+    renderLeadDocList(l);
+    renderLeads();
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = `✓ ${files.length} file${files.length > 1 ? 's' : ''} uploaded`;
+    toast(`✓ ${files.length} document${files.length > 1 ? 's' : ''} attached to ${l.first} ${l.last}`);
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = 'Upload failed: ' + e.message;
+  }
+  btnEl.disabled = false;
+  input.value = '';
+}
+
+function deleteLeadDoc(docId) {
+  if (!confirm('Delete this document?')) return;
+  const l = leads.find(x => x.id === leadDocsId);
+  if (!l) return;
+  l.docs = (l.docs || []).filter(d => d.id !== docId);
+  persist();
+  renderLeadDocList(l);
+  renderLeads();
+  toast('Document deleted');
+}
 </script>
 
 </body>
