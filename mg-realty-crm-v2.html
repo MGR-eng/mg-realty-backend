@@ -2508,7 +2508,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   dz.addEventListener('drop',e=>{e.preventDefault();dz.style.borderColor='';const f=e.dataTransfer.files[0];if(f)handleCSVFile(f);});
 });
 
-function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';document.getElementById('lf12').value='new';document.getElementById('lf13').value='Open House';populateAgentDropdown('lf14','');document.getElementById('lf14').value='';document.getElementById('agentContactRows').innerHTML='';addAgentContactRow();openModal('mLead');}
+function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';document.getElementById('lf12').value='new';document.getElementById('lf13').value='Open House';openModal('mLead');if(typeof toggleSellerFields==='function')setTimeout(toggleSellerFields,50);}
 function openEdit(id){
   editLeadId=id;const l=leads.find(x=>x.id===id);
   document.getElementById('leadMT').textContent='Edit lead';
@@ -6819,7 +6819,7 @@ function renderSellers() {
     const domText = dom !== null ? `${dom} days` : '—';
     
     // Count showings and open houses from activities
-    const leadActs = acts.filter(a => a.leadId === l.id);
+    const leadActs = (typeof acts !== 'undefined' ? acts : []).filter(a => a.leadId === l.id);
     const showingCount = leadActs.filter(a => a.type === 'showing').length;
     const ohCount = leadActs.filter(a => a.type === 'open house').length;
     
