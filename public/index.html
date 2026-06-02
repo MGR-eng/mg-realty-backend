@@ -7585,9 +7585,9 @@ function renderLeadDocList(l) {
       <i class="ti ${iconFor(doc.name)}" style="font-size:20px;color:var(--accent);flex-shrink:0"></i>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${doc.name}</div>
-        <div style="font-size:11px;color:var(--text3)">${fmtSize(doc.size)} · ${new Date(doc.uploadedAt).toLocaleDateString()}</div>
+        <div style="font-size:11px;color:var(--text3)">${doc.size ? fmtSize(doc.size) + ' · ' : ''}${new Date(doc.uploadedAt).toLocaleDateString()}</div>
       </div>
-      <a href="${doc.data}" download="${doc.name}" class="btn btn-sm" title="Download"><i class="ti ti-download" style="font-size:11px"></i></a>
+      ${doc.viewUrl ? `<a href="${doc.viewUrl}" target="_blank" class="btn btn-sm" title="View in Drive"><i class="ti ti-external-link" style="font-size:11px"></i></a>` : ''}
       <button class="btn btn-red btn-sm" onclick="deleteLeadDoc('${doc.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
     </div>`).join('');
 }
@@ -7599,30 +7599,41 @@ async function uploadLeadDocs(input) {
   const btnEl = document.getElementById('leadDocUploadBtn');
   statusEl.style.display = 'block';
   statusEl.style.color = 'var(--amber)';
-  statusEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}…`;
+  statusEl.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''} to Drive…`;
   btnEl.disabled = true;
   try {
     const l = leads.find(x => x.id === leadDocsId);
     if (!l) throw new Error('Lead not found');
     if (!l.docs) l.docs = [];
+    let uploaded = 0;
     for (const file of files) {
-      const data = await new Promise((resolve, reject) => {
+      statusEl.textContent = `Uploading ${file.name}…`;
+      const fileData = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = e => resolve(e.target.result);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      l.docs.push({ id: 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name: file.name, size: file.size, data, uploadedAt: new Date().toISOString() });
+      const r = await fetch(BACKEND + '/drive/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, fileData, mimeType: file.type, leadName: `${l.first} ${l.last}` })
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      l.docs.push({ id: d.fileId, name: file.name, size: file.size, viewUrl: d.viewUrl, webViewLink: d.webViewLink, uploadedAt: new Date().toISOString() });
+      uploaded++;
     }
     persist();
     renderLeadDocList(l);
     renderLeads();
     statusEl.style.color = 'var(--green)';
-    statusEl.textContent = `✓ ${files.length} file${files.length > 1 ? 's' : ''} uploaded`;
-    toast(`✓ ${files.length} document${files.length > 1 ? 's' : ''} attached to ${l.first} ${l.last}`);
+    statusEl.textContent = `✓ ${uploaded} file${uploaded > 1 ? 's' : ''} uploaded to Google Drive`;
+    toast(`✓ ${uploaded} document${uploaded > 1 ? 's' : ''} uploaded to Drive`);
   } catch(e) {
     statusEl.style.color = 'var(--red)';
     statusEl.textContent = 'Upload failed: ' + e.message;
+    toast('Upload failed: ' + e.message);
   }
   btnEl.disabled = false;
   input.value = '';

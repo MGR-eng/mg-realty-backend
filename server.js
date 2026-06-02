@@ -798,6 +798,72 @@ Write 3-4 short paragraphs. Be honest but optimistic. Lead with the highlights, 
   }
 });
 
+// ── Google Drive: upload document ────────────────────────────
+app.post('/drive/upload', async (req, res) => {
+  try {
+    const { fileName, fileData, mimeType, leadName } = req.body;
+    if (!fileName || !fileData) return res.status(400).json({ ok: false, error: 'fileName and fileData required' });
+
+    const token = await googleToken();
+    const DRIVE_FOLDER_NAME = 'MG Realty CRM Docs';
+
+    // Find or create the CRM folder
+    let folderId = null;
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const searchData = await searchRes.json();
+    if (searchData.files?.length) {
+      folderId = searchData.files[0].id;
+    } else {
+      // Create folder
+      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+      });
+      const createData = await createRes.json();
+      folderId = createData.id;
+    }
+
+    // Convert base64 to buffer
+    const base64Data = fileData.includes(',') ? fileData.split(',')[1] : fileData;
+    const fileBuffer = Buffer.from(base64Data, 'base64');
+    const fileMimeType = mimeType || 'application/octet-stream';
+
+    // Upload file using multipart
+    const boundary = `boundary_${Date.now()}`;
+    const metadata = JSON.stringify({ name: fileName, parents: [folderId] });
+    const multipart = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Type: application/json\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${fileMimeType}\r\n\r\n`),
+      fileBuffer,
+      Buffer.from(`\r\n--${boundary}--`)
+    ]);
+
+    const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}`, 'Content-Length': multipart.length },
+      body: multipart
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadData.id) throw new Error(uploadData.error?.message || 'Upload failed');
+
+    // Make file readable by anyone with link
+    await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' })
+    });
+
+    console.log(`Drive upload: ${fileName} → ${uploadData.id}`);
+    res.json({ ok: true, fileId: uploadData.id, fileName, webViewLink: uploadData.webViewLink, viewUrl: `https://drive.google.com/file/d/${uploadData.id}/view` });
+  } catch(e) {
+    console.error('DRIVE UPLOAD ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Google Sheets: backup leads + activity ───────────────────
 app.post('/drive/backup', async (req, res) => {
   try {
