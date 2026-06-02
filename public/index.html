@@ -537,6 +537,18 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div id="active-leads-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
     </div>
 
+    <!-- Active Sellers Dashboard -->
+    <div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+          <i class="ti ti-home-dollar" style="color:var(--accent);font-size:15px"></i> Active Sellers
+          <span id="dash-sellers-count" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+        </div>
+        <button class="btn btn-sm" onclick="showPane('sellers',document.querySelector('[onclick*=sellers]'))" style="background:var(--surface2);border-color:var(--border);font-size:11px">All Sellers →</button>
+      </div>
+      <div id="dash-sellers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+    </div>
+
     <!-- SMS Inbox -->
     <div
     <div style="margin-bottom:18px">
@@ -1016,7 +1028,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <button class="btn btn-primary" onclick="openAddAgent()"><i class="ti ti-plus"></i> Add agent</button>
     </div>
   </div>
-  <div class="content"><div class="tw"><table><thead><tr><th style="width:150px">Name</th><th style="width:160px">Brokerage</th><th style="width:120px">Phone</th><th style="width:150px">Email</th><th style="width:80px">Type</th><th style="width:110px">License #</th><th style="width:80px"></th></tr></thead><tbody id="agentTbody"></tbody></table></div></div>
+  <div class="content"><div class="tw"><table><thead><tr><th style="width:150px">Name</th><th style="width:160px">Brokerage</th><th style="width:120px">Phone</th><th style="width:150px">Email</th><th style="width:80px">Type</th><th style="width:110px">License #</th><th style="width:80px"></th></tr></thead><tbody id="agentTbody" style="display:none"></tbody></table><div id="agent-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;padding:16px"></div></div></div>
 </div>
 
 <!-- DM Importer pane -->
@@ -2872,7 +2884,7 @@ function addAgentContactRow(type='cell', value=''){
 function getAgentContacts(){
   return Array.from(document.querySelectorAll('#agentContactRows > div')).map(row=>({value:row.querySelector('.agent-contact-val').value.trim(),type:row.querySelector('.agent-contact-type').value})).filter(c=>c.value);
 }
-function renderAgents(){
+function renderAgents(){if(typeof renderAgentsCards==="function"){renderAgentsCards();return;}
   const tbody=document.getElementById('agentTbody');if(!tbody)return;
   const s=(document.getElementById('agentSrch')||{}).value?.toLowerCase()||'';
   const ft=(document.getElementById('fagentType')||{}).value||'';
@@ -7788,6 +7800,109 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 800);
 });
+</script>
+
+
+<script>
+// ── Dashboard Sellers ─────────────────────────────────────────
+function renderDashSellers() {
+  const grid = document.getElementById('dash-sellers-grid');
+  const countEl = document.getElementById('dash-sellers-count');
+  if (!grid) return;
+  const sellers = leads.filter(function(l) { return l.type === 'seller' && l.temp !== 'done'; });
+  if (countEl) countEl.textContent = '· ' + sellers.length + ' active';
+  if (!sellers.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active sellers yet.</div>'; return; }
+  const today = new Date().toISOString().split('T')[0];
+  grid.innerHTML = sellers.map(function(l) {
+    const dom = l.added ? Math.floor((new Date() - new Date(l.added)) / 86400000) : null;
+    const leadActs = (typeof acts !== 'undefined' ? acts : []).filter(function(a) { return a.leadId === l.id; });
+    const showingCount = leadActs.filter(function(a) { return a.type === 'showing'; }).length;
+    const stageColor = { new:'var(--text3)', contacted:'var(--blue)', showing:'var(--purple)', offer:'var(--amber)', closed:'var(--green)' }[(l.stage||'new').toLowerCase()] || 'var(--text3)';
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px;cursor:pointer" onclick="openLeadDetail(' + "'" + l.id + "'" + ')">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+      + '<div><div style="font-size:15px;font-weight:700">' + l.first + ' ' + l.last + '</div>'
+      + '<div style="font-size:12px;color:var(--text2)">' + (l.prop || 'No property') + '</div></div>'
+      + '<span style="font-size:10px;font-weight:700;color:' + stageColor + ';background:' + stageColor + '22;padding:2px 8px;border-radius:99px;border:1px solid ' + stageColor + '44;text-transform:capitalize">' + (l.stage||'New') + '</span>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--text2);margin-bottom:10px">'
+      + '<div>💰 ' + (l.askingPrice || '—') + '</div>'
+      + '<div>📅 DOM: ' + (dom !== null ? dom + 'd' : '—') + '</div>'
+      + '<div>🏠 Showings: ' + showingCount + '</div>'
+      + '<div>📞 ' + (l.lastcontact ? rel(l.lastcontact) : 'Never') + '</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:5px" onclick="event.stopPropagation()">'
+      + '<button class="btn btn-gold btn-sm" onclick="openOHRecap(' + "'" + l.id + "'" + ')" style="font-size:10px"><i class="ti ti-mail-forward" style="font-size:10px"></i> Recap</button>'
+      + '<button class="btn btn-sm" onclick="openAct(' + "'" + l.id + "'" + ')" style="font-size:10px"><i class="ti ti-activity" style="font-size:10px"></i></button>'
+      + '</div></div>';
+  }).join('');
+}
+
+// ── Agents Card View ──────────────────────────────────────────
+function renderAgentsCards() {
+  const grid = document.getElementById('agent-grid');
+  if (!grid) return;
+  const s = (document.getElementById('agentSrch')||{}).value ? (document.getElementById('agentSrch').value||'').toLowerCase() : '';
+  const ft = document.getElementById('fagentType') ? (document.getElementById('fagentType').value||'') : '';
+  let f = agents.filter(function(a) {
+    if(s && !(a.first+' '+a.last+' '+(a.brokerage||'')).toLowerCase().includes(s)) return false;
+    if(ft && a.agentType !== ft) return false;
+    return true;
+  }).sort(function(a,b) { return (a.last||'').localeCompare(b.last||''); });
+  if (!f.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">' + (agents.length ? 'No agents match' : 'No agents yet. Add agents you work with.') + '</div>'; return; }
+  const ratingColors = { 'Preferred': '#4ADE80', 'Good': '#60A5FA', 'Neutral': 'var(--text2)', 'Avoid': '#F87171' };
+  grid.innerHTML = f.map(function(a) {
+    const linkedLeads = leads.filter(function(l) { return l.agentName && l.agentName === (a.first+' '+a.last) && l.temp !== 'done'; });
+    const closedDeals = leads.filter(function(l) { return l.agentName && l.agentName === (a.first+' '+a.last) && l.stage === 'closed'; }).length;
+    const ratingKey = a.rating ? a.rating.replace(/[^a-zA-Z]/g,'') : '';
+    const ratingColor = ratingColors[ratingKey] || 'var(--text2)';
+    return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;transition:border-color 0.15s" onmouseover="this.style.borderColor='rgba(232,104,26,0.3)'" onmouseout="this.style.borderColor='var(--border)'">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
+      + '<div><div style="font-size:16px;font-weight:700">' + a.first + ' ' + a.last + '</div>'
+      + '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + (a.brokerage||'No brokerage') + '</div></div>'
+      + '<div style="text-align:right">'
+      + (a.agentType ? '<div style="font-size:10px;font-weight:600;background:var(--surface2);padding:2px 8px;border-radius:99px;margin-bottom:4px">' + a.agentType + '</div>' : '')
+      + (a.rating ? '<div style="font-size:11px;color:' + ratingColor + '">' + a.rating + '</div>' : '')
+      + '</div></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--text2);margin-bottom:12px">'
+      + '<div>📞 ' + (a.phone||'—') + '</div><div>✉️ ' + (a.email||'—') + '</div>'
+      + (a.license ? '<div style="grid-column:1/-1">🪪 DRE #' + a.license + '</div>' : '')
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px">'
+      + '<div style="background:var(--surface2);padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--accent)">' + linkedLeads.length + '</div><div style="font-size:10px;color:var(--text3)">ACTIVE</div></div>'
+      + '<div style="background:var(--surface2);padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--green)">' + closedDeals + '</div><div style="font-size:10px;color:var(--text3)">CLOSED</div></div>'
+      + '<div style="background:var(--surface2);padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--text)">' + (linkedLeads.length+closedDeals) + '</div><div style="font-size:10px;color:var(--text3)">TOTAL</div></div>'
+      + '</div>'
+      + (linkedLeads.length ? '<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Active Clients</div>'
+        + linkedLeads.slice(0,3).map(function(l) {
+            return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;cursor:pointer" onclick="openLeadDetail(' + "'" + l.id + "'" + ')">'
+              + '<span style="color:var(--accent)">•</span><span style="font-weight:500">' + l.first + ' ' + l.last + '</span>'
+              + (l.prop ? '<span style="color:var(--text3)">· ' + l.prop.substring(0,20) + '</span>' : '')
+              + '</div>';
+          }).join('')
+        + (linkedLeads.length > 3 ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">+' + (linkedLeads.length-3) + ' more</div>' : '')
+        + '</div>' : '')
+      + (a.notes ? '<div style="font-size:11px;color:var(--text2);padding:8px;background:var(--surface2);border-radius:6px;line-height:1.5;margin-bottom:12px">' + a.notes.substring(0,120) + (a.notes.length>120?'…':'') + '</div>' : '')
+      + '<div style="display:flex;gap:6px">'
+      + (a.phone ? '<a href="tel:' + a.phone + '" class="btn btn-sm" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)"><i class="ti ti-phone" style="font-size:11px"></i></a>' : '')
+      + (a.email ? '<a href="mailto:' + a.email + '" class="btn btn-sm" style="background:rgba(232,104,26,0.12);color:var(--accent);border:1px solid rgba(232,104,26,0.3)"><i class="ti ti-mail" style="font-size:11px"></i></a>' : '')
+      + '<button class="btn btn-sm" onclick="openEditAgent(' + "'" + a.id + "'" + ')"><i class="ti ti-edit" style="font-size:11px"></i></button>'
+      + '<button class="btn btn-red btn-sm" onclick="delAgent(' + "'" + a.id + "'" + ')"><i class="ti ti-trash" style="font-size:11px"></i></button>'
+      + '</div></div>';
+  }).join('');
+}
+
+// Hook renderDashSellers into renderAll
+(function() {
+  var origRA = typeof renderAll === 'function' ? renderAll : null;
+  if (origRA) {
+    renderAll = function() { origRA(); if(typeof renderDashSellers==='function') renderDashSellers(); };
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      if(typeof renderDashSellers==='function') renderDashSellers();
+    }, 1000);
+  });
+})();
 </script>
 
 </body>
