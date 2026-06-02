@@ -508,6 +508,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
     <button class="nav-item" onclick="openMarketReport()"><i class="ti ti-chart-bar"></i><span>Market Report</span></button>
     <a class="nav-item" href="/open-house" target="_blank"><i class="ti ti-qrcode"></i><span>Open House Sign</span></a>
+    <button class="nav-item" onclick="syncGmailSent(false)"><i class="ti ti-mail-forward"></i><span>Sync Gmail</span></button>
     <button class="nav-item" onclick="showPane('scheduled',this)"><i class="ti ti-clock-send"></i><span>Scheduled</span><span class="nb" id="nb-scheduled" style="display:none">0</span></button>
   </nav>
   <div class="sidebar-foot">
@@ -1509,7 +1510,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Phone</label><input id="lf3" placeholder="(310) 555-0100"></div>
     <div class="fgg"><label>Email</label><input id="lf4" placeholder="jane@email.com"></div>
     <div class="fgg"><label>Property address / interest</label><input id="lf5" placeholder="Address or budget range"></div>
-    <div class="fgg"><label>Asking price <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf5b" placeholder="e.g. $1,200,000"></div>
+    <div class="fgg"><label>Asking price <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf5b" placeholder="$1,200,000"></div>
     <div class="fgg"><label>List date <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf6b" type="date"></div>
     <div class="fgg" style="display:none"><input id="lf6" type="date"></div>
     <div class="fgg"><label>Type</label><select id="lf7"><option value="buyer">Buyer</option><option value="seller">Seller</option></select></div>
@@ -1563,7 +1564,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
         </div>
         <div class="fgg">
           <label>Target net proceeds</label>
-          <input id="lf-targetnet" placeholder="e.g. $800,000">
+          <input id="lf-targetnet" placeholder="$800,000">
         </div>
         <div class="fgg">
           <label>Prior listing?</label>
@@ -1884,6 +1885,13 @@ async function api(path,body){
   return r.json();
 }
 
+function formatPhone(p){
+  if(!p) return '';
+  var d = String(p).replace(/\D/g,'');
+  if(d.length===10) return '('+d.substring(0,3)+') '+d.substring(3,6)+'-'+d.substring(6);
+  if(d.length===11 && d[0]==='1') return '('+d.substring(1,4)+') '+d.substring(4,7)+'-'+d.substring(7);
+  return p;
+}
 function du(s){if(!s)return null;const t=new Date();t.setHours(0,0,0,0);const[y,m,d]=s.split('-').map(Number);const dt=new Date(y,m-1,d);return Math.round((dt-t)/86400000);}
 
 // ── Lead Score (1–10) ──────────────────────────────────────────
@@ -7840,7 +7848,7 @@ function renderAgentsCards() {
       + '<div style="font-size:16px;font-weight:700;margin-bottom:4px">' + a.first + ' ' + a.last + '</div>'
       + '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">' + (a.brokerage || '') + (a.agentType ? ' · ' + a.agentType : '') + '</div>'
       + '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'
-      + (a.phone ? '&#128222; ' + a.phone + ' &nbsp;' : '') + (a.email ? '&#9993; ' + a.email : '')
+      + (a.phone ? '&#128222; ' + formatPhone(a.phone) + ' &nbsp;' : '') + (a.email ? '&#9993; ' + a.email : '')
       + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px">'
       + '<div style="background:var(--surface2);padding:8px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--accent)">' + linked + '</div><div style="font-size:9px;color:var(--text3)">ACTIVE</div></div>'
@@ -7861,6 +7869,38 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     if (typeof renderDashSellers === 'function') renderDashSellers();
   }, 1500);
+});
+</script>
+
+
+<script>
+// ── Gmail Sent Sync ───────────────────────────────────────────
+async function syncGmailSent(silent) {
+  if (!silent) toast('Syncing Gmail sent emails…');
+  try {
+    const r = await fetch(BACKEND + '/gmail/sync-sent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hoursBack: 48 })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      if (d.synced > 0) {
+        toast('✓ ' + d.synced + ' email' + (d.synced !== 1 ? 's' : '') + ' auto-logged from Gmail');
+        // Reload CRM data to reflect new activities
+        if (typeof syncFromBackend === 'function') syncFromBackend();
+      } else if (!silent) {
+        toast('Gmail synced — no new emails to log');
+      }
+    }
+  } catch(e) {
+    if (!silent) toast('Gmail sync failed: ' + e.message);
+  }
+}
+
+// Auto-sync on load (silent)
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() { syncGmailSent(true); }, 3000);
 });
 </script>
 

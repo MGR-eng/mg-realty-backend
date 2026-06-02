@@ -344,6 +344,97 @@ app.all('/scheduled-messages/process', async (req, res) => {
   }
 });
 
+// ── Gmail Sent Sync — auto-log emails sent outside CRM ────────
+app.post('/gmail/sync-sent', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const leads = crm.leads || [];
+    const activities = crm.activities || [];
+
+    // Build email → lead lookup
+    const emailToLead = {};
+    leads.forEach(l => { if(l.email) emailToLead[l.email.toLowerCase()] = l; });
+    if(!Object.keys(emailToLead).length) return res.json({ ok: true, synced: 0 });
+
+    const token = await googleToken();
+    const hoursBack = req.body?.hoursBack || 24;
+    const after = Math.floor((Date.now() - hoursBack * 3600000) / 1000);
+
+    // Search sent emails
+    const searchRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=in:sent+after:${after}&maxResults=50`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const searchData = await searchRes.json();
+    const messages = searchData.messages || [];
+
+    let synced = 0;
+    const today = new Date().toISOString().split('T')[0];
+
+    for (const msg of messages) {
+      // Get message headers
+      const msgRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const msgData = await msgRes.json();
+      const headers = msgData.payload?.headers || [];
+      const toHeader = headers.find(h => h.name === 'To')?.value || '';
+      const subject = headers.find(h => h.name === 'Subject')?.value || '(no subject)';
+      const dateStr = headers.find(h => h.name === 'Date')?.value || '';
+
+      // Extract email addresses from To field
+      const toEmails = toHeader.match(/[\w.-]+@[\w.-]+\.\w+/g) || [];
+
+      for (const email of toEmails) {
+        const lead = emailToLead[email.toLowerCase()];
+        if (!lead) continue;
+
+        // Check if already logged (avoid duplicates using Gmail message ID)
+        const alreadyLogged = activities.some(a => a.gmailMsgId === msg.id);
+        if (alreadyLogged) continue;
+
+        // Parse date
+        const sentDate = dateStr ? new Date(dateStr).toISOString().split('T')[0] : today;
+        const sentTime = dateStr ? new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+
+        // Log the activity
+        crm.activities.unshift({
+          id: 'a' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+          leadId: lead.id,
+          leadName: `${lead.first} ${lead.last}`,
+          date: sentDate,
+          time: sentTime,
+          type: 'email',
+          direction: 'outbound',
+          outcome: 'sent',
+          notes: `Subject: ${subject}`,
+          gmailMsgId: msg.id,
+          autoLogged: true
+        });
+
+        // Update lead's last contact
+        crm.leads = crm.leads.map(l => l.id === lead.id ? {
+          ...l, lastcontact: sentDate, lcmethod: 'email'
+        } : l);
+
+        synced++;
+        break; // Only log once per message
+      }
+    }
+
+    if (synced > 0) {
+      await writeCRM(crm);
+      console.log(`Gmail sync: ${synced} emails auto-logged`);
+    }
+
+    res.json({ ok: true, synced, checked: messages.length });
+  } catch(e) {
+    console.error('GMAIL SYNC ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Follow-up alerts — reads live from Supabase ───────────────
 app.get('/crm/followups', async (req, res) => {
   try {
