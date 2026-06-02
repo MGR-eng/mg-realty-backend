@@ -118,9 +118,9 @@ textarea{resize:vertical;min-height:65px}
 label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:5px}
 
 /* ── Modals ── */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:100;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:100;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto}
 .modal-overlay.open{display:flex}
-.modal{background:var(--surface);border-radius:var(--rl);border:1px solid var(--border);padding:24px;width:min(560px,100%);max-height:calc(100vh - 80px);overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal{background:var(--surface);border-radius:var(--rl);border:1px solid var(--border);padding:24px;width:min(560px,100%);max-height:calc(100vh - 60px);overflow-y:auto;overflow-x:hidden;box-shadow:var(--shadow-lg)}
 .modal-title{font-size:15px;font-weight:600;margin-bottom:16px;letter-spacing:-.01em}
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:13px}
 .fgg{display:flex;flex-direction:column}
@@ -1501,7 +1501,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Property address / interest</label><input id="lf5" placeholder="Address or budget range"></div>
     <div class="fgg"><label>Asking price <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf5b" placeholder="e.g. $1,200,000"></div>
     <div class="fgg"><label>List date <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf6b" type="date"></div>
-    <div class="fgg"><label>Open house date</label><input id="lf6" type="date"></div>
+    <div class="fgg" style="display:none"><input id="lf6" type="date"></div>
     <div class="fgg"><label>Type</label><select id="lf7"><option value="buyer">Buyer</option><option value="seller">Seller</option></select></div>
     <div class="fgg"><label>Temp</label><select id="lf8"><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select></div>
     <div class="fgg"><label>Follow-up date</label><input id="lf9" type="date"></div>
