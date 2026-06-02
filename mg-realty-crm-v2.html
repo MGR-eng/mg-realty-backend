@@ -524,23 +524,21 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 
     <!-- AI Call List -->
     <div style="margin-bottom:18px">
-      <div class="tw" id="call-list-widget">
-        <div class="cl-hd">
-          <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
-            <i class="ti ti-phone-call" style="color:var(--green);font-size:15px"></i> Who to Call Today
-            <span id="cl-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
-          </div>
-          <button class="btn btn-sm" id="briefing-btn" onclick="sendMorningBriefing()" title="Send morning briefing to your inbox" style="background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)"><i class="ti ti-mail-forward" style="font-size:11px"></i> Briefing</button>
-          <button class="btn btn-sm" id="digest-btn" onclick="sendWeeklyDigest()" title="Send weekly pipeline digest" style="background:var(--surface2);border-color:var(--border)"><i class="ti ti-chart-bar" style="font-size:11px"></i> Digest</button>
-          <button class="btn btn-sm btn-primary" id="cl-refresh-btn" onclick="refreshCallList()"><i class="ti ti-refresh" style="font-size:11px"></i> Refresh</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+          <i class="ti ti-users" style="color:var(--accent);font-size:15px"></i> Active Leads
+          <span id="active-leads-count" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
         </div>
-        <div id="cl-body">
-          <div class="cl-loading"><div class="ce-spinner"></div><span>Analyzing your leads…</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" id="briefing-btn" onclick="sendMorningBriefing()" style="background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)"><i class="ti ti-mail-forward" style="font-size:11px"></i> Briefing</button>
+          <button class="btn btn-sm" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))" style="background:var(--surface2);border-color:var(--border);font-size:11px">All Leads →</button>
         </div>
       </div>
+      <div id="active-leads-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
     </div>
 
     <!-- SMS Inbox -->
+    <div
     <div style="margin-bottom:18px">
       <div class="tw" id="sms-inbox-widget">
         <div class="ib-hd">
@@ -2161,7 +2159,7 @@ async function renderDetailPostClose(leadId){
   }catch(e){sec.style.display='none';}
 }
 
-function renderAll(){renderStats();renderDashDue();if(typeof renderSellers==="function")renderSellers();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();if(typeof renderSellers==="function")renderSellers();if(typeof renderActiveLeads==="function")renderActiveLeads();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
 
 // ── Weekly Client Reports ─────────────────────────────────────
 async function sendClientReport(leadId) {
@@ -7315,6 +7313,85 @@ document.addEventListener('DOMContentLoaded', () => {
     if (phoneField) phoneField.addEventListener('input', () => formatPhoneNumber(phoneField));
     updateScheduledBadge();
   }, 500);
+});
+</script>
+
+
+<script>
+// ── Active Leads Grid ─────────────────────────────────────────
+function renderActiveLeads() {
+  const grid = document.getElementById('active-leads-grid');
+  const countEl = document.getElementById('active-leads-count');
+  if (!grid) return;
+
+  const tempOrder = { hot: 0, warm: 1, cold: 2, done: 3 };
+  const active = leads
+    .filter(l => l.temp !== 'done')
+    .sort((a, b) => (tempOrder[a.temp] ?? 2) - (tempOrder[b.temp] ?? 2));
+
+  if (countEl) countEl.textContent = `· ${active.length} active`;
+
+  if (!active.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active leads yet.</div>';
+    return;
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const tempColors = {
+    hot: { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.3)', badge: 'b-hot' },
+    warm: { bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.3)', badge: 'b-warm' },
+    cold: { bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.3)', badge: 'b-cold' }
+  };
+
+  grid.innerHTML = active.map(l => {
+    const tc = tempColors[l.temp] || { bg: 'var(--surface)', border: 'var(--border)', badge: 'b-neutral' };
+    const phone = l.phone || '';
+    const followupText = l.followup
+      ? (l.followup <= today
+        ? `<span style="color:var(--red);font-weight:600">⚠ Overdue: ${l.followup}</span>`
+        : `📅 ${l.followup}`)
+      : '<span style="color:var(--text3)">No follow-up set</span>';
+    const lastContactText = l.lastcontact
+      ? `<span style="color:${Math.floor((new Date()-new Date(l.lastcontact))/86400000)<=3?'var(--green)':Math.floor((new Date()-new Date(l.lastcontact))/86400000)<=7?'var(--amber)':'var(--red)'}">● </span>${rel(l.lastcontact)}${l.lcmethod?' · '+l.lcmethod:''}`
+      : '<span style="color:var(--text3)">Never contacted</span>';
+
+    return `<div style="background:${tc.bg};border:1px solid ${tc.border};border-radius:var(--rl);padding:16px;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s" 
+        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'" 
+        onmouseout="this.style.transform='';this.style.boxShadow=''"
+        onclick="openLeadDetail('${l.id}')">
+      
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${l.first} ${l.last}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${phone || 'No phone'}</div>
+        </div>
+        ${tb(l.temp)}
+      </div>
+
+      <!-- Property -->
+      ${l.prop ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:4px"><i class="ti ti-home" style="font-size:11px"></i> ${l.prop}</div>` : ''}
+
+      <!-- Follow-up + Last contact -->
+      <div style="font-size:11px;margin-bottom:12px;display:flex;flex-direction:column;gap:4px">
+        <div>${followupText}</div>
+        <div>${lastContactText}</div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">
+        ${phone ? `<a href="tel:${phone}" class="btn btn-sm" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)" title="Call"><i class="ti ti-phone" style="font-size:11px"></i></a>` : ''}
+        ${phone ? `<a href="sms:${phone}" class="btn btn-sm" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)" title="Text"><i class="ti ti-message" style="font-size:11px"></i></a>` : ''}
+        <button class="btn btn-sm" onclick="openEmailTemplate('${l.id}')" style="background:rgba(232,104,26,0.12);color:var(--accent);border:1px solid rgba(232,104,26,0.3)" title="Email"><i class="ti ti-mail" style="font-size:11px"></i></button>
+        <button class="btn btn-sm" onclick="openAct('${l.id}')" style="background:rgba(255,255,255,0.06);border:1px solid var(--border)" title="Log activity"><i class="ti ti-activity" style="font-size:11px"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Hook into renderAll
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(renderActiveLeads, 800);
 });
 </script>
 
