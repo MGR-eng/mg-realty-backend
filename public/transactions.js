@@ -9,19 +9,31 @@ function renderDashTransactions() {
   grid.innerHTML = active.map(function(d) {
     var lead = leads.find(function(l) { return l.id === d.leadId; });
     var daysToClose = d.closeDate ? Math.ceil((new Date(d.closeDate) - new Date()) / 86400000) : null;
+    var checklist = d.checklist || {};
+    var checkCount = TX_DOCS.filter(function(doc) { return checklist[doc]; }).length;
     var price = d.salePrice ? '$' + Number(d.salePrice).toLocaleString() : '—';
     var stage = d.txStage || 'Offer Submitted';
-    var bg = TX_COLORS[stage] || 'var(--surface)';
     var border = TX_BORDER[stage] || 'var(--border)';
-    var closeTxt = daysToClose !== null ? (daysToClose <= 0 ? '<span style="color:var(--red)">Past close</span>' : '<span style="color:' + (daysToClose<=7?'var(--amber)':'var(--text2)') + '">'+daysToClose+'d to close</span>') : '';
-    return '<div data-txid="' + d.id + '" onclick="openEditTx(this.dataset.txid);showPane(\'transactions\',document.querySelector(\'[onclick*=transactions]\'))" style="background:'+bg+';border:1px solid '+border+';border-radius:var(--rl);padding:14px;cursor:pointer">'
-      + '<div style="font-size:13px;font-weight:700;margin-bottom:6px">' + (d.address||'No address') + '</div>'
-      + '<div style="font-size:11px;color:var(--text2);margin-bottom:4px">' + (lead?lead.first+' '+lead.last:'') + (d.side?' · '+d.side:'') + '</div>'
-      + '<div style="display:flex;justify-content:space-between;align-items:center">'
-      + '<span style="font-size:13px;font-weight:600">' + price + '</span>'
-      + '<span style="font-size:10px;font-weight:600;background:var(--surface2);padding:2px 8px;border-radius:99px">' + stage + '</span>'
+    var stageColor = {'Offer Submitted':'var(--blue)','Under Contract':'var(--purple)','Inspection':'var(--amber)','Appraisal':'var(--accent)','Loan Approval':'var(--red)','Clear to Close':'var(--green)','Closed':'var(--green)'}[stage] || 'var(--text2)';
+    var closeTxt = '';
+    if (daysToClose !== null) {
+      if (daysToClose < 0) closeTxt = '<span style="color:var(--red)">⚠ Past close date</span>';
+      else if (daysToClose === 0) closeTxt = '<span style="color:var(--amber)">Closes TODAY</span>';
+      else closeTxt = '<span style="color:' + (daysToClose<=7?'var(--amber)':'var(--text2)') + '">📅 ' + daysToClose + 'd to close · ' + d.closeDate + '</span>';
+    }
+    return '<div data-txid="' + d.id + '" onclick="openEditTx(this.dataset.txid)" style="background:var(--surface);border:1px solid '+border+';border-radius:var(--rl);padding:16px;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.3)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+      + '<div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3">' + (d.address||'No address') + '</div>'
+      + '<span style="font-size:10px;font-weight:700;color:'+stageColor+';background:'+stageColor+'22;padding:2px 10px;border-radius:99px;border:1px solid '+stageColor+'44;white-space:nowrap;margin-left:8px">' + stage + '</span>'
       + '</div>'
-      + (closeTxt ? '<div style="font-size:11px;margin-top:4px">' + closeTxt + '</div>' : '')
+      + (lead ? '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">👤 ' + lead.first + ' ' + lead.last + (d.side?' · '+d.side:'') + '</div>' : '')
+      + '<div style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:8px">' + price + '</div>'
+      + (closeTxt ? '<div style="font-size:11px;margin-bottom:8px">' + closeTxt + '</div>' : '')
+      + (d.coopAgent ? '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">🤝 ' + d.coopAgent + '</div>' : '')
+      + '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--border)">'
+      + '<span style="font-size:10px;color:var(--text3)">Docs: ' + checkCount + '/' + TX_DOCS.length + '</span>'
+      + '<div style="width:80px;height:4px;background:var(--border);border-radius:99px;overflow:hidden"><div style="width:' + Math.round(checkCount/TX_DOCS.length*100) + '%;height:100%;background:var(--accent);border-radius:99px"></div></div>'
+      + '</div>'
       + '</div>';
   }).join('');
 }
