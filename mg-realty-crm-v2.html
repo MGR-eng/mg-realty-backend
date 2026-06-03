@@ -525,7 +525,19 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="stats-grid" id="statsGrid"></div>
 
     <!-- AI Call List -->
+    <!-- Active Transactions Dashboard -->
     <div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+          <i class="ti ti-home-move" style="color:var(--accent);font-size:15px"></i> Active Transactions
+          <span id="dash-tx-count" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+        </div>
+        <button class="btn btn-sm" onclick="showPane('transactions',document.querySelector('[onclick*=transactions]'))" style="background:var(--surface2);border-color:var(--border);font-size:11px">All Transactions →</button>
+      </div>
+      <div id="dash-tx-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
+    </div>
+
+        <div style="margin-bottom:18px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
           <i class="ti ti-users" style="color:var(--accent);font-size:15px"></i> Active Leads
@@ -2330,7 +2342,7 @@ async function renderDetailPostClose(leadId){
   }catch(e){sec.style.display='none';}
 }
 
-function renderAll(){renderStats();renderDashDue();if(typeof renderSellers==="function")renderSellers();if(typeof renderActiveLeads==="function")renderActiveLeads();if(typeof renderDashSellers==="function")renderDashSellers();if(typeof renderTransactions==="function")renderTransactions();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
+function renderAll(){renderStats();renderDashDue();if(typeof renderSellers==="function")renderSellers();if(typeof renderActiveLeads==="function")renderActiveLeads();if(typeof renderDashSellers==="function")renderDashSellers();if(typeof renderTransactions==="function")renderTransactions();if(typeof renderDashTransactions==="function")renderDashTransactions();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();updateBadges();}
 
 // ── Weekly Client Reports ─────────────────────────────────────
 async function sendClientReport(leadId) {
@@ -7946,7 +7958,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <!-- Co-op Agent -->
       <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Co-op Agent (Other Side)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div class="fg"><label>Agent Name</label><input id="tx-coop-agent" placeholder="Jane Smith"></div>
+        <div class="fg"><label>Agent Name</label><select id="tx-coop-agent"><option value="">— none —</option></select></div>
         <div class="fg"><label>Brokerage</label><input id="tx-coop-brokerage" placeholder="Compass"></div>
       </div>
       <!-- Checklist -->
