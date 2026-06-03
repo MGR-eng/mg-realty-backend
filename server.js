@@ -520,21 +520,45 @@ app.post('/crm/push', async (req, res) => {
 });
 
 // ── Privacy Policy ────────────────────────────────────────────
-app.get('/privacy', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty Privacy Policy</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px">
+app.get('/privacy', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty – Privacy Policy</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.7;color:#333">
 <h1>Privacy Policy</h1><p><strong>Last updated:</strong> ${new Date().toLocaleDateString()}</p>
-<p>MG Realty ("we") operates an internal CRM assistant accessible via SMS. This policy describes how we handle information.</p>
-<h2>Information We Collect</h2><p>We collect SMS messages sent to our business number for the purpose of managing real estate client relationships.</p>
-<h2>How We Use Information</h2><p>Messages are processed by an AI assistant to help manage leads, appointments, and follow-ups. No data is sold or shared with third parties.</p>
-<h2>Contact</h2><p>Matt Golden · matt@mgoldenrealty.com</p>
+<p>MG Realty ("we," "us," or "our"), operated by Matt Golden, is a licensed real estate business in Los Angeles, California. This Privacy Policy describes how we collect, use, and protect information in connection with our SMS messaging program and website.</p>
+<h2>1. Information We Collect</h2>
+<p>We collect the following information when you interact with us:</p>
+<ul>
+<li><strong>Phone number and SMS messages</strong> – when you text our business number or consent to receive texts from us.</li>
+<li><strong>Name, email, and contact information</strong> – when you submit a form on our website.</li>
+<li><strong>Property preferences and transaction details</strong> – to assist with real estate services.</li>
+</ul>
+<h2>2. SMS Messaging Program</h2>
+<p><strong>Program Description:</strong> MG Realty sends SMS messages to clients and prospective clients for the following purposes: appointment reminders, property updates, follow-up communications, and transactional notifications related to real estate services.</p>
+<p><strong>How You Opt In:</strong> You consent to receive SMS messages from MG Realty by (a) submitting your phone number through our website contact form, (b) providing your number at an open house, or (c) verbally agreeing to receive texts from Matt Golden.</p>
+<p><strong>Message Frequency:</strong> Message frequency varies. You may receive up to 5 messages per week depending on your transaction status and preferences.</p>
+<p><strong>How to Opt Out:</strong> Reply <strong>STOP</strong> to any text message at any time to unsubscribe. You will receive one confirmation message and no further messages will be sent. To re-subscribe, text <strong>START</strong>.</p>
+<p><strong>Help:</strong> Reply <strong>HELP</strong> for assistance or contact us at matt@mgoldenrealty.com.</p>
+<p><strong>Message and Data Rates:</strong> Message and data rates may apply. Check with your mobile carrier for details.</p>
+<h2>3. How We Use Information</h2>
+<p>We use collected information solely to provide real estate services, respond to inquiries, schedule appointments, and communicate about properties. We do not sell, rent, or share your personal information or phone number with third parties for marketing purposes. No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.</p>
+<h2>4. Data Retention</h2>
+<p>We retain personal information for as long as necessary to provide services or as required by law. You may request deletion of your data at any time by contacting us.</p>
+<h2>5. Contact Us</h2>
+<p>Matt Golden · MG Realty · Los Angeles, CA<br>Email: matt@mgoldenrealty.com<br>Website: mgoldenrealty.com</p>
 </body></html>`));
 
 // ── Terms of Service ──────────────────────────────────────────
-app.get('/terms', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty Terms of Service</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px">
+app.get('/terms', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty – Terms of Service</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.7;color:#333">
 <h1>Terms of Service</h1><p><strong>Last updated:</strong> ${new Date().toLocaleDateString()}</p>
-<p>By texting MG Realty's SMS number, you agree to receive automated responses from our AI CRM assistant.</p>
-<h2>Use</h2><p>This service is for internal business use by MG Realty staff only. Messages are processed to assist with real estate client management.</p>
-<h2>Opt-Out</h2><p>Reply STOP at any time to opt out of messages.</p>
-<h2>Contact</h2><p>Matt Golden · matt@mgoldenrealty.com</p>
+<p>These Terms govern your use of SMS messaging services provided by MG Realty, operated by Matt Golden, a licensed real estate agent in California (DRE #02130422).</p>
+<h2>1. SMS Messaging</h2>
+<p>By providing your phone number and consenting to receive SMS messages from MG Realty, you agree to receive text messages related to real estate services including property updates, appointment reminders, and follow-up communications.</p>
+<h2>2. Opt-Out</h2>
+<p>Reply <strong>STOP</strong> at any time to unsubscribe from SMS messages. You will receive one confirmation and no further messages will be sent. Reply <strong>START</strong> to re-subscribe. Reply <strong>HELP</strong> for help.</p>
+<h2>3. Message Frequency &amp; Rates</h2>
+<p>Message frequency varies based on your transaction and preferences (up to 5 per week). Message and data rates may apply.</p>
+<h2>4. No Warranties</h2>
+<p>SMS messages are provided on an "as-is" basis. MG Realty is not responsible for delayed or undelivered messages due to carrier issues.</p>
+<h2>5. Contact</h2>
+<p>Matt Golden · MG Realty · matt@mgoldenrealty.com · mgoldenrealty.com</p>
 </body></html>`));
 
 // ── Calendar: create event ────────────────────────────────────
