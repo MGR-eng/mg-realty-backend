@@ -1535,7 +1535,13 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Last name</label><input id="lf2" placeholder="Smith"></div>
     <div class="fgg"><label>Phone</label><input id="lf3" placeholder="(310) 555-0100"></div>
     <div class="fgg"><label>Email</label><input id="lf4" placeholder="jane@email.com"></div>
-    <div class="fgg"><label>Property address / interest</label><input id="lf5" placeholder="Address or budget range"></div>
+    <div class="fgg">
+      <label>Property address / interest</label>
+      <select id="lf5-select" onchange="onPropSelect_lf5()" style="margin-bottom:6px">
+        <option value="">— select from properties or type below —</option>
+      </select>
+      <input id="lf5" placeholder="Or type address / budget range">
+    </div>
     <div class="fgg"><label>Asking price <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf5b" placeholder="$1,200,000"></div>
     <div class="fgg"><label>List date <span style="font-size:10px;color:var(--text3)">(sellers)</span></label><input id="lf6b" type="date"></div>
     <div class="fgg" style="display:none"><input id="lf6" type="date"></div>
@@ -7978,5 +7984,51 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <script src="/transactions.js"></script>
+
+<script>
+// ── Property dropdown in lead form ───────────────────────────
+function populatePropDropdown(currentVal) {
+  var sel = document.getElementById('lf5-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— select from properties or type below —</option>'
+    + (props||[]).map(function(p) {
+        return '<option value="' + p.address + '"' + (p.address===currentVal?' selected':'') + '>' + p.address + (p.price?' · $'+Number(p.price).toLocaleString():'') + '</option>';
+      }).join('');
+}
+
+function onPropSelect_lf5() {
+  var sel = document.getElementById('lf5-select');
+  var input = document.getElementById('lf5');
+  if (sel && input && sel.value) input.value = sel.value;
+}
+
+// Hook into openAddLead and openEdit
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // Patch openAddLead
+    var origOpen = typeof openAddLead === 'function' ? openAddLead : null;
+    if (origOpen) {
+      var _origOpen = origOpen;
+      openAddLead = function() {
+        _origOpen();
+        setTimeout(function() { populatePropDropdown(''); }, 60);
+      };
+    }
+    // Patch openEdit
+    var origEdit = typeof openEdit === 'function' ? openEdit : null;
+    if (origEdit) {
+      var _origEdit = origEdit;
+      openEdit = function(id) {
+        _origEdit(id);
+        setTimeout(function() {
+          var l = leads.find(function(x) { return x.id === id; });
+          if (l) populatePropDropdown(l.prop||'');
+        }, 60);
+      };
+    }
+  }, 800);
+});
+</script>
+
 </body>
 </html>
