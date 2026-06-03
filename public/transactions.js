@@ -172,3 +172,21 @@ function deleteTx() {
   persist(); renderAll();
   document.getElementById('mTransaction').style.display = 'none';
 }
+
+// Run after script loads (renderAll already ran before this script loaded)
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    renderDashTransactions();
+    renderTransactions();
+  }, 1200);
+});
+
+// Also hook into syncFromBackend so it runs after data loads
+(function() {
+  var origSync = typeof syncFromBackend === 'function' ? syncFromBackend : null;
+  if (origSync) {
+    syncFromBackend = function() {
+      origSync().then ? origSync().then(function() { renderDashTransactions(); renderTransactions(); }) : (origSync(), setTimeout(function(){ renderDashTransactions(); renderTransactions(); }, 500));
+    };
+  }
+})();
