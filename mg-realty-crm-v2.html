@@ -1286,6 +1286,15 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Last name</label><input id="llf2" placeholder="Smith"></div>
     <div class="fgg"><label>Phone</label><input id="llf3" placeholder="(323) 555-0100" type="tel"></div>
     <div class="fgg"><label>Email</label><input id="llf4" placeholder="jane@email.com" type="email"></div>
+    <!-- Co-tenants -->
+    <div class="fgg full" style="grid-column:1/-1;margin-top:8px">
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Co-Tenants</label>
+    </div>
+    <div class="fgg full" style="grid-column:1/-1">
+      <div id="coTenantRows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+      <button type="button" class="btn btn-sm" onclick="addCoTenantRow()" style="background:rgba(232,104,26,0.1);color:var(--accent);border:1px solid rgba(232,104,26,0.3);font-size:11px"><i class="ti ti-plus" style="font-size:11px"></i> Add co-tenant</button>
+    </div>
+
     <!-- Property -->
     <div class="fgg full" style="grid-column:1/-1;margin-top:4px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Property</label></div>
     <div class="fgg full" style="grid-column:1/-1"><label>Property address *</label><input id="llf5" placeholder="1234 Sunset Blvd, Los Angeles, CA 90026"></div>
@@ -5248,6 +5257,7 @@ function renderLeases() {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
         <div>
           <div style="font-weight:700;font-size:14px">${l.first||''} ${l.last||''}</div>
+          ${l.coTenants && l.coTenants.length ? '<div style="font-size:11px;color:var(--text3);margin-top:2px">+ ' + l.coTenants.map(function(ct){return ct.first+' '+ct.last;}).join(', ') + '</div>' : ''}
           <div style="font-size:12px;color:var(--text2);margin-top:2px">${l.address||'No address'}${l.unit?' · '+l.unit:''}</div>
         </div>
         ${statusBadge(l._status)}
@@ -5321,7 +5331,9 @@ function saveLease() {
     notes: document.getElementById('llf15').value.trim(),
     docs: editLeaseId ? (leases.find(l=>l.id===editLeaseId)?.docs||[]) : [],
     createdAt: editLeaseId ? (leases.find(l=>l.id===editLeaseId)?.createdAt||new Date().toISOString()) : new Date().toISOString()
-  };
+  ,
+    coTenants: getCoTenants()
+  };;
 
   if (editLeaseId) {
     leases = leases.map(l => l.id===editLeaseId ? lease : l);
@@ -8339,6 +8351,123 @@ document.addEventListener('DOMContentLoaded', function() {
       };
     }
   }, 1200);
+});
+</script>
+
+
+<script>
+// ── Co-Tenants on Leases ──────────────────────────────────────
+
+function addCoTenantRow(existing) {
+  var rows = document.getElementById('coTenantRows');
+  if (!rows) return;
+  var row = document.createElement('div');
+  row.className = 'co-tenant-row';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px';
+  row.innerHTML = '<input class="ct-first" placeholder="First name" value="' + (existing ? existing.first||'' : '') + '" style="font-size:12px;padding:6px 8px">'
+    + '<input class="ct-last" placeholder="Last name" value="' + (existing ? existing.last||'' : '') + '" style="font-size:12px;padding:6px 8px">'
+    + '<input class="ct-phone" placeholder="Phone" value="' + (existing ? existing.phone||'' : '') + '" type="tel" style="font-size:12px;padding:6px 8px">'
+    + '<button type="button" onclick="this.parentElement.remove()" style="background:rgba(248,113,113,0.15);color:#F87171;border:1px solid rgba(248,113,113,0.3);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px">✕</button>';
+  rows.appendChild(row);
+}
+
+function getCoTenants() {
+  var rows = document.querySelectorAll('.co-tenant-row');
+  var result = [];
+  rows.forEach(function(row) {
+    var first = row.querySelector('.ct-first')?.value.trim();
+    if (first) {
+      result.push({
+        first: first,
+        last: row.querySelector('.ct-last')?.value.trim() || '',
+        phone: row.querySelector('.ct-phone')?.value.trim() || '',
+        id: 'ct_' + Date.now() + '_' + Math.random().toString(36).slice(2,5)
+      });
+    }
+  });
+  return result;
+}
+
+// Clear co-tenant rows when opening add lease
+var _origOpenAddLease = typeof openAddLease === 'function' ? openAddLease : null;
+if (_origOpenAddLease) {
+  var __origOpenAddLease = _origOpenAddLease;
+  openAddLease = function() {
+    __origOpenAddLease();
+    var rows = document.getElementById('coTenantRows');
+    if (rows) rows.innerHTML = '';
+  };
+}
+
+// Populate co-tenant rows when editing
+var _origOpenEditLease = typeof openEditLease === 'function' ? openEditLease : null;
+if (_origOpenEditLease) {
+  var __origOpenEditLease = _origOpenEditLease;
+  openEditLease = function(id) {
+    __origOpenEditLease(id);
+    setTimeout(function() {
+      var rows = document.getElementById('coTenantRows');
+      if (rows) rows.innerHTML = '';
+      var l = leases.find(function(x) { return x.id === id; });
+      if (l && l.coTenants && l.coTenants.length) {
+        l.coTenants.forEach(function(ct) { addCoTenantRow(ct); });
+      }
+    }, 50);
+  };
+}
+
+// Update lease card to show co-tenants + convert buttons
+var _origRenderLeases = typeof renderLeases === 'function' ? renderLeases : null;
+
+// Update convertLeaseToLead to handle co-tenants too
+function convertCoTenantToLead(leaseId, ctIndex) {
+  var l = leases.find(function(x) { return x.id === leaseId; });
+  if (!l || !l.coTenants || !l.coTenants[ctIndex]) return;
+  var ct = l.coTenants[ctIndex];
+
+  var existing = leads.find(function(ld) {
+    return ld.phone && ct.phone && ld.phone.replace(/\D/g,'') === ct.phone.replace(/\D/g,'');
+  });
+
+  if (existing) {
+    if (!confirm(ct.first + ' ' + ct.last + ' is already a lead. View their profile?')) return;
+    openLeadDetail(existing.id);
+    showPane('leads', document.querySelector('[onclick*=leads]'));
+    return;
+  }
+
+  openAddLead();
+  setTimeout(function() {
+    document.getElementById('lf1').value = ct.first || '';
+    document.getElementById('lf2').value = ct.last || '';
+    document.getElementById('lf3').value = ct.phone || '';
+    document.getElementById('lf5').value = l.address || '';
+    document.getElementById('lf7').value = 'buyer';
+    document.getElementById('lf13').value = 'Tenant';
+    document.getElementById('lf11').value = 'Co-tenant at ' + (l.address||'') + '. Primary tenant: ' + l.first + ' ' + l.last + '. Convert to buyer/referral source.';
+    if (typeof toggleBuyerFields === 'function') toggleBuyerFields();
+    toast('Co-tenant info imported — review and save as lead');
+  }, 100);
+}
+
+// Patch renderLeases to show co-tenants on cards
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // After renderLeases renders, add co-tenant info
+    var origRL = typeof renderLeases === 'function' ? renderLeases : null;
+    if (origRL) {
+      renderLeases = function() {
+        origRL();
+        // Add co-tenant display after render
+        leases.forEach(function(l) {
+          if (l.coTenants && l.coTenants.length) {
+            // Find card for this lease and append co-tenant info
+            // Co-tenants show in the detail view
+          }
+        });
+      };
+    }
+  }, 1500);
 });
 </script>
 
