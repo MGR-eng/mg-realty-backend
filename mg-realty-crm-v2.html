@@ -484,6 +484,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="nav-lbl">Main</div>
     <button class="nav-item active" onclick="showPane('dashboard',this)"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></button>
     <button class="nav-item" onclick="showPane('leads',this)"><i class="ti ti-users"></i><span>Leads</span><span class="nb" id="nb-leads">0</span></button>
+    <button class="nav-item" onclick="showPane('buyers',this)"><i class="ti ti-users-group"></i><span>Buyers</span><span class="nb" id="nb-buyers" style="display:none">0</span></button>
     <button class="nav-item" onclick="showPane('sellers',this)"><i class="ti ti-home-dollar"></i><span>Sellers</span><span class="nb" id="nb-sellers">0</span></button>
     <button class="nav-item" onclick="openFollowUpAlert()" id="nav-followups"><i class="ti ti-bell-ringing"></i><span>Follow-ups</span><span class="nb red" id="nb-followups" style="display:none">0</span></button>
     <button class="nav-item" onclick="showPane('activity',this)"><i class="ti ti-activity"></i><span>Activity log</span></button>
@@ -668,6 +669,18 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div id="leads-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:4px 0"></div>
     </div>
   </div>
+
+<div id="pane-buyers" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-users-group" style="margin-right:6px;color:var(--accent)"></i>Buyer Hub</div>
+    <div class="tba">
+      <button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(()=>{document.getElementById('lf7').value='buyer';openAddLead();},50)"><i class="ti ti-user-plus"></i> Add buyer</button>
+    </div>
+  </div>
+  <div class="content">
+    <div id="buyerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;padding:4px 0"></div>
+  </div>
+</div>
 
 <div id="pane-sellers" class="pane">
   <div class="topbar">
@@ -1552,6 +1565,90 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select></div>
     <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Website">Website</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Other">Other</option></select></div>
     <div class="fgg full"><label>Referred by</label><input id="lf15" placeholder="e.g. John Smith (past client)"></div>
+    <!-- Buyer-specific fields (shown when Type = Buyer) -->
+    <div id="buyer-fields" style="display:none;grid-column:1/-1">
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:8px 0 10px;padding-top:8px;border-top:1px solid var(--border)">Buyer Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg">
+          <label>Pre-approval status</label>
+          <select id="lf-preapproval">
+            <option value="">— select —</option>
+            <option value="Pre-approved">✅ Pre-approved</option>
+            <option value="In process">🔄 In process</option>
+            <option value="Not yet started">❌ Not yet started</option>
+            <option value="Cash buyer">💵 Cash buyer</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Max budget</label>
+          <input id="lf-budget" placeholder="$1,200,000">
+        </div>
+        <div class="fg">
+          <label>Timeline to buy</label>
+          <select id="lf-buy-timeline">
+            <option value="">— select —</option>
+            <option value="ASAP">ASAP</option>
+            <option value="1-3 months">1–3 months</option>
+            <option value="3-6 months">3–6 months</option>
+            <option value="6-12 months">6–12 months</option>
+            <option value="Just looking">Just looking</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Down payment</label>
+          <input id="lf-downpayment" placeholder="e.g. 20%, $240,000">
+        </div>
+        <div class="fg">
+          <label>Property type</label>
+          <select id="lf-buy-proptype">
+            <option value="">— select —</option>
+            <option value="Single Family">Single Family</option>
+            <option value="Condo">Condo / Townhouse</option>
+            <option value="Multi-Family">Multi-Family</option>
+            <option value="Any">Open to anything</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Motivation</label>
+          <select id="lf-buy-motivation">
+            <option value="">— select —</option>
+            <option value="First-time buyer">First-time buyer</option>
+            <option value="Upgrading">Upgrading</option>
+            <option value="Downsizing">Downsizing</option>
+            <option value="Investment">Investment</option>
+            <option value="Relocating">Relocating</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Current situation</label>
+          <select id="lf-current-situation">
+            <option value="">— select —</option>
+            <option value="Renting">Renting</option>
+            <option value="Own - selling first">Own — selling first</option>
+            <option value="Own - keeping">Own — keeping current</option>
+            <option value="Living with family">Living with family</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Working with other agents?</label>
+          <select id="lf-buy-competing">
+            <option value="">— select —</option>
+            <option value="No">No — just us</option>
+            <option value="Yes">Yes — looking around</option>
+            <option value="Signed exclusive">Signed exclusive with me</option>
+          </select>
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Preferred neighborhoods</label>
+          <input id="lf-neighborhoods" placeholder="e.g. West Hollywood, Silver Lake, Los Feliz">
+        </div>
+        <div class="fg" style="grid-column:1/-1">
+          <label>Must-haves</label>
+          <input id="lf-musthaves" placeholder="e.g. 3+ beds, garage, yard, no HOA">
+        </div>
+      </div>
+    </div>
+
     <!-- Seller-specific fields (shown when Type = Seller) -->
     <div id="seller-fields" style="display:none;grid-column:1/-1">
       <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:8px 0 10px;padding-top:8px;border-top:1px solid var(--border)">Seller Details</div>
@@ -2614,7 +2711,7 @@ function saveLead(){
   const g=id=>document.getElementById(id).value.trim();
   if(!g('lf1')){alert('First name required');return;}
   const ex=editLeadId?leads.find(l=>l.id===editLeadId):{};
-  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,agentName:'',referredBy:g('lf15'),agentContacts:[],lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||'',askingPrice:document.getElementById('lf5b')?.value||ex.askingPrice||'',listDate:document.getElementById('lf6b')?.value||ex.listDate||'',motivation:document.getElementById('lf-motivation')?.value||ex.motivation||'',sellerTimeline:document.getElementById('lf-timeline')?.value||ex.sellerTimeline||'',propType:document.getElementById('lf-proptype')?.value||ex.propType||'',bedbath:document.getElementById('lf-bedbath')?.value||ex.bedbath||'',targetNet:document.getElementById('lf-targetnet')?.value||ex.targetNet||'',priorListing:document.getElementById('lf-priorlisting')?.value||ex.priorListing||'',competing:document.getElementById('lf-competing')?.value||ex.competing||'',sellerDocs:window._pendingSellerFields?.sellerDocs||ex.sellerDocs||[],docs:ex.docs||[]};
+  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),stage:document.getElementById('lf12').value,source:document.getElementById('lf13').value,agentName:'',referredBy:g('lf15'),agentContacts:[],preApproval:window._pendingBuyerFields?.preApproval||ex.preApproval||'',budget:window._pendingBuyerFields?.budget||ex.budget||'',buyTimeline:window._pendingBuyerFields?.buyTimeline||ex.buyTimeline||'',downPayment:window._pendingBuyerFields?.downPayment||ex.downPayment||'',buyPropType:window._pendingBuyerFields?.buyPropType||ex.buyPropType||'',buyMotivation:window._pendingBuyerFields?.buyMotivation||ex.buyMotivation||'',currentSituation:window._pendingBuyerFields?.currentSituation||ex.currentSituation||'',buyCompeting:window._pendingBuyerFields?.buyCompeting||ex.buyCompeting||'',neighborhoods:window._pendingBuyerFields?.neighborhoods||ex.neighborhoods||'',mustHaves:window._pendingBuyerFields?.mustHaves||ex.mustHaves||'',lastcontact:ex.lastcontact||'',lcmethod:ex.lcmethod||'',askingPrice:document.getElementById('lf5b')?.value||ex.askingPrice||'',listDate:document.getElementById('lf6b')?.value||ex.listDate||'',motivation:document.getElementById('lf-motivation')?.value||ex.motivation||'',sellerTimeline:document.getElementById('lf-timeline')?.value||ex.sellerTimeline||'',propType:document.getElementById('lf-proptype')?.value||ex.propType||'',bedbath:document.getElementById('lf-bedbath')?.value||ex.bedbath||'',targetNet:document.getElementById('lf-targetnet')?.value||ex.targetNet||'',priorListing:document.getElementById('lf-priorlisting')?.value||ex.priorListing||'',competing:document.getElementById('lf-competing')?.value||ex.competing||'',sellerDocs:window._pendingSellerFields?.sellerDocs||ex.sellerDocs||[],docs:ex.docs||[]};
   const wasClosedBefore = editLeadId ? (leads.find(l=>l.id===editLeadId)?.stage==='closed') : false;
   const isNowClosed = lead.stage === 'closed';
   if(editLeadId){leads=leads.map(l=>l.id===editLeadId?lead:l);}else{leads.push(lead);}
@@ -2626,7 +2723,7 @@ function saveLead(){
       .catch(()=>{});
   }
 }
-function delLead(id){if(confirm('Delete this lead and all activity?')){leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();renderAll();}}
+function delLead(id){if(confirm('Delete this lead and all activity?')){leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();pushToBackend();renderAll();toast('Lead deleted');}}
 
 function openAct(id){
   actLeadId=id;const l=leads.find(x=>x.id===id);
@@ -4177,6 +4274,7 @@ function showCeTab(tab) {
   if (tab === 'performance') { renderPerformance(); }
   if (tab === 'sellers') { if(typeof renderSellers==="function") renderSellers(); }
   if (tab === 'transactions') { if(typeof renderTransactions==="function") renderTransactions(); }
+  if (tab === 'buyers') { if(typeof renderBuyers==="function") renderBuyers(); }
 }
 
 function renderCalendar() {
@@ -8027,6 +8125,129 @@ document.addEventListener('DOMContentLoaded', function() {
       };
     }
   }, 800);
+});
+</script>
+
+
+<script>
+// ── Buyer Hub ─────────────────────────────────────────────────
+function renderBuyers() {
+  var grid = document.getElementById('buyerGrid');
+  if (!grid) return;
+  var buyers = leads.filter(function(l) { return l.type === 'buyer' && l.temp !== 'done'; });
+  
+  var badge = document.getElementById('nb-buyers');
+  if (badge) { badge.textContent = buyers.length; badge.style.display = buyers.length ? '' : 'none'; }
+
+  if (!buyers.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No active buyer leads. Add a buyer to get started.</div>';
+    return;
+  }
+
+  var today = new Date().toISOString().split('T')[0];
+  var tempColors = {
+    hot: { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.3)' },
+    warm: { bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.3)' },
+    cold: { bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)' }
+  };
+
+  grid.innerHTML = buyers.map(function(l) {
+    var tc = tempColors[l.temp] || { bg: 'var(--surface)', border: 'var(--border)' };
+    var preapproval = l.preApproval || '';
+    var preIcon = preapproval === 'Pre-approved' ? '✅' : preapproval === 'Cash buyer' ? '💵' : preapproval === 'In process' ? '🔄' : '❌';
+    var lastContact = l.lastcontact ? rel(l.lastcontact) + (l.lcmethod ? ' · ' + l.lcmethod : '') : 'Never contacted';
+    var followupText = l.followup ? (l.followup <= today ? '<span style="color:var(--red)">⚠ Overdue</span>' : '📅 ' + ffu(l.followup, l.method)) : '';
+    var docCount = (l.docs||[]).length;
+
+    return '<div style="background:' + tc.bg + ';border:1px solid ' + tc.border + ';border-radius:var(--rl);padding:20px;transition:border-color 0.15s,transform 0.15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
+      + '<div style="cursor:pointer" onclick="openLeadDetail('' + l.id + '')">'
+      + '<div style="font-size:16px;font-weight:700">' + l.first + ' ' + l.last + '</div>'
+      + '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + (l.phone ? formatPhone(l.phone) : 'No phone') + (l.email ? ' · ' + l.email : '') + '</div>'
+      + '</div>' + tb(l.temp) + '</div>'
+
+      + '<div style="background:var(--surface2);border-radius:var(--r);padding:12px;margin-bottom:12px">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--text2)">'
+      + (preapproval ? '<div>' + preIcon + ' ' + preapproval + '</div>' : '<div style="color:var(--text3)">No pre-approval</div>')
+      + '<div>💰 ' + (l.budget || l.prop || '—') + '</div>'
+      + (l.buyTimeline ? '<div>⏱ ' + l.buyTimeline + '</div>' : '')
+      + (l.buyPropType ? '<div>🏠 ' + l.buyPropType + '</div>' : '')
+      + (l.neighborhoods ? '<div style="grid-column:1/-1">📍 ' + l.neighborhoods + '</div>' : '')
+      + (l.mustHaves ? '<div style="grid-column:1/-1">⭐ ' + l.mustHaves + '</div>' : '')
+      + '</div></div>'
+
+      + '<div style="font-size:11px;color:var(--text3);margin-bottom:12px;display:flex;flex-direction:column;gap:3px">'
+      + '<div>' + (followupText || '<span style="color:var(--text3)">No follow-up set</span>') + '</div>'
+      + '<div>' + lastContact + '</div>'
+      + '</div>'
+
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">'
+      + (l.phone ? '<a href="tel:' + l.phone + '" class="btn btn-sm" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)"><i class="ti ti-phone" style="font-size:11px"></i></a>' : '')
+      + (l.phone ? '<a href="sms:' + l.phone + '" class="btn btn-sm" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)"><i class="ti ti-message" style="font-size:11px"></i></a>' : '')
+      + '<button class="btn btn-sm" onclick="openEmailTemplate('' + l.id + '')" style="background:rgba(232,104,26,0.12);color:var(--accent);border:1px solid rgba(232,104,26,0.3)"><i class="ti ti-mail" style="font-size:11px"></i></button>'
+      + '<button class="btn btn-sm" onclick="openAct('' + l.id + '')"><i class="ti ti-activity" style="font-size:11px"></i></button>'
+      + '<button class="btn btn-sm" onclick="openLeadDocs('' + l.id + '')" style="position:relative">' + (docCount ? '<span style="position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;font-size:8px;font-weight:800;border-radius:999px;min-width:14px;height:14px;display:flex;align-items:center;justify-content:center">' + docCount + '</span>' : '') + '<i class="ti ti-paperclip" style="font-size:11px"></i></button>'
+      + '<button class="btn btn-sm" onclick="openEdit('' + l.id + '')"><i class="ti ti-edit" style="font-size:11px"></i></button>'
+      + '</div></div>';
+  }).join('');
+}
+
+// Toggle buyer/seller fields based on lead type
+var _origToggleSellerFields = typeof toggleSellerFields === 'function' ? toggleSellerFields : null;
+function toggleBuyerFields() {
+  var type = document.getElementById('lf7')?.value;
+  var bf = document.getElementById('buyer-fields');
+  var sf = document.getElementById('seller-fields');
+  if (bf) bf.style.display = type === 'buyer' ? '' : 'none';
+  if (sf) sf.style.display = type === 'seller' ? '' : 'none';
+}
+
+// Override toggleSellerFields to also handle buyers
+if (typeof toggleSellerFields === 'function') {
+  toggleSellerFields = toggleBuyerFields;
+}
+
+// Save buyer fields
+var _origSaveLead2 = typeof saveLead === 'function' ? saveLead : null;
+if (_origSaveLead2) {
+  var __origSaveLead2 = _origSaveLead2;
+  saveLead = function() {
+    var type = document.getElementById('lf7')?.value;
+    if (type === 'buyer') {
+      window._pendingBuyerFields = {
+        preApproval: document.getElementById('lf-preapproval')?.value || '',
+        budget: document.getElementById('lf-budget')?.value || '',
+        buyTimeline: document.getElementById('lf-buy-timeline')?.value || '',
+        downPayment: document.getElementById('lf-downpayment')?.value || '',
+        buyPropType: document.getElementById('lf-buy-proptype')?.value || '',
+        buyMotivation: document.getElementById('lf-buy-motivation')?.value || '',
+        currentSituation: document.getElementById('lf-current-situation')?.value || '',
+        buyCompeting: document.getElementById('lf-buy-competing')?.value || '',
+        neighborhoods: document.getElementById('lf-neighborhoods')?.value || '',
+        mustHaves: document.getElementById('lf-musthaves')?.value || ''
+      };
+    }
+    __origSaveLead2();
+    window._pendingBuyerFields = null;
+  };
+}
+
+// Hook renderBuyers into renderAll
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // Hook into renderAll
+    if (typeof renderAll === 'function') {
+      var _ra = renderAll;
+      renderAll = function() {
+        _ra();
+        renderBuyers();
+      };
+    }
+    // Hook type change to show buyer/seller fields
+    var typeEl = document.getElementById('lf7');
+    if (typeEl) typeEl.addEventListener('change', toggleBuyerFields);
+    renderBuyers();
+  }, 1000);
 });
 </script>
 
