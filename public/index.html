@@ -1308,6 +1308,12 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Security deposit ($)</label><input id="llf11" type="number" placeholder="7000" step="50"></div>
     <!-- Owner/Landlord -->
     <div class="fgg full" style="grid-column:1/-1;margin-top:4px"><label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Owner / Landlord</label></div>
+    <div class="fgg full" style="grid-column:1/-1">
+      <label>Import from saved contacts</label>
+      <select id="owner-import" onchange="importOwnerContact()" style="width:100%;margin-bottom:6px">
+        <option value="">— select from agents or leads —</option>
+      </select>
+    </div>
     <div class="fgg"><label>Owner name</label><input id="llf12" placeholder="John Doe"></div>
     <div class="fgg"><label>Owner phone</label><input id="llf13" placeholder="(323) 555-0200" type="tel"></div>
     <div class="fgg full" style="grid-column:1/-1"><label>Owner email</label><input id="llf14" placeholder="owner@email.com" type="email"></div>
@@ -8363,10 +8369,11 @@ function addCoTenantRow(existing) {
   if (!rows) return;
   var row = document.createElement('div');
   row.className = 'co-tenant-row';
-  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:6px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px';
   row.innerHTML = '<input class="ct-first" placeholder="First name" value="' + (existing ? existing.first||'' : '') + '" style="font-size:12px;padding:6px 8px">'
     + '<input class="ct-last" placeholder="Last name" value="' + (existing ? existing.last||'' : '') + '" style="font-size:12px;padding:6px 8px">'
     + '<input class="ct-phone" placeholder="Phone" value="' + (existing ? existing.phone||'' : '') + '" type="tel" style="font-size:12px;padding:6px 8px">'
+    + '<input class="ct-email" placeholder="Email" value="' + (existing ? existing.email||'' : '') + '" type="email" style="font-size:12px;padding:6px 8px">'
     + '<button type="button" onclick="this.parentElement.remove()" style="background:rgba(248,113,113,0.15);color:#F87171;border:1px solid rgba(248,113,113,0.3);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px">✕</button>';
   rows.appendChild(row);
 }
@@ -8381,6 +8388,7 @@ function getCoTenants() {
         first: first,
         last: row.querySelector('.ct-last')?.value.trim() || '',
         phone: row.querySelector('.ct-phone')?.value.trim() || '',
+        email: row.querySelector('.ct-email')?.value.trim() || '',
         id: 'ct_' + Date.now() + '_' + Math.random().toString(36).slice(2,5)
       });
     }
@@ -8465,6 +8473,86 @@ document.addEventListener('DOMContentLoaded', function() {
             // Co-tenants show in the detail view
           }
         });
+      };
+    }
+  }, 1500);
+});
+</script>
+
+
+<script>
+// ── Owner contact auto-fill ───────────────────────────────────
+function populateOwnerDropdown() {
+  var sel = document.getElementById('owner-import');
+  if (!sel) return;
+  var options = '<option value="">— select from agents or leads —</option>';
+  
+  // Add agents
+  if (agents && agents.length) {
+    options += '<optgroup label="Agents">';
+    agents.forEach(function(a) {
+      options += '<option value="agent:' + a.id + '">' + a.first + ' ' + a.last + (a.brokerage?' ('+a.brokerage+')':'') + '</option>';
+    });
+    options += '</optgroup>';
+  }
+  
+  // Add leads (sellers/landlords most likely)
+  var ownerLeads = leads.filter(function(l) { return l.email || l.phone; }).slice(0, 30);
+  if (ownerLeads.length) {
+    options += '<optgroup label="Leads / Contacts">';
+    ownerLeads.forEach(function(l) {
+      options += '<option value="lead:' + l.id + '">' + l.first + ' ' + l.last + (l.phone?' · '+formatPhone(l.phone):'') + '</option>';
+    });
+    options += '</optgroup>';
+  }
+  
+  sel.innerHTML = options;
+}
+
+function importOwnerContact() {
+  var sel = document.getElementById('owner-import');
+  if (!sel || !sel.value) return;
+  
+  var parts = sel.value.split(':');
+  var type = parts[0], id = parts[1];
+  var contact = null;
+  
+  if (type === 'agent') {
+    contact = agents.find(function(a) { return a.id === id; });
+    if (contact) {
+      document.getElementById('llf12').value = contact.first + ' ' + contact.last;
+      document.getElementById('llf13').value = contact.phone || '';
+      document.getElementById('llf14').value = contact.email || '';
+    }
+  } else if (type === 'lead') {
+    contact = leads.find(function(l) { return l.id === id; });
+    if (contact) {
+      document.getElementById('llf12').value = contact.first + ' ' + contact.last;
+      document.getElementById('llf13').value = contact.phone || '';
+      document.getElementById('llf14').value = contact.email || '';
+    }
+  }
+  
+  sel.value = '';
+  toast('Owner contact imported');
+}
+
+// Hook into openAddLease and openEditLease to populate dropdown
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var origAdd = window.openAddLease;
+    var origEdit = window.openEditLease;
+    
+    if (origAdd) {
+      window.openAddLease = function() {
+        origAdd();
+        setTimeout(populateOwnerDropdown, 80);
+      };
+    }
+    if (origEdit) {
+      window.openEditLease = function(id) {
+        origEdit(id);
+        setTimeout(populateOwnerDropdown, 80);
       };
     }
   }, 1500);
