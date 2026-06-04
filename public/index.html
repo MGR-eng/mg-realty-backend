@@ -1544,6 +1544,12 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
 <div class="modal-overlay" id="mLead"><div class="modal">
   <div class="modal-title" id="leadMT">Add lead</div>
   <div class="fg">
+    <div class="fgg full" id="lease-import-wrap" style="margin-bottom:10px;display:none">
+      <label>Import from Lease Tenant</label>
+      <select id="lease-import-select" onchange="importFromLease()" style="width:100%">
+        <option value="">— select a tenant to import —</option>
+      </select>
+    </div>
     <div class="fgg"><label>First name</label><input id="lf1" placeholder="Jane"></div>
     <div class="fgg"><label>Last name</label><input id="lf2" placeholder="Smith"></div>
     <div class="fgg"><label>Phone</label><input id="lf3" placeholder="(310) 555-0100"></div>
@@ -1563,7 +1569,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Follow-up date</label><input id="lf9" type="date"></div>
     <div class="fgg"><label>Follow-up method</label><select id="lf10"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
     <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select></div>
-    <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Website">Website</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Other">Other</option></select></div>
+    <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Website">Website</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Tenant">Tenant</option><option value="Other">Other</option></select></div>
     <div class="fgg full"><label>Referred by</label><input id="lf15" placeholder="e.g. John Smith (past client)"></div>
     <!-- Buyer-specific fields (shown when Type = Buyer) -->
     <div id="buyer-fields" style="display:none;grid-column:1/-1">
@@ -5258,6 +5264,7 @@ function renderLeases() {
         <div style="display:flex;gap:5px" onclick="event.stopPropagation()">
           ${docCount ? `<span style="font-size:10px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);border-radius:5px;padding:1px 7px">📎 ${docCount}</span>` : ''}
           <button class="btn btn-sm" onclick="openLeaseDetail('${l.id}')" style="font-size:11px">View</button>
+          <button class="btn btn-sm" onclick="convertLeaseToLead('${l.id}')" style="background:rgba(232,104,26,0.12);color:var(--accent);border:1px solid rgba(232,104,26,0.3);font-size:11px" title="Convert tenant to lead"><i class="ti ti-user-plus" style="font-size:11px"></i> Lead</button>
           <button class="btn btn-sm btn-primary" onclick="openEditLease('${l.id}')" style="font-size:11px"><i class="ti ti-edit" style="font-size:11px"></i></button>
         </div>
       </div>
@@ -8248,6 +8255,90 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeEl) typeEl.addEventListener('change', toggleBuyerFields);
     renderBuyers();
   }, 1000);
+});
+</script>
+
+
+<script>
+// ── Lease → Lead Conversion ───────────────────────────────────
+
+function convertLeaseToLead(leaseId) {
+  var l = leases.find(function(x) { return x.id === leaseId; });
+  if (!l) return;
+
+  // Check if already a lead
+  var existing = leads.find(function(ld) {
+    return ld.phone && l.phone && ld.phone.replace(/\D/g,'') === l.phone.replace(/\D/g,'');
+  }) || leads.find(function(ld) {
+    return ld.email && l.email && ld.email.toLowerCase() === l.email.toLowerCase();
+  });
+
+  if (existing) {
+    if (!confirm(l.first + ' ' + l.last + ' is already in leads as ' + existing.temp.toUpperCase() + '. View their lead profile?')) return;
+    openLeadDetail(existing.id);
+    showPane('leads', document.querySelector('[onclick*=leads]'));
+    return;
+  }
+
+  // Pre-fill lead form with tenant info
+  openAddLead();
+  setTimeout(function() {
+    document.getElementById('lf1').value = l.first || '';
+    document.getElementById('lf2').value = l.last || '';
+    document.getElementById('lf3').value = l.phone || '';
+    document.getElementById('lf4').value = l.email || '';
+    document.getElementById('lf5').value = l.address || '';
+    document.getElementById('lf7').value = 'buyer';
+    document.getElementById('lf13').value = 'Tenant';
+    document.getElementById('lf11').value = 'Tenant at ' + (l.address||'') + (l.unit?' unit '+l.unit:'') + '. Monthly rent: $' + (l.rent||'?') + '. Lease expires: ' + (l.endDate||'?') + '. Convert to buyer/referral source.';
+
+    // Trigger buyer fields
+    if (typeof toggleBuyerFields === 'function') toggleBuyerFields();
+    // Pre-fill buyer motivation
+    var motivEl = document.getElementById('lf-buy-motivation');
+    if (motivEl) motivEl.value = 'First-time buyer';
+
+    toast('Tenant info imported — review and save as lead');
+  }, 100);
+}
+
+function populateLeaseImportDropdown() {
+  var sel = document.getElementById('lease-import-select');
+  var wrap = document.getElementById('lease-import-wrap');
+  if (!sel || !wrap) return;
+  if (!leases || !leases.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  sel.innerHTML = '<option value="">— select a tenant to import —</option>'
+    + leases.map(function(l) {
+        var alreadyLead = leads.find(function(ld) {
+          return (ld.phone && l.phone && ld.phone.replace(/\D/g,'') === l.phone.replace(/\D/g,''))
+            || (ld.email && l.email && ld.email.toLowerCase() === l.email.toLowerCase());
+        });
+        return '<option value="' + l.id + '"' + (alreadyLead?' disabled':'') + '>'
+          + l.first + ' ' + l.last + ' — ' + (l.address||'No address')
+          + (alreadyLead?' (already a lead)':'')
+          + '</option>';
+      }).join('');
+}
+
+function importFromLease() {
+  var sel = document.getElementById('lease-import-select');
+  if (!sel || !sel.value) return;
+  convertLeaseToLead(sel.value);
+  sel.value = '';
+}
+
+// Show lease import dropdown when opening Add Lead
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var origOpenAddLead = window.openAddLead;
+    if (origOpenAddLead) {
+      window.openAddLead = function() {
+        origOpenAddLead();
+        setTimeout(populateLeaseImportDropdown, 80);
+      };
+    }
+  }, 1200);
 });
 </script>
 
