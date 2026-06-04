@@ -161,8 +161,8 @@ function saveTx() {
   var tx = {id:editTxId||'tx_'+Date.now(),address:g('tx-address'),salePrice:g('tx-price').replace(/[^0-9.]/g,''),commissionPct:g('tx-commission'),closeDate:g('tx-closingdate'),offerDate:g('tx-offer-date'),inspectionDeadline:g('tx-inspection-date'),contingencyRemoval:g('tx-contingency-date'),loanApprovalDeadline:g('tx-loan-date'),coopAgent:g('tx-coop-agent'),coopBrokerage:g('tx-coop-brokerage'),notes:g('tx-notes'),txStage:document.getElementById('tx-stage')?.value||'Offer Submitted',side:document.getElementById('tx-side')?.value||'Buyer side',leadId:document.getElementById('tx-lead')?.value||'',checklist:checklist};
   if (editTxId) { deals = deals.map(function(d) { return d.id===editTxId?tx:d; }); }
   else { deals.push(tx); }
-  persist(); renderAll();
   document.getElementById('mTransaction').style.display = 'none';
+  persist(); renderAll();
   toast('Transaction saved');
 }
 
