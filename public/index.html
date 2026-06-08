@@ -523,7 +523,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <main class="main">
 
 <div id="pane-dashboard" class="pane active">
-  <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
+  <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn btn-purple" onclick="openCrmSearch()"><i class="ti ti-search"></i> Ask the CRM</button><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
   <div class="content">
     <div class="stats-grid" id="statsGrid"></div>
 
@@ -1497,13 +1497,36 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
   <div class="mfoot"><button class="btn" onclick="closeModal('mPropDocs')">Done</button></div>
 </div></div>
 
+<!-- Ask the CRM (global AI search) Modal -->
+<div class="modal-overlay" id="mCrmSearch"><div class="modal" style="max-width:560px">
+  <div class="modal-title">🔎 Ask the CRM</div>
+  <div style="padding:0 20px 8px">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Ask anything about your leads, deals, properties, leases, tasks, or activity — it scans your whole CRM and answers from your real data.</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input id="crmSearchQ" placeholder="e.g. Which buyers have a budget over $900k in Silver Lake?" style="flex:1" onkeydown="if(event.key==='Enter')runCrmSearch()">
+      <button class="btn btn-purple" id="crmSearchBtn" onclick="runCrmSearch()"><i class="ti ti-sparkles"></i> Search</button>
+    </div>
+    <div id="crmSearchStatus" style="display:none;font-size:11px;color:var(--amber);margin-bottom:8px"></div>
+    <div id="crmSearchResult" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;max-height:400px;overflow-y:auto"></div>
+  </div>
+  <div class="mfoot"><button class="btn" onclick="closeModal('mCrmSearch')">Close</button></div>
+</div></div>
+
 <!-- Lease Docs Modal -->
 <div class="modal-overlay" id="mLeaseDocs"><div class="modal" style="max-width:500px">
   <div class="modal-title" id="leaseDocsTitle">📎 Lease Documents</div>
   <div style="padding:0 20px 8px">
+    <select id="leaseDocType" style="width:100%;font-size:12px;padding:6px 10px;margin-bottom:8px">
+      <option value="Lease Agreement">Lease Agreement</option>
+      <option value="Addendum">Addendum / Amendment</option>
+      <option value="Move-In Checklist">Move-In/Move-Out Checklist</option>
+      <option value="Renter's Insurance">Renter's Insurance</option>
+      <option value="ID / Application">ID / Rental Application</option>
+      <option value="Other">Other</option>
+    </select>
     <input type="file" id="leaseDocFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadLeaseDocs(this)">
     <button class="btn" onclick="document.getElementById('leaseDocFile').click()" style="width:100%;border:1.5px dashed var(--border);background:var(--surface2);color:var(--text2);font-size:12px;padding:10px;gap:6px;margin-bottom:8px">
-      <i class="ti ti-cloud-upload"></i> Upload documents (PDF, Word, images)
+      <i class="ti ti-cloud-upload"></i> Upload the agreement or other documents (PDF, Word, images)
     </button>
     <div id="leaseDocStatus" style="display:none;font-size:11px;text-align:center;margin-bottom:8px;color:var(--amber)"></div>
   </div>
@@ -3671,6 +3694,47 @@ function saveProp(){
   if(editPropId){props=props.map(p=>p.id===editPropId?prop:p);}else{props.push(prop);}
   editPropId=null;persist();closeModal('mProp');renderProperties();toast(prop.id&&editPropId?'Property updated':'Property added');
   if(isNew && (prop.status==='active'||prop.status==='Active'||prop.status==='new'||prop.status==='New'||!prop.status)) checkBuyerMatchesForNewListing(prop);
+}
+
+// ── Ask the CRM (global AI search across all data) ────────────
+function openCrmSearch() {
+  const resEl = document.getElementById('crmSearchResult');
+  const statusEl = document.getElementById('crmSearchStatus');
+  if (resEl) { resEl.style.display = 'none'; resEl.textContent = ''; }
+  if (statusEl) statusEl.style.display = 'none';
+  document.getElementById('crmSearchQ').value = '';
+  openModal('mCrmSearch');
+  setTimeout(() => document.getElementById('crmSearchQ')?.focus(), 100);
+}
+async function runCrmSearch() {
+  const q = document.getElementById('crmSearchQ').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('crmSearchBtn');
+  const statusEl = document.getElementById('crmSearchStatus');
+  const resEl = document.getElementById('crmSearchResult');
+  btn.disabled = true;
+  statusEl.style.display = 'block'; statusEl.style.color = 'var(--amber)';
+  statusEl.textContent = 'Scanning your CRM…';
+  resEl.style.display = 'none';
+  try {
+    const r = await fetch(BACKEND + '/api/crm-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: q,
+        data: { leads, deals, props, leases, tasks, appts, acts, vendors }
+      })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Search failed');
+    statusEl.style.display = 'none';
+    resEl.style.display = 'block';
+    resEl.textContent = d.answer;
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = 'Search failed: ' + e.message;
+  }
+  btn.disabled = false;
 }
 
 // ── New-listing → buyer-match alerts ──────────────────────────
@@ -5865,7 +5929,7 @@ function renderLeaseDocList(leaseId) {
       docs.map(d=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
         <i class="ti ti-file" style="color:var(--blue);font-size:14px"></i>
         <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
-        <div style="font-size:10px;color:var(--text3)">${d.size||''} · ${d.date||''}</div></div>
+        <div style="font-size:10px;color:var(--text3)">${d.docType?`<span style="color:var(--accent);font-weight:600">${d.docType}</span> · `:''}${d.size||''} · ${d.date||''}</div></div>
         <button class="btn btn-sm" style="font-size:11px" onclick="downloadLeaseDoc('${leaseId}','${d.id}')"><i class="ti ti-download" style="font-size:11px"></i></button>
         <button class="btn btn-sm" style="font-size:11px;background:var(--red-bg);color:var(--red);border-color:var(--red-bd)" onclick="deleteLeaseDoc('${leaseId}','${d.id}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
       </div>`).join('')}`;
@@ -5887,7 +5951,7 @@ function renderLeaseDocModalList(leaseId) {
   el.innerHTML = docs.map(d=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
     <i class="ti ti-file" style="color:var(--blue);font-size:14px"></i>
     <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
-    <div style="font-size:10px;color:var(--text3)">${d.size||''} · ${d.date||''}</div></div>
+    <div style="font-size:10px;color:var(--text3)">${d.docType?`<span style="color:var(--accent);font-weight:600">${d.docType}</span> · `:''}${d.size||''} · ${d.date||''}</div></div>
     <button class="btn btn-sm" onclick="downloadLeaseDoc('${leaseId}','${d.id}')"><i class="ti ti-download" style="font-size:11px"></i></button>
     <button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border-color:var(--red-bd)" onclick="deleteLeaseDoc('${leaseId}','${d.id}');renderLeaseDocModalList('${leaseId}')"><i class="ti ti-trash" style="font-size:11px"></i></button>
   </div>`).join('');
@@ -5902,6 +5966,7 @@ async function uploadLeaseDocs(input) {
   const lease = leases.find(l=>l.id===leaseId); if(!lease) return;
   if(!lease.docs) lease.docs=[];
   let uploaded = 0;
+  const docType = document.getElementById('leaseDocType')?.value || 'Other';
   try {
     for(const file of files){
       statusEl.textContent = `Uploading ${file.name}…`;
@@ -5914,7 +5979,7 @@ async function uploadLeaseDocs(input) {
       });
       const d = await r.json();
       if(!d.ok) throw new Error(d.error||'Upload failed');
-      lease.docs.push({id:d.fileId,name:file.name,size:sizeStr,date:new Date().toLocaleDateString(),viewUrl:d.viewUrl,webViewLink:d.webViewLink,uploadedAt:new Date().toISOString()});
+      lease.docs.push({id:d.fileId,name:file.name,size:sizeStr,date:new Date().toLocaleDateString(),viewUrl:d.viewUrl,webViewLink:d.webViewLink,uploadedAt:new Date().toISOString(),docType});
       uploaded++;
     }
     persist();

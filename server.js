@@ -2775,6 +2775,63 @@ Write the email body now:`;
   }
 });
 
+// ── CRM-wide AI search/lookup ──────────────────────────────────
+// Accepts a natural-language question plus a compact snapshot of the
+// CRM's data arrays, and asks Claude to answer using ONLY that data.
+app.post('/api/crm-search', async (req, res) => {
+  try {
+    const { question, data } = req.body;
+    if (!question || !question.trim()) return res.status(400).json({ ok: false, error: 'Question required' });
+
+    const d = data || {};
+    const compact = (arr, fields) => (Array.isArray(arr) ? arr : []).map(item => {
+      const o = {};
+      fields.forEach(f => { if (item[f] !== undefined && item[f] !== '') o[f] = item[f]; });
+      return o;
+    });
+
+    const snapshot = {
+      leads: compact(d.leads, ['id','first','last','phone','email','type','stage','temp','prop','notes','budget','neighborhoods','mustHaves','followup','lastcontact','referredBy','source','birthday']),
+      deals: compact(d.deals, ['id','leadId','address','salePrice','commissionPct','closeDate','side','notes']),
+      properties: compact(d.props, ['id','address','price','status','beds','baths','sqft','type','notes']),
+      leases: compact(d.leases, ['id','address','unit','first','last','rent','startDate','endDate','status','ownerName']),
+      tasks: compact(d.tasks, ['id','title','due','priority','done','notes']),
+      appointments: compact(d.appts, ['id','leadName','type','address','date','time','notes']),
+      activities: compact(d.acts, ['id','leadName','type','direction','outcome','date','notes']),
+      vendors: compact(d.vendors, ['id','name','category','phone','notes']),
+    };
+
+    const prompt = `You are an assistant helping Matt Golden, a real estate agent at MG Realty in Los Angeles, search and analyze his own CRM data.
+
+Below is a JSON snapshot of his CRM (leads, deals, properties, leases, tasks, appointments, activity log, vendors). Answer the question using ONLY this data — don't invent facts. If the answer requires info that isn't present, say so plainly.
+
+CRM DATA:
+${JSON.stringify(snapshot)}
+
+QUESTION: ${question}
+
+Rules:
+- Be direct and concise — Matt wants the answer, not a report
+- If listing multiple records, use short plain-text lines (name — key detail), no heavy markdown
+- Reference names/addresses/dates from the data so Matt can verify
+- If nothing matches, say so plainly and suggest what to check next
+
+Answer:`;
+
+    const resp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const answer = resp.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    res.json({ ok: true, answer });
+  } catch (e) {
+    console.error('CRM SEARCH ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── AI Lead Prioritizer ───────────────────────────────────────
 app.post('/api/prioritize-leads', async (req, res) => {
   try {
