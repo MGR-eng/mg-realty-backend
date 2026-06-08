@@ -2050,7 +2050,7 @@ async function syncFromBackend(){
     if(data.leases?.length){leases=data.leases;changed=true;}
     if(data.offers?.length){offers=data.offers;changed=true;}
     if(data.vendors?.length){vendors=data.vendors;changed=true;}
-    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));localStorage.setItem(SOF,JSON.stringify(offers));}catch(e){}renderAll();}
+    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));localStorage.setItem(SOF,JSON.stringify(offers));}catch(e){}renderAll();if(typeof checkLeaseRenewalReminders==='function')setTimeout(checkLeaseRenewalReminders,1500);}
   }catch(e){console.warn('Backend sync failed:',e.message);}
 }
 function seed(){
@@ -5360,10 +5360,53 @@ function leaseDaysUntilExpiry(lease) {
   return Math.round((end - today) / 86400000);
 }
 
+// Flags leases that are ~6 months out from their end date and creates a one-time
+// renewal heads-up task so nothing slips through the cracks.
+function checkLeaseRenewalReminders() {
+  if (!Array.isArray(leases) || !leases.length) return;
+  const today = new Date().toISOString().split('T')[0];
+  let madeOne = false;
+  leases.forEach(l => {
+    if (!l.endDate || l.renewalReminderSent) return;
+    const days = leaseDaysUntilExpiry(l);
+    if (days === null) return;
+    // ~6 months out window (165–195 days) — fires once per lease
+    if (days >= 165 && days <= 195) {
+      const name = (l.first||'') + (l.last ? ' ' + l.last : '');
+      tasks.push({
+        id: 't'+Date.now()+Math.floor(Math.random()*1000),
+        title: `Lease renewal heads-up: ${name.trim() || 'Tenant'} — lease ends ${l.endDate} (~6 months out)`,
+        due: today,
+        priority: 'normal',
+        leadId: '',
+        notes: `${l.address||''}${l.unit?' '+l.unit:''} — start renewal conversation with tenant${l.ownerName?' and owner '+l.ownerName:''} now to plan ahead.`,
+        done: false,
+        leaseId: l.id
+      });
+      l.renewalReminderSent = true;
+      madeOne = true;
+    }
+  });
+  if (madeOne) {
+    persist();
+    toast('New lease renewal reminder added to your Tasks');
+    if (typeof renderTasks === 'function') renderTasks();
+    if (typeof renderDashDue === 'function') renderDashDue();
+  }
+}
+function leasesRenewalSoonCount() {
+  if (!Array.isArray(leases)) return 0;
+  return leases.filter(l => {
+    const d = leaseDaysUntilExpiry(l);
+    return d !== null && d >= 165 && d <= 195;
+  }).length;
+}
+
 function renderLeases() {
   const grid = document.getElementById('leaseGrid');
   const statsEl = document.getElementById('leaseStats');
   if (!grid) return;
+  checkLeaseRenewalReminders();
 
   const filter = document.getElementById('lsFilter')?.value || '';
   const today = new Date().toISOString().split('T')[0];
@@ -5385,6 +5428,10 @@ function renderLeases() {
       <div class="tw" style="padding:12px 16px;text-align:center;background:${counts.expiring?'var(--amber-bg)':''}">
         <div style="font-size:22px;font-weight:700;color:${counts.expiring?'var(--amber)':'var(--text)'}">${counts.expiring}</div>
         <div style="font-size:11px;color:var(--text2)">Expiring soon</div>
+      </div>
+      <div class="tw" style="padding:12px 16px;text-align:center;background:${leasesRenewalSoonCount()?'rgba(20,184,166,0.1)':''}">
+        <div style="font-size:22px;font-weight:700;color:${leasesRenewalSoonCount()?'#14b8a6':'var(--text)'}">${leasesRenewalSoonCount()}</div>
+        <div style="font-size:11px;color:var(--text2)">Renewal heads-up (~6mo)</div>
       </div>
       <div class="tw" style="padding:12px 16px;text-align:center">
         <div style="font-size:22px;font-weight:700">${counts.pending}</div>
