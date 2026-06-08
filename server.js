@@ -981,6 +981,60 @@ app.post('/drive/upload', async (req, res) => {
   }
 });
 
+// ── Full CRM data backup → Google Drive (JSON snapshot) ──────
+app.post('/crm/backup-to-drive', async (req, res) => {
+  try {
+    const data = await readCRM();
+    const token = await googleToken();
+    const BACKUP_FOLDER_NAME = 'MG Realty CRM Backups';
+
+    // Find or create the backups folder
+    let folderId = null;
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${BACKUP_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const searchData = await searchRes.json();
+    if (searchData.files?.length) {
+      folderId = searchData.files[0].id;
+    } else {
+      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: BACKUP_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+      });
+      const createData = await createRes.json();
+      folderId = createData.id;
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const fileName = `crm-backup-${stamp}.json`;
+    const fileBuffer = Buffer.from(JSON.stringify(data, null, 2), 'utf-8');
+
+    const boundary = `boundary_${Date.now()}`;
+    const metadata = JSON.stringify({ name: fileName, parents: [folderId] });
+    const multipart = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Type: application/json\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n`),
+      fileBuffer,
+      Buffer.from(`\r\n--${boundary}--`)
+    ]);
+
+    const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}`, 'Content-Length': multipart.length },
+      body: multipart
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadData.id) throw new Error(uploadData.error?.message || 'Upload failed');
+
+    console.log(`CRM backup uploaded: ${fileName} → ${uploadData.id}`);
+    res.json({ ok: true, fileId: uploadData.id, fileName, webViewLink: uploadData.webViewLink, viewUrl: `https://drive.google.com/file/d/${uploadData.id}/view` });
+  } catch(e) {
+    console.error('CRM BACKUP ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Google Sheets: backup leads + activity ───────────────────
 app.post('/drive/backup', async (req, res) => {
   try {
