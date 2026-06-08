@@ -1913,6 +1913,21 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
 var emailLeadId = null;
 
 var EMAIL_TEMPLATES = {
+  ohannounce: l => ({
+    subject: `You're invited — Open House${l.prop ? ' at ' + l.prop : ''}`,
+    body:
+`Hi ${l.first},
+
+I wanted to personally invite you to an upcoming open house${l.prop ? ' at ' + l.prop : ''}. It's a great opportunity to walk the property, ask questions in person, and get a feel for the neighborhood.
+
+I'll share the date and time shortly — let me know if you'd like to be added to the guest list or if you'd prefer a private showing instead.
+
+Looking forward to seeing you there!
+
+Best,
+Matt Golden
+MG Realty`
+  }),
   openhouse: l => ({
     subject: `Thank you for visiting the open house!`,
     body:
@@ -5695,26 +5710,46 @@ async function uploadLeaseDocs(input) {
   const leaseId = currentLeaseDocId; if(!leaseId) return;
   const files = Array.from(input.files); if(!files.length) return;
   const statusEl = document.getElementById('leaseDocStatus');
-  statusEl.style.display='block'; statusEl.textContent=`Uploading ${files.length} file(s)…`;
+  statusEl.style.display='block'; statusEl.style.color='var(--amber)';
+  statusEl.textContent=`Uploading ${files.length} file(s) to Drive…`;
   const lease = leases.find(l=>l.id===leaseId); if(!lease) return;
   if(!lease.docs) lease.docs=[];
-  for(const file of files){
-    const base64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
-    const sizeStr = file.size>1048576?`${(file.size/1048576).toFixed(1)} MB`:`${Math.round(file.size/1024)} KB`;
-    lease.docs.push({id:'ldoc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),name:file.name,size:sizeStr,date:new Date().toLocaleDateString(),data:base64});
+  let uploaded = 0;
+  try {
+    for(const file of files){
+      statusEl.textContent = `Uploading ${file.name}…`;
+      const base64 = await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
+      const sizeStr = file.size>1048576?`${(file.size/1048576).toFixed(1)} MB`:`${Math.round(file.size/1024)} KB`;
+      const r = await fetch(BACKEND + '/drive/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, fileData: base64, mimeType: file.type, leadName: lease.address || 'Lease' })
+      });
+      const d = await r.json();
+      if(!d.ok) throw new Error(d.error||'Upload failed');
+      lease.docs.push({id:d.fileId,name:file.name,size:sizeStr,date:new Date().toLocaleDateString(),viewUrl:d.viewUrl,webViewLink:d.webViewLink,uploadedAt:new Date().toISOString()});
+      uploaded++;
+    }
+    persist();
+    renderLeaseDocModalList(leaseId);
+    if(currentLeaseId===leaseId) renderLeaseDocList(leaseId);
+    statusEl.style.color='var(--green)';
+    statusEl.textContent=`✓ ${uploaded} file(s) uploaded to Google Drive`;
+    setTimeout(()=>{statusEl.style.display='none';},2500);
+  } catch(e) {
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='Upload failed: ' + e.message;
+    toast('Upload failed: ' + e.message);
   }
-  persist();
-  renderLeaseDocModalList(leaseId);
-  if(currentLeaseId===leaseId) renderLeaseDocList(leaseId);
-  statusEl.textContent=`✓ ${files.length} file(s) uploaded`;
-  setTimeout(()=>{statusEl.style.display='none';},2500);
   input.value='';
 }
 
 function downloadLeaseDoc(leaseId, docId) {
   const lease=leases.find(l=>l.id===leaseId); if(!lease) return;
-  const doc=(lease.docs||[]).find(d=>d.id===docId); if(!doc||!doc.data) return;
-  const a=document.createElement('a');a.href=doc.data;a.download=doc.name;a.click();
+  const doc=(lease.docs||[]).find(d=>d.id===docId); if(!doc) return;
+  const url = doc.webViewLink || doc.viewUrl;
+  if(url){ window.open(url, '_blank'); return; }
+  if(doc.data){ const a=document.createElement('a');a.href=doc.data;a.download=doc.name;a.click(); }
 }
 
 function deleteLeaseDoc(leaseId, docId) {
