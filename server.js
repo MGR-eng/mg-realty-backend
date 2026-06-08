@@ -38,7 +38,9 @@ async function readCRM() {
     deals:        row.deals        || [],
     agents:       row.agents       || [],
     sequences:    row.sequences    || [],
-    leases:       row.leases       || []
+    leases:       row.leases       || [],
+    offers:       row.offers       || [],
+    vendors:      row.vendors      || []
   };
 }
 
@@ -510,8 +512,8 @@ app.get('/crm/pull', async (req, res) => {
 
 app.post('/crm/push', async (req, res) => {
   try {
-    const { leads, activities, appointments, tasks, properties, deals, agents } = req.body;
-    await writeCRM({ leads, activities, appointments, tasks, properties, deals, agents });
+    const { leads, activities, appointments, tasks, properties, deals, agents, leases, offers, vendors } = req.body;
+    await writeCRM({ leads, activities, appointments, tasks, properties, deals, agents, leases, offers, vendors });
     res.json({ ok: true });
   } catch(e) {
     console.error('CRM PUSH ERROR:', e.message);
