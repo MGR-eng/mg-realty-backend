@@ -40,7 +40,9 @@ async function readCRM() {
     sequences:    row.sequences    || [],
     leases:       row.leases       || [],
     offers:       row.offers       || [],
-    vendors:      row.vendors      || []
+    vendors:      row.vendors      || [],
+    expenses:     row.expenses     || [],
+    invoices:     row.invoices     || []
   };
 }
 
@@ -67,6 +69,8 @@ async function writeCRM(data) {
       console.error('ALTER TABLE crm_state ADD COLUMN IF NOT EXISTS vendors jsonb DEFAULT \'[]\'::jsonb;');
       console.error('ALTER TABLE crm_state ADD COLUMN IF NOT EXISTS leases jsonb DEFAULT \'[]\'::jsonb;');
       console.error('ALTER TABLE crm_state ADD COLUMN IF NOT EXISTS offers jsonb DEFAULT \'[]\'::jsonb;');
+      console.error('ALTER TABLE crm_state ADD COLUMN IF NOT EXISTS expenses jsonb DEFAULT \'[]\'::jsonb;');
+      console.error('ALTER TABLE crm_state ADD COLUMN IF NOT EXISTS invoices jsonb DEFAULT \'[]\'::jsonb;');
     }
     throw new Error(`Supabase write failed: ${r.status} — ${errBody}`);
   }
@@ -589,8 +593,8 @@ app.get('/crm/pull', async (req, res) => {
 
 app.post('/crm/push', async (req, res) => {
   try {
-    const { leads, activities, appointments, tasks, properties, deals, agents, leases, offers, vendors } = req.body;
-    await writeCRM({ leads, activities, appointments, tasks, properties, deals, agents, leases, offers, vendors });
+    const { leads, activities, appointments, tasks, properties, deals, agents, leases, offers, vendors, expenses, invoices } = req.body;
+    await writeCRM({ leads, activities, appointments, tasks, properties, deals, agents, leases, offers, vendors, expenses, invoices });
     res.json({ ok: true });
   } catch(e) {
     console.error('CRM PUSH ERROR:', e.message);
@@ -2849,6 +2853,66 @@ Write the email body now:`;
   } catch (e) {
     console.error('DRAFT EMAIL ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Send Invoice via Email ─────────────────────────────────────
+app.post('/api/send-invoice', async (req, res) => {
+  try {
+    const inv = req.body;
+    if (!inv.clientEmail) return res.json({ ok: false, error: 'No client email' });
+    const token = await getAccessToken();
+    const lineRows = (inv.lineItems || []).map(li =>
+      `<tr><td style="padding:8px 12px;border-bottom:1px solid #2a2a2a">${li.desc}</td><td style="padding:8px 12px;border-bottom:1px solid #2a2a2a;text-align:center">${li.qty}</td><td style="padding:8px 12px;border-bottom:1px solid #2a2a2a;text-align:right">$${Number(li.rate).toFixed(2)}</td><td style="padding:8px 12px;border-bottom:1px solid #2a2a2a;text-align:right">$${Number(li.amount).toFixed(2)}</td></tr>`
+    ).join('');
+    const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0e0e0e;font-family:system-ui,sans-serif;color:#f1f1f1">
+<div style="max-width:620px;margin:40px auto;background:#1a1a1a;border-radius:12px;overflow:hidden;border:1px solid #2a2a2a">
+  <div style="background:#e8681a;padding:28px 32px;display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-size:22px;font-weight:800;color:#fff">MG Realty</div><div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px">Matt Golden · RE Agent</div></div>
+    <div style="text-align:right"><div style="font-size:18px;font-weight:700;color:#fff">${inv.invoiceNum || 'Invoice'}</div><div style="font-size:12px;color:rgba(255,255,255,0.8)">${inv.date || ''}</div></div>
+  </div>
+  <div style="padding:28px 32px">
+    <div style="margin-bottom:24px"><div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Bill To</div><div style="font-size:15px;font-weight:600">${inv.clientName}</div>${inv.clientAddr?`<div style="font-size:13px;color:#aaa;margin-top:2px">${inv.clientAddr.replace(/\n/g,'<br>')}</div>`:''}</div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <thead><tr style="background:#252525"><th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;color:#888;text-transform:uppercase">Description</th><th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:700;color:#888;text-transform:uppercase">Qty</th><th style="padding:8px 12px;text-align:right;font-size:11px;font-weight:700;color:#888;text-transform:uppercase">Rate</th><th style="padding:8px 12px;text-align:right;font-size:11px;font-weight:700;color:#888;text-transform:uppercase">Amount</th></tr></thead>
+      <tbody>${lineRows}</tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:24px">
+      <div style="min-width:220px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#aaa"><span>Subtotal</span><span>$${Number(inv.subtotal||0).toFixed(2)}</span></div>
+        ${inv.taxRate>0?`<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#aaa"><span>Tax (${inv.taxRate}%)</span><span>$${Number(inv.tax||0).toFixed(2)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid #e8681a;margin-top:4px;font-size:17px;font-weight:800;color:#e8681a"><span>Total</span><span>$${Number(inv.total||0).toFixed(2)}</span></div>
+      </div>
+    </div>
+    ${inv.dueDate?`<div style="background:#252525;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px">Payment due by <strong>${inv.dueDate}</strong></div>`:''}
+    ${inv.notes?`<div style="font-size:13px;color:#aaa;margin-bottom:20px"><strong>Notes:</strong> ${inv.notes}</div>`:''}
+    <div style="font-size:12px;color:#666;border-top:1px solid #2a2a2a;padding-top:16px">Questions? Reply to this email or call/text Matt at your number on file. Thank you for your business!</div>
+  </div>
+</div></body></html>`;
+    const subject = `Invoice ${inv.invoiceNum||''} from MG Realty — $${Number(inv.total||0).toFixed(2)} due ${inv.dueDate||''}`;
+    const raw = Buffer.from(
+      `From: Matt Golden <goldenmb@gmail.com>\r\nTo: ${inv.clientEmail}\r\nSubject: ${subject}\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${html}`
+    ).toString('base64url');
+    const gmailR = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw })
+    });
+    if (!gmailR.ok) { const e = await gmailR.text(); throw new Error(e); }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('/api/send-invoice error:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ── Finance persistence (expenses + invoices via Supabase) ────
+app.post('/crm/finance', async (req, res) => {
+  try {
+    const { expenses, invoices } = req.body;
+    await writeCRM({ expenses, invoices });
+    res.json({ ok: true });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
   }
 });
 
