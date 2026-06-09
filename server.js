@@ -45,6 +45,7 @@ async function readCRM() {
 }
 
 async function writeCRM(data) {
+  const body = JSON.stringify({ id: 'main', ...data, updated_at: new Date().toISOString() });
   const r = await fetch(`${SB_URL}/rest/v1/crm_state`, {
     method: 'POST',
     headers: {
@@ -53,9 +54,22 @@ async function writeCRM(data) {
       'Content-Type': 'application/json',
       'Prefer': 'resolution=merge-duplicates'
     },
-    body: JSON.stringify({ id: 'main', ...data, updated_at: new Date().toISOString() })
+    body
   });
-  if (!r.ok) throw new Error(`Supabase write failed: ${r.status} ${await r.text()}`);
+  if (!r.ok) {
+    const errBody = await r.text();
+    console.error('SUPABASE WRITE ERROR:', r.status, errBody);
+    // If this is a missing-column error, log which keys were sent so we can diagnose
+    if (errBody.includes('does not exist')) {
+      const keys = Object.keys(data).join(', ');
+      console.error('Keys sent to Supabase:', keys);
+      console.error('Run this in Supabase SQL Editor to add missing columns:');
+      console.error('ALTER TABLE crm_state ADD COLUMN IF NOT EXISTS vendors jsonb DEFAULT \'[]\'::jsonb;');
+      console.error('ALTER TABLE crm_state ADD COLUMN IF NOT EXISTS leases jsonb DEFAULT \'[]\'::jsonb;');
+      console.error('ALTER TABLE crm_state ADD COLUMN IF NOT EXISTS offers jsonb DEFAULT \'[]\'::jsonb;');
+    }
+    throw new Error(`Supabase write failed: ${r.status} — ${errBody}`);
+  }
 }
 
 // Google OAuth — auto-refresh using refresh token
@@ -500,6 +514,69 @@ app.post('/crm/followup-log', async (req, res) => {
 });
 
 // ── CRM sync ──────────────────────────────────────────────────
+// ── Diagnostic: test which Supabase columns actually accept writes ──
+app.get('/crm/debug-schema', async (req, res) => {
+  try {
+    // 1. Read the raw row to see what keys Supabase actually returns
+    const rawR = await fetch(`${SB_URL}/rest/v1/crm_state?id=eq.main&select=*`, {
+      headers: { 'Authorization': `Bearer ${SB_KEY}`, 'apikey': SB_KEY }
+    });
+    const rawRows = await rawR.json();
+    const rawRow = rawRows[0] || {};
+    const columnsPresent = Object.keys(rawRow);
+
+    // 2. Try writing test sentinel values to vendors and leases
+    const testPayload = {
+      id: 'main',
+      vendors: [{ _test: true }],
+      leases: [{ _test: true }],
+      updated_at: new Date().toISOString()
+    };
+    const writeR = await fetch(`${SB_URL}/rest/v1/crm_state`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SB_KEY}`,
+        'apikey': SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify(testPayload)
+    });
+    const writeOk = writeR.ok;
+    const writeBody = await writeR.text();
+
+    // 3. Read back to confirm
+    const verifyR = await fetch(`${SB_URL}/rest/v1/crm_state?id=eq.main&select=vendors,leases`, {
+      headers: { 'Authorization': `Bearer ${SB_KEY}`, 'apikey': SB_KEY }
+    });
+    const verifyRows = await verifyR.json();
+    const verifyRow = verifyRows[0] || {};
+
+    // 4. Restore originals (undo the test)
+    await fetch(`${SB_URL}/rest/v1/crm_state`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SB_KEY}`,
+        'apikey': SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({ id: 'main', vendors: rawRow.vendors || [], leases: rawRow.leases || [] })
+    });
+
+    res.json({
+      columnsInRow: columnsPresent,
+      vendorsColumnExists: columnsPresent.includes('vendors'),
+      leasesColumnExists: columnsPresent.includes('leases'),
+      writeOk,
+      writeResponse: writeBody,
+      afterWrite: verifyRow
+    });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/crm/pull', async (req, res) => {
   try {
     const data = await readCRM();

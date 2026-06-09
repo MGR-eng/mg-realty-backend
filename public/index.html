@@ -2110,11 +2110,47 @@ function load(){
   try{vendors=JSON.parse(localStorage.getItem(SVND)||'null')||[];}catch(e){vendors=[];}
 }
 function persist(){
-  try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));localStorage.setItem(SOF,JSON.stringify(offers));localStorage.setItem(SVND,JSON.stringify(vendors));localStorage.setItem(SOF,JSON.stringify(offers));localStorage.setItem(SVND,JSON.stringify(vendors));}catch(e){}
+  try{
+    localStorage.setItem(SL,JSON.stringify(leads));
+    localStorage.setItem(SA,JSON.stringify(acts));
+    localStorage.setItem(SAP,JSON.stringify(appts));
+    localStorage.setItem(ST,JSON.stringify(tasks));
+    localStorage.setItem(SPR,JSON.stringify(props));
+    localStorage.setItem(SD,JSON.stringify(deals));
+    localStorage.setItem(SAGT,JSON.stringify(agents));
+    localStorage.setItem(SLSE,JSON.stringify(leases));
+    localStorage.setItem(SOF,JSON.stringify(offers));
+    localStorage.setItem(SVND,JSON.stringify(vendors));
+  }catch(e){console.warn('localStorage save failed:',e);}
   pushToBackend();
 }
-function pushToBackend(){
-  fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads,activities:acts,appointments:appts,tasks,properties:props,deals,agents,leases,offers,vendors})}).catch(()=>{});
+let _pushRetryTimer = null;
+async function pushToBackend(){
+  try{
+    setSyncStatus('busy','Saving…');
+    const r = await fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads,activities:acts,appointments:appts,tasks,properties:props,deals,agents,leases,offers,vendors})});
+    const d = await r.json();
+    if(!r.ok || !d.ok){
+      throw new Error(d.error || `HTTP ${r.status}`);
+    }
+    setSyncStatus('ok','Saved ✓');
+  }catch(e){
+    console.error('CRM push failed:',e.message);
+    setSyncStatus('err','Save failed — retrying…');
+    // Retry once after 5 seconds
+    clearTimeout(_pushRetryTimer);
+    _pushRetryTimer = setTimeout(async()=>{
+      try{
+        const r2 = await fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads,activities:acts,appointments:appts,tasks,properties:props,deals,agents,leases,offers,vendors})});
+        const d2 = await r2.json();
+        if(!r2.ok||!d2.ok) throw new Error(d2.error||`HTTP ${r2.status}`);
+        setSyncStatus('ok','Saved ✓ (retry)');
+      }catch(e2){
+        setSyncStatus('err','⚠️ Not saved to cloud — check connection');
+        console.error('CRM push retry failed:',e2.message);
+      }
+    },5000);
+  }
 }
 async function syncFromBackend(){
   try{
@@ -2133,7 +2169,22 @@ async function syncFromBackend(){
     if(data.leases?.length){leases=data.leases;changed=true;}
     if(data.offers?.length){offers=data.offers;changed=true;}
     if(data.vendors?.length){vendors=data.vendors;changed=true;}
-    if(changed){try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));localStorage.setItem(ST,JSON.stringify(tasks));localStorage.setItem(SPR,JSON.stringify(props));localStorage.setItem(SD,JSON.stringify(deals));localStorage.setItem(SAGT,JSON.stringify(agents));localStorage.setItem(SLSE,JSON.stringify(leases));localStorage.setItem(SOF,JSON.stringify(offers));}catch(e){}renderAll();if(typeof checkLeaseRenewalReminders==='function')setTimeout(checkLeaseRenewalReminders,1500);}
+    if(changed){
+      try{
+        localStorage.setItem(SL,JSON.stringify(leads));
+        localStorage.setItem(SA,JSON.stringify(acts));
+        localStorage.setItem(SAP,JSON.stringify(appts));
+        localStorage.setItem(ST,JSON.stringify(tasks));
+        localStorage.setItem(SPR,JSON.stringify(props));
+        localStorage.setItem(SD,JSON.stringify(deals));
+        localStorage.setItem(SAGT,JSON.stringify(agents));
+        localStorage.setItem(SLSE,JSON.stringify(leases));
+        localStorage.setItem(SOF,JSON.stringify(offers));
+        localStorage.setItem(SVND,JSON.stringify(vendors)); // ← was missing, causing vendors to not persist after sync
+      }catch(e){}
+      renderAll();
+      if(typeof checkLeaseRenewalReminders==='function')setTimeout(checkLeaseRenewalReminders,1500);
+    }
   }catch(e){console.warn('Backend sync failed:',e.message);}
 }
 function seed(){
