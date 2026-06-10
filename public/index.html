@@ -524,52 +524,87 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <main class="main">
 
 <div id="pane-dashboard" class="pane active">
-  <div class="topbar"><div class="page-title">Dashboard</div><div class="tba"><button class="btn btn-purple" onclick="openCrmSearch()"><i class="ti ti-search"></i> Ask the CRM</button><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
+  <div class="topbar">
+    <div class="page-title"><span id="dash-greeting-title">Dashboard</span></div>
+    <div class="tba">
+      <button class="btn btn-purple" onclick="openCrmSearch()"><i class="ti ti-search"></i> Ask the CRM</button>
+      <button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button>
+    </div>
+  </div>
   <div class="content">
-    <div class="stats-grid" id="statsGrid"></div>
 
-    <!-- AI Call List -->
-    <!-- Active Transactions Dashboard -->
-    <div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
-          <i class="ti ti-home-move" style="color:var(--accent);font-size:15px"></i> Active Transactions
-          <span id="dash-tx-count" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+    <!-- STATS STRIP -->
+    <div class="stats-grid" id="statsGrid" style="margin-bottom:20px"></div>
+
+    <!-- COMMAND CENTER: 3-column priority layout -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:16px;margin-bottom:20px;align-items:start">
+
+      <!-- COL 1: NEEDS ATTENTION -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">🔴 Needs Attention</div>
+
+        <div class="tw">
+          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
+            Follow-ups due
+            <a href="#" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));return false" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:400">All leads →</a>
+          </div>
+          <div id="dashDue" style="padding:0 14px 12px"></div>
         </div>
-        <button class="btn btn-sm" onclick="showPane('transactions',document.querySelector('[onclick*=transactions]'))" style="background:var(--surface2);border-color:var(--border);font-size:11px">All Transactions →</button>
+
+        <div class="tw">
+          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
+            Unpaid invoices
+            <a href="#" onclick="showPane('finance',document.querySelector('[onclick*=finance]'));return false" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:400">Finance →</a>
+          </div>
+          <div id="dashOverdueInvoices" style="padding:0 14px 12px"></div>
+        </div>
+
+        <div class="tw">
+          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px">Recent activity</div>
+          <div id="dashActs" style="padding:0 14px 12px"></div>
+        </div>
       </div>
-      <div id="dash-tx-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
+
+      <!-- COL 2: TODAY'S SCHEDULE -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">📅 Today's Schedule</div>
+
+        <div class="tw" id="gcal-widget">
+          <div class="cl-hd">
+            <div style="font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px">
+              <i class="ti ti-calendar-event" style="color:#4285F4;font-size:14px"></i> Google Calendar
+              <span id="gcal-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+            </div>
+            <button class="btn btn-sm btn-primary" id="gcal-refresh-btn" onclick="fetchGcalEvents()"><i class="ti ti-refresh" style="font-size:11px"></i></button>
+          </div>
+          <div id="gcal-body">
+            <div class="cl-loading"><div class="ce-spinner"></div><span>Loading calendar…</span></div>
+          </div>
+        </div>
+
+        <div class="tw">
+          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px">Upcoming appointments</div>
+          <div id="dashAppts" style="padding:0 14px 12px"></div>
+        </div>
+
+        <div class="tw">
+          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px">🏠 Scheduled tours</div>
+          <div id="dashTours" style="padding:0 14px 12px"></div>
+        </div>
+      </div>
+
+      <!-- COL 3: ACTIVE TRANSACTIONS -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;justify-content:space-between">
+          <span>🏠 Active Transactions <span id="dash-tx-count" style="font-weight:400;text-transform:none;font-size:10px"></span></span>
+          <button class="btn btn-sm" onclick="showPane('transactions',document.querySelector('[onclick*=transactions]'))" style="background:var(--surface2);border-color:var(--border);font-size:10px;padding:2px 8px;text-transform:none">All →</button>
+        </div>
+        <div id="dash-tx-grid" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
     </div>
 
-        <div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
-          <i class="ti ti-users" style="color:var(--accent);font-size:15px"></i> Active Leads
-          <span id="active-leads-count" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-sm" id="briefing-btn" onclick="sendMorningBriefing()" style="background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)"><i class="ti ti-mail-forward" style="font-size:11px"></i> Briefing</button>
-          <button class="btn btn-sm" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))" style="background:var(--surface2);border-color:var(--border);font-size:11px">All Leads →</button>
-        </div>
-      </div>
-      <div id="active-leads-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
-    </div>
-
-    <!-- Active Sellers Dashboard -->
-    <div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
-          <i class="ti ti-home-dollar" style="color:var(--accent);font-size:15px"></i> Active Sellers
-          <span id="dash-sellers-count" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
-        </div>
-        <button class="btn btn-sm" onclick="showPane('sellers',document.querySelector('[onclick*=sellers]'))" style="background:var(--surface2);border-color:var(--border);font-size:11px">All Sellers →</button>
-      </div>
-      <div id="dash-sellers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
-    </div>
-
-    <!-- SMS Inbox -->
-    <div
-    <div style="margin-bottom:18px">
+    <!-- COMMUNICATIONS: SMS + Email side by side -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
       <div class="tw" id="sms-inbox-widget">
         <div class="ib-hd">
           <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
@@ -583,10 +618,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
           <div class="cl-loading"><div class="ce-spinner"></div><span>Loading texts…</span></div>
         </div>
       </div>
-    </div>
 
-    <!-- Lead Inbox -->
-    <div style="margin-bottom:18px">
       <div class="tw" id="inbox-widget">
         <div class="ib-hd">
           <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
@@ -608,37 +640,41 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       </div>
     </div>
 
-    <div class="dash2">
-      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Overdue + due today</div><div class="tw" id="dashDue"></div></div>
-      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Recent activity</div><div class="tw" id="dashActs"></div></div>
-    </div>
-    <div class="dash2">
-      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Upcoming appointments</div><div class="tw" id="dashAppts"></div></div>
-      <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">🏠 Scheduled tours</div><div class="tw" id="dashTours"></div></div>
-    </div>
-    <!-- Google Calendar Widget -->
-    <div style="margin-top:16px;margin-bottom:0">
-      <div class="tw" id="gcal-widget">
-        <div class="cl-hd">
-          <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
-            <i class="ti ti-calendar-event" style="color:#4285F4;font-size:15px"></i> Google Calendar
-            <span id="gcal-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
-          </div>
-          <button class="btn btn-sm btn-primary" id="gcal-refresh-btn" onclick="fetchGcalEvents()"><i class="ti ti-refresh" style="font-size:11px"></i> Refresh</button>
+    <!-- ACTIVE LEADS -->
+    <div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+          <i class="ti ti-users" style="color:var(--accent);font-size:15px"></i> Active Leads
+          <span id="active-leads-count" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
         </div>
-        <div id="gcal-body">
-          <div class="cl-loading"><div class="ce-spinner"></div><span>Loading calendar…</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" id="briefing-btn" onclick="sendMorningBriefing()" style="background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)"><i class="ti ti-mail-forward" style="font-size:11px"></i> Briefing</button>
+          <button class="btn btn-sm" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))" style="background:var(--surface2);border-color:var(--border);font-size:11px">All Leads →</button>
         </div>
       </div>
+      <div id="active-leads-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
     </div>
 
+    <!-- ACTIVE SELLERS -->
+    <div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px">
+          <i class="ti ti-home-dollar" style="color:var(--accent);font-size:15px"></i> Active Sellers
+          <span id="dash-sellers-count" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+        </div>
+        <button class="btn btn-sm" onclick="showPane('sellers',document.querySelector('[onclick*=sellers]'))" style="background:var(--surface2);border-color:var(--border);font-size:11px">All Sellers →</button>
+      </div>
+      <div id="dash-sellers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+    </div>
+
+    <!-- ANALYTICS (below the fold) -->
     <div class="dash2" style="margin-top:16px">
       <div>
-  <div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div>
-  <div class="tw" id="dashSources"></div>
-  <div style="font-size:13px;font-weight:600;margin:14px 0 9px">Source ROI</div>
-  <div class="tw" id="dashSourceROI"></div>
-</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:9px">Lead sources</div>
+        <div class="tw" id="dashSources"></div>
+        <div style="font-size:13px;font-weight:600;margin:14px 0 9px">Source ROI</div>
+        <div class="tw" id="dashSourceROI"></div>
+      </div>
       <div><div style="font-size:13px;font-weight:600;margin-bottom:9px">Pipeline stages</div><div class="tw" id="dashStages"></div></div>
     </div>
     <div class="dash2" style="margin-top:16px">
@@ -2476,13 +2512,22 @@ function renderStats(){
   const ov=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0).length;
   const td=leads.filter(l=>l.temp!=='done'&&du(l.followup)===0).length;
   const wk=leads.filter(l=>{const d=du(l.followup);return d>0&&d<=7&&l.temp!=='done';}).length;
+  const activeTx=(typeof deals!=='undefined'?deals:[]).filter(d=>d.txStage&&d.txStage!=='Closed').length;
+  const unpaidInvs=(typeof invoices!=='undefined'?invoices:[]).filter(i=>i.status!=='paid');
+  const unpaidTotal=unpaidInvs.reduce((s,i)=>s+(parseFloat(i.total)||0),0);
+  const fmtMoney=v=>v>=1000?'$'+(v/1000).toFixed(1)+'k':'$'+Math.round(v);
+  // greeting
+  const h=new Date().getHours();
+  const greet=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  const gtEl=document.getElementById('dash-greeting-title');
+  if(gtEl)gtEl.textContent=greet+', Matt';
   document.getElementById('statsGrid').innerHTML=`
-    <div class="sc${ov?' alert':''}"><div class="sc-lbl">Overdue</div><div class="sc-val">${ov}</div><div class="sc-sub">follow-ups past due</div></div>
-    <div class="sc${td?' warn':''}"><div class="sc-lbl">Due today</div><div class="sc-val">${td}</div><div class="sc-sub">need attention now</div></div>
-    <div class="sc"><div class="sc-lbl">This week</div><div class="sc-val">${wk}</div><div class="sc-sub">follow-ups upcoming</div></div>
-    <div class="sc"><div class="sc-lbl">Hot leads</div><div class="sc-val">${leads.filter(l=>l.temp==='hot').length}</div><div class="sc-sub">of ${leads.length} total</div></div>
-    <div class="sc"><div class="sc-lbl">Activities</div><div class="sc-val">${acts.length}</div><div class="sc-sub">all time</div></div>
-    <div class="sc"><div class="sc-lbl">Upcoming appts</div><div class="sc-val">${appts.filter(a=>du(a.date)>=0).length}</div><div class="sc-sub">on the calendar</div></div>`;
+    <div class="sc${ov?' alert':''}" style="cursor:pointer" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))"><div class="sc-lbl">Overdue</div><div class="sc-val">${ov}</div><div class="sc-sub">follow-ups past due</div></div>
+    <div class="sc${td?' warn':''}" style="cursor:pointer" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))"><div class="sc-lbl">Due today</div><div class="sc-val">${td}</div><div class="sc-sub">need attention now</div></div>
+    <div class="sc" style="cursor:pointer" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))"><div class="sc-lbl">This week</div><div class="sc-val">${wk}</div><div class="sc-sub">follow-ups upcoming</div></div>
+    <div class="sc" style="cursor:pointer" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))"><div class="sc-lbl">Hot leads</div><div class="sc-val">${leads.filter(l=>l.temp==='hot').length}</div><div class="sc-sub">of ${leads.length} total</div></div>
+    <div class="sc${activeTx?' warn':''}" style="cursor:pointer" onclick="showPane('transactions',document.querySelector('[onclick*=transactions]'))"><div class="sc-lbl">In Escrow</div><div class="sc-val">${activeTx}</div><div class="sc-sub">active transactions</div></div>
+    <div class="sc${unpaidTotal>0?' alert':''}" style="cursor:pointer" onclick="showPane('finance',document.querySelector('[onclick*=finance]'))"><div class="sc-lbl">Unpaid</div><div class="sc-val">${fmtMoney(unpaidTotal)}</div><div class="sc-sub">${unpaidInvs.length} invoice${unpaidInvs.length!==1?'s':''}</div></div>`;
 }
 
 function renderDashDue(){
@@ -2491,6 +2536,23 @@ function renderDashDue(){
   if(!urgent.length){el.innerHTML='<div class="empty">Nothing overdue — nice work!</div>';return;}
   el.innerHTML=`<table><thead><tr><th>Name</th><th>Temp</th><th>Follow-up</th></tr></thead><tbody>${urgent.slice(0,6).map(l=>`<tr class="${du(l.followup)<0?'ov-row':'td-row'}" style="cursor:pointer" onclick="openLeadDetail('${l.id}')"><td><div class="ns" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px">${l.first} ${l.last}</div></td><td>${tb(l.temp)}</td><td>${ffu(l.followup,l.method)}</td></tr>`).join('')}</tbody></table>`;
 }
+function renderDashOverdueInvoices(){
+  var el=document.getElementById('dashOverdueInvoices');
+  if(!el)return;
+  var unpaid=(typeof invoices!=='undefined'?invoices:[]).filter(function(i){return i.status!=='paid';});
+  if(!unpaid.length){el.innerHTML='<div class="empty">No unpaid invoices 🎉</div>';return;}
+  var now=new Date();
+  el.innerHTML=unpaid.slice(0,5).map(function(i){
+    var overdue=i.dueDate&&new Date(i.dueDate+'T00:00:00')<now;
+    var amt=parseFloat(i.total)||0;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPane(\'finance\',document.querySelector(\'[onclick*=finance]\'))">'
+      +'<div><div style="font-size:12px;font-weight:500">'+(i.number||'INV')+' · '+(i.clientName||'Client')+'</div>'
+      +'<div style="font-size:11px;color:'+(overdue?'var(--red)':'var(--text3)')+'">'+( overdue?'OVERDUE':'Due '+(i.dueDate||'—'))+'</div></div>'
+      +'<div style="font-size:13px;font-weight:600;color:var(--accent)">$'+amt.toLocaleString()+'</div>'
+      +'</div>';
+  }).join('')+(unpaid.length>5?'<div style="font-size:11px;color:var(--text3);padding-top:6px">+'+(unpaid.length-5)+' more</div>':'');
+}
+
 function renderDashActs(){
   const el=document.getElementById('dashActs');
   const recent=[...acts].slice(-5).reverse();
@@ -2771,7 +2833,7 @@ async function renderDetailPostClose(leadId){
   }catch(e){sec.style.display='none';}
 }
 
-function renderAll(){renderStats();renderDashDue();if(typeof checkBirthdayReminders==='function')checkBirthdayReminders();if(typeof checkPastClientAnniversaries==='function')checkPastClientAnniversaries();if(typeof renderSellers==="function")renderSellers();if(typeof renderActiveLeads==="function")renderActiveLeads();if(typeof renderDashSellers==="function")renderDashSellers();if(typeof renderTransactions==="function")renderTransactions();if(typeof renderDashTransactions==="function")renderDashTransactions();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();renderInvoices();updateBadges();}
+function renderAll(){renderStats();renderDashDue();renderDashOverdueInvoices();if(typeof checkBirthdayReminders==='function')checkBirthdayReminders();if(typeof checkPastClientAnniversaries==='function')checkPastClientAnniversaries();if(typeof renderSellers==="function")renderSellers();if(typeof renderActiveLeads==="function")renderActiveLeads();if(typeof renderDashSellers==="function")renderDashSellers();if(typeof renderTransactions==="function")renderTransactions();if(typeof renderDashTransactions==="function")renderDashTransactions();renderDashActs();renderDashAppts();renderDashTours();renderDashSources();renderDashStages();renderDashReferrals();renderDashPostClose();renderLeads();renderActs();renderAppts();renderPipeline();renderProperties();renderTasks();renderCommission();renderAgents();renderLeases();renderOffers();populatePropSelect();renderInvoices();updateBadges();}
 
 // ── Weekly Client Reports ─────────────────────────────────────
 async function sendClientReport(leadId) {
@@ -3717,7 +3779,7 @@ function saveInvoice(action) {
   else invoices.push(inv);
   persistFinance();
   closeModal('mInvoice');
-  renderInvoices();
+  renderInvoices(); renderDashOverdueInvoices(); renderStats();
   if(action==='send') sendInvoiceEmail(inv);
   else toast('Invoice saved');
 }
@@ -3738,7 +3800,7 @@ async function sendInvoiceEmail(inv) {
 
 function markInvoicePaid(id) {
   invoices = invoices.map(i=>i.id===id?{...i,status:'paid',paidAt:new Date().toISOString()}:i);
-  persistFinance(); renderInvoices(); toast('Invoice marked as paid ✓');
+  persistFinance(); renderInvoices(); renderDashOverdueInvoices(); renderStats(); toast('Invoice marked as paid ✓');
 }
 
 function delInvoice(id) {
