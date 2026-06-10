@@ -663,7 +663,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div class="sw"><i class="ti ti-search"></i><input type="text" id="srch" placeholder="Search…" style="width:150px" oninput="renderLeads()"></div>
       <select id="ftemp" onchange="renderLeads()" style="width:auto"><option value="">All temps</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select>
       <select id="ftype" onchange="renderLeads()" style="width:auto"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
-      <select id="fstage" onchange="renderLeads()" style="width:auto"><option value="">All stages</option><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select>
+      <select id="fstage" onchange="renderLeads()" style="width:auto"><option value="">All stages</option><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="in_escrow">In Escrow</option><option value="closed">Closed</option></select>
       <button class="btn" onclick="openImportCSV()"><i class="ti ti-upload"></i> Import CSV</button>
       <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
@@ -1766,7 +1766,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div class="fgg"><label>Temp</label><select id="lf8"><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select></div>
     <div class="fgg"><label>Follow-up date</label><input id="lf9" type="date"></div>
     <div class="fgg"><label>Follow-up method</label><select id="lf10"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
-    <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="closed">Closed</option></select></div>
+    <div class="fgg"><label>Pipeline stage</label><select id="lf12"><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="in_escrow">In Escrow</option><option value="closed">Closed</option></select></div>
     <div class="fgg"><label>Lead source</label><select id="lf13"><option value="Open House">Open House</option><option value="Referral">Referral</option><option value="Instagram">Instagram</option><option value="Zillow">Zillow</option><option value="Website">Website</option><option value="Walk-in">Walk-in</option><option value="Cold Call">Cold Call</option><option value="Tenant">Tenant</option><option value="Other">Other</option></select></div>
     <div class="fgg full"><label>Referred by</label><input id="lf15" placeholder="e.g. John Smith (past client)"></div>
     <div class="fgg"><label>Birthday / milestone date</label><input id="lf16" type="date"></div>
@@ -8012,21 +8012,28 @@ function renderSellers() {
     const linkedProp = props.find(p => p.leadId === l.id || (l.prop && p.address && p.address.toLowerCase().includes((l.prop||'').toLowerCase().substring(0,10))));
     const askingPrice = linkedProp?.price ? '$' + Number(linkedProp.price).toLocaleString() : (l.askingPrice || '—');
     
-    const stageColors = { new:'var(--text3)', contacted:'var(--blue)', showing:'var(--purple)', offer:'var(--amber)', closed:'var(--green)' };
+    const stageColors = { new:'var(--text3)', contacted:'var(--blue)', showing:'var(--purple)', offer:'var(--amber)', in_escrow:'var(--green)', closed:'var(--green)' };
     const stageColor = stageColors[(l.stage||'new').toLowerCase()] || 'var(--text3)';
     const docCount = (l.docs||[]).length;
+    // Check if seller has an active transaction
+    const activeTx = (typeof deals!=='undefined'?deals:[]).find(d => d.leadId===l.id && d.txStage && d.txStage!=='Closed');
+    const txBorder = activeTx ? 'rgba(74,222,128,0.5)' : 'var(--border)';
+    const txHover  = activeTx ? 'rgba(74,222,128,0.6)' : 'rgba(232,104,26,0.4)';
 
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;transition:border-color 0.15s,transform 0.15s" 
-        onmouseover="this.style.borderColor='rgba(232,104,26,0.4)';this.style.transform='translateY(-2px)'" 
-        onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
-      
-      <!-- Header: Name + Stage -->
+    return `<div style="background:var(--surface);border:1px solid ${txBorder};border-radius:var(--rl);padding:20px;transition:border-color 0.15s,transform 0.15s"
+        onmouseover="this.style.borderColor='${txHover}';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.borderColor='${txBorder}';this.style.transform=''">
+
+      <!-- Header: Name + Stage + In-Transaction badge -->
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
         <div style="cursor:pointer" onclick="openLeadDetail('${l.id}')">
           <div style="font-size:16px;font-weight:700;color:var(--text)">${l.first} ${l.last}</div>
           <div style="font-size:12px;color:var(--text2);margin-top:2px">${l.phone||''} ${l.phone&&l.email?'·':''} ${l.email||''}</div>
         </div>
-        <span style="font-size:11px;font-weight:700;color:${stageColor};background:${stageColor}22;padding:3px 10px;border-radius:99px;border:1px solid ${stageColor}44;text-transform:capitalize">${l.stage||'New'}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+          ${activeTx ? `<span style="font-size:10px;font-weight:700;color:var(--green);background:rgba(74,222,128,0.12);padding:3px 10px;border-radius:99px;border:1px solid rgba(74,222,128,0.3);white-space:nowrap">🔒 In Escrow · ${activeTx.txStage}</span>` : ''}
+          <span style="font-size:11px;font-weight:700;color:${stageColor};background:${stageColor}22;padding:3px 10px;border-radius:99px;border:1px solid ${stageColor}44;text-transform:capitalize">${l.stage||'New'}</span>
+        </div>
       </div>
 
       <!-- Property Info -->
@@ -8049,6 +8056,10 @@ function renderSellers() {
 
       <!-- Action buttons -->
       <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${activeTx
+          ? `<button class="btn btn-sm" onclick="openEditTx('${activeTx.id}')" style="background:rgba(74,222,128,0.12);color:var(--green);border:1px solid rgba(74,222,128,0.3);font-size:11px"><i class="ti ti-file-check" style="font-size:11px"></i> View Transaction</button>`
+          : `<button class="btn btn-sm" onclick="openNewTxFromSeller('${l.id}')" style="background:rgba(167,139,250,0.12);color:#A78BFA;border:1px solid rgba(167,139,250,0.3);font-size:11px"><i class="ti ti-home-move" style="font-size:11px"></i> Start Transaction</button>`
+        }
         <button class="btn btn-gold btn-sm" onclick="openOHRecap('${l.id}')"><i class="ti ti-mail-forward" style="font-size:11px"></i> Send Recap</button>
         <button class="btn btn-sm" onclick="openPriceDrop('${l.id}')" style="background:rgba(248,113,113,0.12);color:#F87171;border:1px solid rgba(248,113,113,0.3)" title="Price drop"><i class="ti ti-trending-down" style="font-size:11px"></i></button>
         <button class="btn btn-sm" onclick="openLeadDocs('${l.id}')" style="background:rgba(232,104,26,0.12);color:var(--accent);border:1px solid rgba(232,104,26,0.3)" title="Documents"><i class="ti ti-paperclip" style="font-size:11px"></i>${docCount?`<span style="background:var(--accent);color:#fff;font-size:8px;font-weight:800;border-radius:999px;padding:0 4px;margin-left:2px">${docCount}</span>`:''}</button>
