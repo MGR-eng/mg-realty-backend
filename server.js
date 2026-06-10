@@ -603,46 +603,129 @@ app.post('/crm/push', async (req, res) => {
 });
 
 // ── Privacy Policy ────────────────────────────────────────────
-app.get('/privacy', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty – Privacy Policy</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.7;color:#333">
-<h1>Privacy Policy</h1><p><strong>Last updated:</strong> ${new Date().toLocaleDateString()}</p>
-<p>MG Realty ("we," "us," or "our"), operated by Matt Golden, is a licensed real estate business in Los Angeles, California. This Privacy Policy describes how we collect, use, and protect information in connection with our SMS messaging program and website.</p>
+// ── Shared legal page shell ───────────────────────────────────
+function legalPage(title, bodyHtml) {
+  const updated = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${title} · MG Realty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0A0A0A;--surface:#111111;--border:#222222;--text:#F0F0F0;--text2:#888888;--text3:#555555;--accent:#E8681A;--font:'DM Sans',sans-serif}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+nav{position:sticky;top:0;z-index:100;padding:18px 40px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,10,0.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.nav-brand{font-size:15px;font-weight:700;color:var(--text)}
+.nav-back{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px}
+.nav-back:hover{color:var(--text)}
+.wrap{max-width:740px;margin:0 auto;padding:60px 24px 100px}
+.legal-badge{display:inline-block;background:rgba(232,104,26,0.12);border:1px solid rgba(232,104,26,0.25);color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:4px 12px;border-radius:99px;margin-bottom:20px}
+h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
+.updated{font-size:13px;color:var(--text3);margin-bottom:48px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+h2{font-size:16px;font-weight:700;color:var(--text);margin:36px 0 10px;text-transform:uppercase;letter-spacing:.05em;font-size:12px;color:var(--accent)}
+p{color:var(--text2);margin-bottom:16px}
+ul{color:var(--text2);padding-left:20px;margin-bottom:16px}
+li{margin-bottom:8px}
+strong{color:var(--text);font-weight:600}
+.sms-box{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:20px 24px;margin:24px 0}
+.sms-box p{margin-bottom:8px}
+.sms-box p:last-child{margin-bottom:0}
+footer{border-top:1px solid var(--border);padding:32px 40px;display:flex;align-items:center;justify-content:space-between;color:var(--text3);font-size:13px}
+.footer-links{display:flex;gap:24px}
+.footer-links a{color:var(--text3)}
+.footer-links a:hover{color:var(--text)}
+@media(max-width:600px){nav{padding:14px 20px}.wrap{padding:40px 20px 80px}h1{font-size:28px}footer{flex-direction:column;gap:16px;padding:24px 20px}}
+</style>
+</head>
+<body>
+<nav>
+  <span class="nav-brand">MG Realty</span>
+  <a class="nav-back" href="/">← Back to site</a>
+</nav>
+<div class="wrap">
+  <div class="legal-badge">Legal</div>
+  <h1>${title}</h1>
+  <p class="updated">Last updated: ${updated}</p>
+  ${bodyHtml}
+</div>
+<footer>
+  <span>© ${new Date().getFullYear()} MG Realty · Matt Golden · Los Angeles, CA</span>
+  <div class="footer-links">
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/terms">Terms of Service</a>
+  </div>
+</footer>
+</body>
+</html>`;
+}
+
+app.get('/privacy', (req, res) => res.send(legalPage('Privacy Policy', `
+<p>MG Realty ("we," "us," or "our"), operated by Matt Golden, is a licensed real estate business in Los Angeles, California. This Privacy Policy describes how we collect, use, and protect your information in connection with our SMS messaging program and website.</p>
+
 <h2>1. Information We Collect</h2>
 <p>We collect the following information when you interact with us:</p>
 <ul>
-<li><strong>Phone number and SMS messages</strong> – when you text our business number or consent to receive texts from us.</li>
-<li><strong>Name, email, and contact information</strong> – when you submit a form on our website.</li>
-<li><strong>Property preferences and transaction details</strong> – to assist with real estate services.</li>
+  <li><strong>Phone number and SMS messages</strong> — when you text our business number or consent to receive texts from us.</li>
+  <li><strong>Name, email, and contact information</strong> — when you submit a form on our website.</li>
+  <li><strong>Property preferences and transaction details</strong> — to assist with real estate services.</li>
 </ul>
+
 <h2>2. SMS Messaging Program</h2>
-<p><strong>Program Description:</strong> MG Realty sends SMS messages to clients and prospective clients for the following purposes: appointment reminders, property updates, follow-up communications, and transactional notifications related to real estate services.</p>
-<p><strong>How You Opt In:</strong> You consent to receive SMS messages from MG Realty by (a) submitting your phone number through our website contact form, (b) providing your number at an open house, or (c) verbally agreeing to receive texts from Matt Golden.</p>
-<p><strong>Message Frequency:</strong> Message frequency varies. You may receive up to 5 messages per week depending on your transaction status and preferences.</p>
-<p><strong>How to Opt Out:</strong> Reply <strong>STOP</strong> to any text message at any time to unsubscribe. You will receive one confirmation message and no further messages will be sent. To re-subscribe, text <strong>START</strong>.</p>
-<p><strong>Help:</strong> Reply <strong>HELP</strong> for assistance or contact us at matt@mgoldenrealty.com.</p>
-<p><strong>Message and Data Rates:</strong> Message and data rates may apply. Check with your mobile carrier for details.</p>
-<h2>3. How We Use Information</h2>
-<p>We use collected information solely to provide real estate services, respond to inquiries, schedule appointments, and communicate about properties. We do not sell, rent, or share your personal information or phone number with third parties for marketing purposes. No mobile information will be shared with third parties/affiliates for marketing/promotional purposes.</p>
+<div class="sms-box">
+  <p><strong>Program Description:</strong> MG Realty sends SMS messages to clients and prospective clients for appointment reminders, property updates, follow-up communications, and transactional notifications related to real estate services.</p>
+  <p><strong>How You Opt In:</strong> You consent to receive SMS messages from MG Realty by (a) submitting your phone number through our website contact form, (b) providing your number at an open house, or (c) verbally agreeing to receive texts from Matt Golden.</p>
+  <p><strong>Message Frequency:</strong> Message frequency varies. You may receive up to 5 messages per week depending on your transaction status and preferences.</p>
+  <p><strong>How to Opt Out:</strong> Reply <strong>STOP</strong> to any text message at any time to unsubscribe. You will receive one confirmation message and no further messages will be sent. To re-subscribe, text <strong>START</strong>.</p>
+  <p><strong>Help:</strong> Reply <strong>HELP</strong> for assistance or contact us at matt@mgoldenrealty.com.</p>
+  <p><strong>Message and Data Rates:</strong> Message and data rates may apply. Check with your mobile carrier for details.</p>
+</div>
+
+<h2>3. How We Use Your Information</h2>
+<p>We use collected information solely to provide real estate services, respond to inquiries, schedule appointments, and communicate about properties. <strong>We do not sell, rent, or share your personal information or phone number with third parties for marketing purposes. No mobile information will be shared with third parties/affiliates for marketing/promotional purposes. All the above categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.</strong></p>
+
 <h2>4. Data Retention</h2>
 <p>We retain personal information for as long as necessary to provide services or as required by law. You may request deletion of your data at any time by contacting us.</p>
+
 <h2>5. Contact Us</h2>
-<p>Matt Golden · MG Realty · Los Angeles, CA<br>Email: matt@mgoldenrealty.com<br>Website: mgoldenrealty.com</p>
-</body></html>`));
+<p>Matt Golden · MG Realty · Los Angeles, CA<br>
+Email: <a href="mailto:matt@mgoldenrealty.com">matt@mgoldenrealty.com</a><br>
+Website: <a href="https://mgoldenrealty.com">mgoldenrealty.com</a></p>
+`)));
 
 // ── Terms of Service ──────────────────────────────────────────
-app.get('/terms', (req, res) => res.send(`<!DOCTYPE html><html><head><title>MG Realty – Terms of Service</title></head><body style="font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.7;color:#333">
-<h1>Terms of Service</h1><p><strong>Last updated:</strong> ${new Date().toLocaleDateString()}</p>
-<p>These Terms govern your use of SMS messaging services provided by MG Realty, operated by Matt Golden, a licensed real estate agent in California (DRE #02130422).</p>
+app.get('/terms', (req, res) => res.send(legalPage('Terms of Service', `
+<p>These Terms govern your use of the website and SMS messaging services provided by MG Realty, operated by Matt Golden, a licensed real estate agent in California (DRE #02130422).</p>
+
 <h2>1. SMS Messaging</h2>
-<p>By providing your phone number and consenting to receive SMS messages from MG Realty, you agree to receive text messages related to real estate services including property updates, appointment reminders, and follow-up communications.</p>
-<h2>2. Opt-Out</h2>
-<p>Reply <strong>STOP</strong> at any time to unsubscribe from SMS messages. You will receive one confirmation and no further messages will be sent. Reply <strong>START</strong> to re-subscribe. Reply <strong>HELP</strong> for help.</p>
-<h2>3. Message Frequency &amp; Rates</h2>
-<p>Message frequency varies based on your transaction and preferences (up to 5 per week). Message and data rates may apply.</p>
+<div class="sms-box">
+  <p>By providing your phone number and consenting to receive SMS messages from MG Realty, you agree to receive text messages related to real estate services including property updates, appointment reminders, and follow-up communications.</p>
+  <p>Reply <strong>STOP</strong> at any time to unsubscribe. You will receive one confirmation and no further messages will be sent. Reply <strong>START</strong> to re-subscribe. Reply <strong>HELP</strong> for help or contact matt@mgoldenrealty.com.</p>
+  <p>Message frequency varies based on your transaction and preferences (up to 5 per week). <strong>Message and data rates may apply.</strong></p>
+</div>
+
+<h2>2. Use of Website</h2>
+<p>The content on mgoldenrealty.com is provided for informational purposes only. While we strive to keep information accurate, MG Realty makes no guarantees regarding the completeness or accuracy of any property or market information displayed.</p>
+
+<h2>3. Real Estate Services</h2>
+<p>Matt Golden is a licensed California real estate agent (DRE #02130422). Services are subject to a separate representation agreement. Nothing on this website constitutes legal, financial, or investment advice.</p>
+
 <h2>4. No Warranties</h2>
-<p>SMS messages are provided on an "as-is" basis. MG Realty is not responsible for delayed or undelivered messages due to carrier issues.</p>
-<h2>5. Contact</h2>
-<p>Matt Golden · MG Realty · matt@mgoldenrealty.com · mgoldenrealty.com</p>
-</body></html>`));
+<p>This website and SMS services are provided on an "as-is" basis. MG Realty is not responsible for delayed or undelivered messages due to carrier issues or circumstances outside our control.</p>
+
+<h2>5. Governing Law</h2>
+<p>These Terms are governed by the laws of the State of California. Any disputes shall be resolved in Los Angeles County, California.</p>
+
+<h2>6. Contact</h2>
+<p>Matt Golden · MG Realty · Los Angeles, CA<br>
+Email: <a href="mailto:matt@mgoldenrealty.com">matt@mgoldenrealty.com</a><br>
+Website: <a href="https://mgoldenrealty.com">mgoldenrealty.com</a></p>
+`)));
 
 // ── Calendar: create event ────────────────────────────────────
 // ── Google Calendar — direct REST API ────────────────────────
