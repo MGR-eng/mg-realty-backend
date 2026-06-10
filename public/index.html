@@ -6559,7 +6559,7 @@ function renderOffers() {
       return `<span style="color:${diff>=0?'var(--green)':'var(--red)'};font-size:11px">${diff>=0?'+':''}${pct}% vs list</span>`;
     })() : '';
 
-    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;border-left:3px solid ${OFFER_STATUS_CFG[o.status||'pending'].color}">
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;border-left:3px solid ${(OFFER_STATUS_CFG[o.status||'pending']||OFFER_STATUS_CFG.pending).color}">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="font-weight:700;font-size:14px;line-height:1.3;flex:1">${o.address}</div>
         ${ofStatusBadge(o.status||'pending')}
@@ -9106,6 +9106,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <script src="/transactions.js"></script>
+<script>
+// Inline fallback — ensures openNewTxFromSeller works even if transactions.js
+// has a loading issue. Delegates to the full version once transactions.js loads.
+function openNewTxFromSeller(leadId) {
+  var lead = (leads||[]).find(function(l){ return l.id === leadId; });
+  if (!lead) { console.warn('openNewTxFromSeller: lead not found', leadId); return; }
+  var existing = (deals||[]).find(function(d){ return d.leadId === leadId && d.txStage && d.txStage !== 'Closed'; });
+  if (existing && typeof openEditTx === 'function') { openEditTx(existing.id); return; }
+  if (typeof openNewTx !== 'function') { alert('Transaction module not loaded — try refreshing.'); return; }
+  // Pre-fill from seller lead then open
+  if (typeof editTxId !== 'undefined') editTxId = null;
+  if (typeof _txCurrentChecklist !== 'undefined') _txCurrentChecklist = {};
+  document.getElementById('tx-modal-title').textContent = 'New Transaction — ' + lead.first + ' ' + (lead.last||'');
+  ['tx-address','tx-price','tx-commission','tx-closingdate','tx-offer-date','tx-inspection-date','tx-contingency-date','tx-loan-date','tx-coop-brokerage','tx-notes'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var addrEl=document.getElementById('tx-address'); if(addrEl) addrEl.value=lead.prop||'';
+  var priceEl=document.getElementById('tx-price'); if(priceEl) priceEl.value=lead.askingPrice||'';
+  var stageEl=document.getElementById('tx-stage'); if(stageEl) stageEl.value='Offer Submitted';
+  var sideEl=document.getElementById('tx-side'); if(sideEl) sideEl.value='Seller side';
+  if(typeof populateTxLeadDropdown==='function') populateTxLeadDropdown(leadId);
+  if(typeof populateTxAgentDropdown==='function') populateTxAgentDropdown('');
+  if(typeof renderTxChecklist==='function') renderTxChecklist({});
+  var delBtn=document.getElementById('tx-delete-btn'); if(delBtn) delBtn.style.display='none';
+  document.getElementById('mTransaction').style.display='flex';
+}
+</script>
 
 <script>
 // ── Property dropdown in lead form ───────────────────────────
