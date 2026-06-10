@@ -1367,6 +1367,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <div class="ce-tab active" data-tab="generate" onclick="showCeTab('generate')"><i class="ti ti-sparkles" style="font-size:12px"></i> Generate</div>
       <div class="ce-tab" data-tab="calendar" onclick="showCeTab('calendar')"><i class="ti ti-calendar-week" style="font-size:12px"></i> Calendar</div>
       <div class="ce-tab" data-tab="performance" onclick="showCeTab('performance')"><i class="ti ti-chart-bar" style="font-size:12px"></i> Performance</div>
+      <div class="ce-tab" data-tab="pulse" onclick="showCeTab('pulse')"><i class="ti ti-activity" style="font-size:12px"></i> Market Pulse</div>
     </div>
 
     <!-- GENERATE VIEW -->
@@ -1485,6 +1486,99 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <!-- PERFORMANCE VIEW -->
     <div id="ce-performance-view" style="display:none">
       <div id="ce-perf-body"></div>
+    </div>
+
+    <!-- MARKET PULSE VIEW -->
+    <div id="ce-pulse-view" style="display:none">
+      <div style="display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start">
+
+        <!-- LEFT: Data entry -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="tw" style="padding:18px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Weekly Data Entry</div>
+
+            <div>
+              <label>Week ending</label>
+              <input type="date" id="pulse-date">
+            </div>
+            <div>
+              <label>Neighborhood</label>
+              <select id="pulse-hood">
+                <option value="Silver Lake">Silver Lake</option>
+                <option value="Los Feliz">Los Feliz</option>
+                <option value="Echo Park">Echo Park</option>
+                <option value="Highland Park">Highland Park</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label>Median sale price</label>
+                <input type="text" id="pulse-price" placeholder="$825,000">
+              </div>
+              <div>
+                <label>% change (MoM)</label>
+                <input type="text" id="pulse-change" placeholder="+3.2">
+              </div>
+              <div>
+                <label>Days on market</label>
+                <input type="number" id="pulse-dom" placeholder="18">
+              </div>
+              <div>
+                <label>Active listings</label>
+                <input type="number" id="pulse-active" placeholder="24">
+              </div>
+              <div>
+                <label>Sold last 30 days</label>
+                <input type="number" id="pulse-sold" placeholder="12">
+              </div>
+              <div>
+                <label>List-to-sale %</label>
+                <input type="text" id="pulse-lts" placeholder="101.5">
+              </div>
+            </div>
+            <button class="btn btn-gold" onclick="generatePulseScript()" style="width:100%;justify-content:center">
+              <i class="ti ti-sparkles"></i> Generate Script
+            </button>
+          </div>
+
+          <!-- Past entries -->
+          <div class="tw" style="padding:16px">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Past Entries</div>
+            <div id="pulse-history" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Script + Performance -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+
+          <!-- Script output -->
+          <div class="tw" style="padding:18px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">60-Second Script</div>
+              <button class="btn btn-sm" id="pulse-copy-btn" onclick="copyPulseScript()" style="display:none;background:rgba(232,104,26,0.1);color:var(--accent);border-color:rgba(232,104,26,0.3)"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
+            </div>
+            <div id="pulse-script-out" style="color:var(--text3);font-size:13px;line-height:1.8;white-space:pre-wrap">Fill in the data on the left and hit Generate Script.</div>
+          </div>
+
+          <!-- Log performance -->
+          <div class="tw" style="padding:18px" id="pulse-log-panel" style="display:none">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Log Post Performance</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+              <div><label>Likes</label><input type="number" id="pulse-likes" placeholder="0" min="0"></div>
+              <div><label>Comments</label><input type="number" id="pulse-comments" placeholder="0" min="0"></div>
+              <div><label>Shares</label><input type="number" id="pulse-shares" placeholder="0" min="0"></div>
+              <div><label>Leads</label><input type="number" id="pulse-leads" placeholder="0" min="0"></div>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="savePulseEntry()" style="width:100%;justify-content:center">Save Entry</button>
+          </div>
+
+          <!-- Neighborhood leaderboard -->
+          <div class="tw" style="padding:18px">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">📊 Neighborhood Performance</div>
+            <div id="pulse-leaderboard"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -2304,8 +2398,9 @@ const BACKEND = 'https://mg-realty-backend.onrender.com';
 const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
 const DIGEST_EMAIL = 'goldenmb@gmail.com';
 
-const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1',SOF='mg_offers_v1',SVND='mg_vendors_v1',SEXP='mg_expenses_v1',SINV='mg_invoices_v1';
-let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],offers=[],vendors=[],expenses=[],invoices=[],editVendorId=null,actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null,editOfferId=null,editExpenseId=null,editInvoiceId=null;
+const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1',SOF='mg_offers_v1',SVND='mg_vendors_v1',SEXP='mg_expenses_v1',SINV='mg_invoices_v1',SPULSE='mg_pulse_v1';
+let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],offers=[],vendors=[],expenses=[],invoices=[],pulseEntries=[],editVendorId=null,actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null,editOfferId=null,editExpenseId=null,editInvoiceId=null;
+let _pulseCurrentId=null;
 // ── Early globals (must be declared before init line) ─────────
 const CAL_KEY = 'mg_cal_v1';
 let calPosts = [], calWeekStart = null;
@@ -2646,6 +2741,157 @@ function renderStats(){
     <div class="sc" style="cursor:pointer" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))"><div class="sc-lbl">Hot leads</div><div class="sc-val">${leads.filter(l=>l.temp==='hot').length}</div><div class="sc-sub">of ${leads.length} total</div></div>
     <div class="sc${activeTx?' warn':''}" style="cursor:pointer" onclick="showPane('transactions',document.querySelector('[onclick*=transactions]'))"><div class="sc-lbl">In Escrow</div><div class="sc-val">${activeTx}</div><div class="sc-sub">active transactions</div></div>
     <div class="sc${unpaidTotal>0?' alert':''}" style="cursor:pointer" onclick="showPane('finance',document.querySelector('[onclick*=finance]'))"><div class="sc-lbl">Unpaid</div><div class="sc-val">${fmtMoney(unpaidTotal)}</div><div class="sc-sub">${unpaidInvs.length} invoice${unpaidInvs.length!==1?'s':''}</div></div>`;
+}
+
+// ── Market Pulse ──────────────────────────────────────────────
+function loadPulse(){
+  try{pulseEntries=JSON.parse(localStorage.getItem(SPULSE)||'null')||[];}catch(e){pulseEntries=[];}
+}
+function savePulse(){
+  localStorage.setItem(SPULSE,JSON.stringify(pulseEntries));
+}
+function showCePulseTab(){
+  // set today as default date if blank
+  var d=document.getElementById('pulse-date');
+  if(d&&!d.value){
+    var today=new Date();
+    // roll to Friday of current week
+    var fri=new Date(today);fri.setDate(today.getDate()+(5-today.getDay()+7)%7||7);
+    d.value=fri.toISOString().split('T')[0];
+  }
+  renderPulseHistory();
+  renderPulseLeaderboard();
+}
+function generatePulseScript(){
+  var hood=document.getElementById('pulse-hood').value;
+  var price=document.getElementById('pulse-price').value||'N/A';
+  var change=document.getElementById('pulse-change').value;
+  var dom=parseInt(document.getElementById('pulse-dom').value)||0;
+  var active=document.getElementById('pulse-active').value||'N/A';
+  var sold=document.getElementById('pulse-sold').value||'N/A';
+  var lts=parseFloat(document.getElementById('pulse-lts').value)||100;
+
+  var changeStr=change?(parseFloat(change)>=0?'+':'')+change+'%':'';
+  var marketTemp=dom>0&&dom<14?'moving fast':dom<=21?'active':'cooling';
+  var ltsNote=lts>=101?'Homes are selling above asking — buyers, come in strong.':lts>=98?'Very competitive — expect multiple offers.':'There\'s room to negotiate — buyers have leverage right now.';
+  var sellerNote=lts>=100?'Sellers: great time to list — demand is high.':'Sellers: price right and you\'ll still move quickly.';
+
+  var script=
+'🎬 HOOK\n'+
+'"'+hood+' just hit '+price+(changeStr?' — that\'s '+changeStr+' from last month':'')+'. Here\'s what that actually means for you."\n\n'+
+'📊 THE NUMBER\n'+
+'• Median sale price: '+price+(changeStr?' ('+changeStr+' MoM)':'')+'\n'+
+'• Days on market: '+dom+' days\n'+
+'• Homes sold last 30 days: '+sold+'\n'+
+'• Active listings: '+active+'\n'+
+'• List-to-sale ratio: '+lts+'%\n\n'+
+'📖 THE STORY\n'+
+hood+' is '+marketTemp+' right now. With '+active+' homes on market and a '+lts+'% list-to-sale ratio, '+
+(lts>=100?'demand is outpacing supply.':'buyers have a little more breathing room than usual.')+' '+
+(dom<14?'Properties are going fast — the average home is gone in under 2 weeks.':'Average time on market is '+dom+' days.')+'\n\n'+
+'💡 THE TAKEAWAY\n'+
+ltsNote+' '+sellerNote+'\n\n'+
+'📣 CTA\n'+
+'Follow for weekly '+hood+' market updates. DM me "PULSE" if you want to know exactly what this means for your home. 🔑';
+
+  document.getElementById('pulse-script-out').textContent=script;
+  document.getElementById('pulse-copy-btn').style.display='';
+  document.getElementById('pulse-log-panel').style.display='';
+  _pulseCurrentId='draft_'+Date.now();
+}
+function copyPulseScript(){
+  var txt=document.getElementById('pulse-script-out').textContent;
+  navigator.clipboard.writeText(txt).then(function(){toast('Script copied to clipboard ✓');});
+}
+function savePulseEntry(){
+  var hood=document.getElementById('pulse-hood').value;
+  var weekDate=document.getElementById('pulse-date').value;
+  var price=document.getElementById('pulse-price').value;
+  var change=document.getElementById('pulse-change').value;
+  var dom=parseInt(document.getElementById('pulse-dom').value)||0;
+  var active=parseInt(document.getElementById('pulse-active').value)||0;
+  var sold=parseInt(document.getElementById('pulse-sold').value)||0;
+  var lts=parseFloat(document.getElementById('pulse-lts').value)||0;
+  var likes=parseInt(document.getElementById('pulse-likes').value)||0;
+  var comments=parseInt(document.getElementById('pulse-comments').value)||0;
+  var shares=parseInt(document.getElementById('pulse-shares').value)||0;
+  var leads_=parseInt(document.getElementById('pulse-leads').value)||0;
+  var script=document.getElementById('pulse-script-out').textContent;
+
+  // remove any existing draft for same hood+week
+  pulseEntries=pulseEntries.filter(function(e){return !(e.neighborhood===hood&&e.weekDate===weekDate);});
+  pulseEntries.push({id:'pe_'+Date.now(),weekDate,neighborhood:hood,medianPrice:price,priceChangePct:change,daysOnMarket:dom,activeListings:active,soldLastMonth:sold,listToSaleRatio:lts,script,likes,comments,shares,leads:leads_,savedAt:new Date().toISOString()});
+  savePulse();
+  // clear perf fields
+  ['pulse-likes','pulse-comments','pulse-shares','pulse-leads'].forEach(function(id){document.getElementById(id).value='';});
+  renderPulseHistory();
+  renderPulseLeaderboard();
+  toast('Entry saved ✓');
+}
+function loadPulseEntry(id){
+  var e=pulseEntries.find(function(x){return x.id===id;});
+  if(!e)return;
+  document.getElementById('pulse-date').value=e.weekDate||'';
+  document.getElementById('pulse-hood').value=e.neighborhood||'Silver Lake';
+  document.getElementById('pulse-price').value=e.medianPrice||'';
+  document.getElementById('pulse-change').value=e.priceChangePct||'';
+  document.getElementById('pulse-dom').value=e.daysOnMarket||'';
+  document.getElementById('pulse-active').value=e.activeListings||'';
+  document.getElementById('pulse-sold').value=e.soldLastMonth||'';
+  document.getElementById('pulse-lts').value=e.listToSaleRatio||'';
+  document.getElementById('pulse-script-out').textContent=e.script||'';
+  document.getElementById('pulse-copy-btn').style.display='';
+  document.getElementById('pulse-log-panel').style.display='';
+  document.getElementById('pulse-likes').value=e.likes||'';
+  document.getElementById('pulse-comments').value=e.comments||'';
+  document.getElementById('pulse-shares').value=e.shares||'';
+  document.getElementById('pulse-leads').value=e.leads||'';
+  _pulseCurrentId=id;
+}
+function deletePulseEntry(id){
+  pulseEntries=pulseEntries.filter(function(e){return e.id!==id;});
+  savePulse();renderPulseHistory();renderPulseLeaderboard();toast('Entry deleted');
+}
+function renderPulseHistory(){
+  var el=document.getElementById('pulse-history');
+  if(!el)return;
+  var sorted=[...pulseEntries].sort(function(a,b){return (b.weekDate||'').localeCompare(a.weekDate||'');});
+  if(!sorted.length){el.innerHTML='<div class="empty">No entries yet</div>';return;}
+  el.innerHTML=sorted.slice(0,12).map(function(e){
+    var engagement=(e.likes||0)+(e.comments||0)+(e.shares||0);
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="loadPulseEntry(\''+e.id+'\')">'
+      +'<div><div style="font-size:12px;font-weight:600">'+e.neighborhood+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+e.weekDate+(engagement?' · '+engagement+' eng':'')+(e.leads?' · '+e.leads+' leads':'')+'</div></div>'
+      +'<button onclick="event.stopPropagation();deletePulseEntry(\''+e.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 6px;font-size:14px">×</button>'
+      +'</div>';
+  }).join('');
+}
+function renderPulseLeaderboard(){
+  var el=document.getElementById('pulse-leaderboard');
+  if(!el)return;
+  var hoods=['Silver Lake','Los Feliz','Echo Park','Highland Park'];
+  var stats=hoods.map(function(h){
+    var entries=pulseEntries.filter(function(e){return e.neighborhood===h;});
+    var totalEng=entries.reduce(function(s,e){return s+(e.likes||0)+(e.comments||0)+(e.shares||0);},0);
+    var totalLeads=entries.reduce(function(s,e){return s+(e.leads||0);},0);
+    var avgEng=entries.length?Math.round(totalEng/entries.length):0;
+    return{hood:h,entries:entries.length,totalEng,totalLeads,avgEng};
+  });
+  stats.sort(function(a,b){return b.avgEng-a.avgEng;});
+  var maxEng=Math.max(1,stats[0].avgEng);
+  if(!pulseEntries.length){el.innerHTML='<div class="empty">Log a few entries to see which neighborhood is winning.</div>';return;}
+  el.innerHTML=stats.map(function(s,i){
+    var pct=Math.round((s.avgEng/maxEng)*100);
+    var medal=i===0&&s.entries>0?'🥇':i===1&&s.entries>0?'🥈':i===2&&s.entries>0?'🥉':'';
+    return '<div style="margin-bottom:14px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+      +'<span style="font-size:12px;font-weight:600">'+medal+' '+s.hood+'</span>'
+      +'<span style="font-size:11px;color:var(--text3)">'+s.avgEng+' avg eng · '+s.totalLeads+' leads · '+s.entries+' posts</span>'
+      +'</div>'
+      +'<div style="height:6px;background:var(--surface2);border-radius:99px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:var(--accent);border-radius:99px;transition:width .4s"></div>'
+      +'</div></div>';
+  }).join('');
 }
 
 function renderDashDue(){
@@ -3306,7 +3552,7 @@ function logShowingFeedback(apptId) {
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-load();loadFinance();initNavGroups();renderAll();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadSmsInbox,500);setTimeout(loadInbox,800);loadCalendar();
+load();loadFinance();loadPulse();initNavGroups();renderAll();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadSmsInbox,500);setTimeout(loadInbox,800);loadCalendar();
 // Set today's date as default for expense log
 (function(){ const d=document.getElementById('exp-date'); if(d) d.value=new Date().toISOString().split('T')[0]; })();
 if(!loadGcalFromCache()) setTimeout(fetchGcalEvents, 1200);
@@ -5294,9 +5540,11 @@ function showCeTab(tab) {
   document.getElementById('ce-generate-view').style.display     = tab === 'generate'    ? '' : 'none';
   document.getElementById('ce-calendar-view').style.display     = tab === 'calendar'    ? '' : 'none';
   document.getElementById('ce-performance-view').style.display  = tab === 'performance' ? '' : 'none';
+  document.getElementById('ce-pulse-view').style.display        = tab === 'pulse'       ? '' : 'none';
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
+  if (tab === 'pulse')       { showCePulseTab(); }
   if (tab === 'sellers') { if(typeof renderSellers==="function") renderSellers(); }
   if (tab === 'transactions') { if(typeof renderTransactions==="function") renderTransactions(); }
   if (tab === 'buyers') { if(typeof renderBuyers==="function") renderBuyers(); }
