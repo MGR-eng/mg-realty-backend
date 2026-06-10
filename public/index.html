@@ -1508,6 +1508,12 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
                 <option value="Los Feliz">Los Feliz</option>
                 <option value="Echo Park">Echo Park</option>
                 <option value="Highland Park">Highland Park</option>
+                <option value="West Hollywood">West Hollywood</option>
+                <option value="Beverly Hills">Beverly Hills</option>
+                <option value="Westwood">Westwood</option>
+                <option value="Brentwood">Brentwood</option>
+                <option value="Malibu">Malibu</option>
+                <option value="Santa Monica">Santa Monica</option>
               </select>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -2869,7 +2875,7 @@ function renderPulseHistory(){
 function renderPulseLeaderboard(){
   var el=document.getElementById('pulse-leaderboard');
   if(!el)return;
-  var hoods=['Silver Lake','Los Feliz','Echo Park','Highland Park'];
+  var hoods=['Silver Lake','Los Feliz','Echo Park','Highland Park','West Hollywood','Beverly Hills','Westwood','Brentwood','Malibu','Santa Monica'];
   var stats=hoods.map(function(h){
     var entries=pulseEntries.filter(function(e){return e.neighborhood===h;});
     var totalEng=entries.reduce(function(s,e){return s+(e.likes||0)+(e.comments||0)+(e.shares||0);},0);
