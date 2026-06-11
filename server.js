@@ -1650,7 +1650,6 @@ async function executeSmsAction(action, crmSnapshot) {
       followup: action.followupDate || '',
       method: action.followupMethod || 'call'
     };
-    console.log(`[SMS add_lead] Before: ${crm.leads.length} leads. Adding: ${lead.first} ${lead.last} id=${lead.id}`);
     crm.leads.push(lead);
     modified = true;
   } else if (action.action === 'create_task') {
@@ -1786,13 +1785,7 @@ Return only: {"ok":true}`, [calMcp]);
     modified = true;
   }
 
-  if (modified) {
-    console.log(`[SMS write] Action=${action.action} leads=${crm.leads.length} tasks=${crm.tasks.length}`);
-    await writeCRM(crm);
-    // Verify write persisted
-    const verify = await readCRM();
-    console.log(`[SMS verify] Supabase now has ${verify.leads.length} leads`);
-  }
+  if (modified) await writeCRM(crm);
   return { ok: modified, action: action.action };
 }
 
@@ -5046,45 +5039,6 @@ Rules:
 });
 
 // Debug: show current leads in Supabase
-app.get('/debug/leads', async (req, res) => {
-  try {
-    const crm = await readCRM();
-    res.json({ count: crm.leads.length, leads: crm.leads.map(l => ({ id: l.id, name: `${l.first} ${l.last}`, added: l.added, phone: l.phone })) });
-  } catch(e) {
-    res.json({ ok: false, error: e.message });
-  }
-});
-
-// Debug: test SMS add_lead write path
-app.get('/debug/sms-write', async (req, res) => {
-  try {
-    const crm = await readCRM();
-    const before = crm.leads.length;
-    crm.leads.push({ id: 'debug_' + Date.now(), first: 'Debug', last: 'Test', phone: '000', email: '', temp: 'cold', stage: 'new', added: new Date().toISOString().split('T')[0] });
-    await writeCRM(crm);
-    const crm2 = await readCRM();
-    const after = crm2.leads.length;
-    res.json({ ok: true, before, after, persisted: after > before });
-  } catch(e) {
-    res.json({ ok: false, error: e.message });
-  }
-});
-
-// Debug: test Compass calendar auth
-app.get('/debug/compass-cal', async (req, res) => {
-  try {
-    const icalUrl = process.env.COMPASS_ICAL_URL;
-    if (!icalUrl) return res.json({ ok: false, error: 'COMPASS_ICAL_URL not set' });
-    const r = await fetch(icalUrl);
-    const text = await r.text();
-    const now = new Date();
-    const later = new Date(now); later.setDate(later.getDate() + 30);
-    const events = parseIcal(text, now, later);
-    res.json({ ok: true, length: text.length, eventCount: events.length, events: events.slice(0, 10) });
-  } catch(e) {
-    res.json({ ok: false, error: e.message });
-  }
-});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
