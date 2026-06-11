@@ -2715,22 +2715,23 @@ async function pushToBackend(){
 async function syncFromBackend(){
   try{
     const r=await fetch(BACKEND+'/crm/pull');
-    if(!r.ok)return;
+    if(!r.ok){console.warn('Sync HTTP error:',r.status);toast('Sync error: HTTP '+r.status,'err');return;}
     const {ok,data}=await r.json();
-    if(!ok||!data)return;
+    if(!ok||!data){console.warn('Sync returned no data');toast('Sync error: no data','err');return;}
     let changed=false;
-    if(data.leads?.length){leads=data.leads;changed=true;}
-    if(data.activities?.length){acts=data.activities;changed=true;}
-    if(data.appointments?.length){appts=data.appointments;changed=true;}
-    if(data.tasks?.length){tasks=data.tasks;changed=true;}
-    if(data.properties?.length){props=data.properties;changed=true;}
-    if(data.deals?.length){deals=data.deals;changed=true;}
-    if(data.agents?.length){agents=data.agents;changed=true;}
-    if(data.leases?.length){leases=data.leases;changed=true;}
-    if(data.offers?.length){offers=data.offers;changed=true;}
-    if(data.vendors?.length){vendors=data.vendors;changed=true;}
-    if(data.expenses?.length){expenses=data.expenses;changed=true;}
-    if(data.invoices?.length){invoices=data.invoices;changed=true;}
+    // Always replace with Supabase data (source of truth)
+    if(Array.isArray(data.leads)){leads=data.leads;changed=true;}
+    if(Array.isArray(data.activities)){acts=data.activities;changed=true;}
+    if(Array.isArray(data.appointments)){appts=data.appointments;changed=true;}
+    if(Array.isArray(data.tasks)){tasks=data.tasks;changed=true;}
+    if(Array.isArray(data.properties)){props=data.properties;changed=true;}
+    if(Array.isArray(data.deals)){deals=data.deals;changed=true;}
+    if(Array.isArray(data.agents)){agents=data.agents;changed=true;}
+    if(Array.isArray(data.leases)){leases=data.leases;changed=true;}
+    if(Array.isArray(data.offers)){offers=data.offers;changed=true;}
+    if(Array.isArray(data.vendors)){vendors=data.vendors;changed=true;}
+    if(Array.isArray(data.expenses)){expenses=data.expenses;changed=true;}
+    if(Array.isArray(data.invoices)){invoices=data.invoices;changed=true;}
     if(changed){
       try{
         localStorage.setItem(SL,JSON.stringify(leads));
@@ -2747,9 +2748,10 @@ async function syncFromBackend(){
         localStorage.setItem(SINV,JSON.stringify(invoices));
       }catch(e){}
       renderAll();
+      console.log('Synced from Supabase: '+leads.length+' leads');
       if(typeof checkLeaseRenewalReminders==='function')setTimeout(checkLeaseRenewalReminders,1500);
     }
-  }catch(e){console.warn('Backend sync failed:',e.message);}
+  }catch(e){console.warn('Backend sync failed:',e.message);toast('Sync failed: '+e.message,'err');}
 }
 function seed(){
   const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().split('T')[0];};
