@@ -2663,7 +2663,33 @@ let _pushRetryTimer = null;
 async function pushToBackend(){
   try{
     setSyncStatus('busy','Saving…');
-    const r = await fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads,activities:acts,appointments:appts,tasks,properties:props,deals,agents,leases,offers,vendors,expenses,invoices})});
+    // Merge remote-only records before pushing so SMS/backend-added items aren't wiped
+    let mergedLeads = leads, mergedActs = acts, mergedTasks = tasks, mergedAppts = appts;
+    try {
+      const pr = await fetch(BACKEND+'/crm/pull');
+      if(pr.ok){
+        const {ok,data} = await pr.json();
+        if(ok && data){
+          const merge = (local, remote) => {
+            if(!remote?.length) return local;
+            const localIds = new Set(local.map(x=>x.id));
+            const extras = remote.filter(x=>!localIds.has(x.id));
+            return extras.length ? [...local, ...extras] : local;
+          };
+          mergedLeads = merge(leads, data.leads);
+          mergedActs  = merge(acts,  data.activities);
+          mergedTasks = merge(tasks, data.tasks);
+          mergedAppts = merge(appts, data.appointments);
+          // Update local state if new items found
+          if(mergedLeads.length > leads.length){ leads=mergedLeads; persist(); renderAll(); }
+          if(mergedActs.length  > acts.length)  { acts=mergedActs;   persist(); }
+          if(mergedTasks.length > tasks.length)  { tasks=mergedTasks; persist(); }
+          if(mergedAppts.length > appts.length)  { appts=mergedAppts; persist(); }
+        }
+      }
+    } catch(me){ console.warn('Merge-before-push failed:', me.message); }
+
+    const r = await fetch(BACKEND+'/crm/push',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leads:mergedLeads,activities:mergedActs,appointments:mergedAppts,tasks:mergedTasks,properties:props,deals,agents,leases,offers,vendors,expenses,invoices})});
     const d = await r.json();
     if(!r.ok || !d.ok){
       throw new Error(d.error || `HTTP ${r.status}`);
@@ -2672,7 +2698,6 @@ async function pushToBackend(){
   }catch(e){
     console.error('CRM push failed:',e.message);
     setSyncStatus('err','Save failed — retrying…');
-    // Retry once after 5 seconds
     clearTimeout(_pushRetryTimer);
     _pushRetryTimer = setTimeout(async()=>{
       try{
