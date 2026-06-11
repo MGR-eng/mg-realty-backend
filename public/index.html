@@ -560,6 +560,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         <button class="nav-item nav-sub" onclick="showPane('dm-import',this)"><i class="ti ti-message-bolt"></i><span>DM Importer</span></button>
         <button class="nav-item nav-sub" onclick="showPane('textblast',this)"><i class="ti ti-send"></i><span>Text Blast</span></button>
         <a class="nav-item nav-sub" href="/open-house" target="_blank"><i class="ti ti-qrcode"></i><span>Open House Sign</span></a>
+        <button class="nav-item nav-sub" onclick="showPane('snapshots',this)"><i class="ti ti-map-pin"></i><span>Neighborhood Snapshots</span></button>
       </div>
     </div>
 
@@ -1590,6 +1591,132 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
   </div>
 </div>
 
+<!-- Neighborhood Snapshots Pane -->
+<div id="pane-snapshots" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-map-pin" style="margin-right:6px;color:var(--accent)"></i>Neighborhood Snapshots</div>
+    <div class="tba">
+      <button class="btn btn-gold" onclick="openNewSnapshot()"><i class="ti ti-plus"></i> New Snapshot</button>
+    </div>
+  </div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start">
+
+      <!-- LEFT: Form -->
+      <div class="tw" style="padding:20px;display:flex;flex-direction:column;gap:14px" id="snap-form-panel">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Snapshot Details</div>
+
+        <div>
+          <label>Neighborhood</label>
+          <select id="snap-hood" onchange="snapPrefill()">
+            <option value="Silver Lake">Silver Lake</option>
+            <option value="Los Feliz">Los Feliz</option>
+            <option value="Echo Park">Echo Park</option>
+            <option value="Highland Park">Highland Park</option>
+            <option value="West Hollywood">West Hollywood</option>
+            <option value="Beverly Hills">Beverly Hills</option>
+            <option value="Westwood">Westwood</option>
+            <option value="Brentwood">Brentwood</option>
+            <option value="Malibu">Malibu</option>
+            <option value="Santa Monica">Santa Monica</option>
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label>Client first name</label><input id="snap-client-first" placeholder="Sarah"></div>
+          <div><label>Client last name</label><input id="snap-client-last" placeholder="Johnson"></div>
+        </div>
+        <div><label>Client email</label><input id="snap-client-email" type="email" placeholder="sarah@email.com"></div>
+
+        <div style="border-top:1px solid var(--border);padding-top:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Neighborhood Data</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div><label>Price range</label><input id="snap-price-range" placeholder="$800K – $1.4M"></div>
+            <div><label>Median price</label><input id="snap-median" placeholder="$950,000"></div>
+            <div><label>Avg days on market</label><input id="snap-dom" placeholder="18"></div>
+            <div><label>List-to-sale %</label><input id="snap-lts" placeholder="101%"></div>
+          </div>
+          <div style="margin-top:10px"><label>Property types</label><input id="snap-prop-types" placeholder="Craftsman bungalows, Spanish revivals, condos"></div>
+          <div style="margin-top:10px"><label>Top highlights (comma separated)</label><input id="snap-highlights" placeholder="Walkable, great restaurants, Silver Lake Reservoir"></div>
+          <div style="margin-top:10px"><label>Schools</label><input id="snap-schools" placeholder="e.g. Ivanhoe Elementary (9/10)"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Buyer Profile</div>
+          <div><label>Budget</label><input id="snap-budget" placeholder="$900K – $1.2M"></div>
+          <div style="margin-top:10px">
+            <label>Buyer type</label>
+            <select id="snap-buyer-type">
+              <option value="First-time buyer">First-time buyer</option>
+              <option value="Move-up buyer">Move-up buyer</option>
+              <option value="Investor">Investor</option>
+              <option value="Luxury buyer">Luxury buyer</option>
+              <option value="Relocating">Relocating to LA</option>
+              <option value="Downsizing">Downsizing</option>
+            </select>
+          </div>
+          <div style="margin-top:10px">
+            <label>Top priorities</label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px" id="snap-priorities">
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="walkability"> Walkability</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="schools"> Schools</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="nightlife"> Nightlife</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="outdoor"> Outdoor space</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="investment"> Investment potential</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="commute"> Easy commute</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" value="quiet"> Quiet/family-friendly</label>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:14px">
+          <label>Personal note to client (optional)</label>
+          <textarea id="snap-note" placeholder="e.g. Based on what you told me, I think you'd love the vibe here…" style="min-height:70px;resize:vertical"></textarea>
+        </div>
+
+        <button class="btn btn-gold" id="snap-generate-btn" onclick="generateSnapshot()" style="width:100%;justify-content:center">
+          <i class="ti ti-sparkles"></i> Generate Snapshot
+        </button>
+      </div>
+
+      <!-- RIGHT: Preview + Actions + History -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- Actions bar (hidden until generated) -->
+        <div id="snap-actions" style="display:none" class="tw" style="padding:14px">
+          <div style="display:flex;gap:10px;padding:14px;flex-wrap:wrap;align-items:center">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Shareable link</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input id="snap-link-field" readonly style="font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--accent);flex:1">
+                <button class="btn btn-sm" onclick="copySnapLink()" style="background:rgba(232,104,26,0.1);color:var(--accent);border-color:rgba(232,104,26,0.3);white-space:nowrap"><i class="ti ti-copy" style="font-size:11px"></i> Copy</button>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="sendSnapshotEmail()" style="white-space:nowrap;height:36px;align-self:flex-end"><i class="ti ti-mail" style="font-size:11px"></i> Send Email</button>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="tw" style="padding:20px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Preview</div>
+          <div id="snap-preview">
+            <div style="text-align:center;padding:40px 20px;color:var(--text3)">
+              <i class="ti ti-map-pin" style="font-size:36px;display:block;margin-bottom:10px;color:var(--border)"></i>
+              <div style="font-size:13px">Fill in the form and hit Generate Snapshot</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Past snapshots -->
+        <div class="tw" style="padding:18px">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Past Snapshots</div>
+          <div id="snap-history"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Commission Calculator Modal -->
 <div class="modal-overlay" id="mCommCalc"><div class="modal" style="max-width:460px">
   <div class="modal-title">💰 Commission Calculator</div>
@@ -2404,8 +2531,8 @@ const BACKEND = 'https://mg-realty-backend.onrender.com';
 const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
 const DIGEST_EMAIL = 'goldenmb@gmail.com';
 
-const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1',SOF='mg_offers_v1',SVND='mg_vendors_v1',SEXP='mg_expenses_v1',SINV='mg_invoices_v1',SPULSE='mg_pulse_v1';
-let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],offers=[],vendors=[],expenses=[],invoices=[],pulseEntries=[],editVendorId=null,actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null,editOfferId=null,editExpenseId=null,editInvoiceId=null;
+const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1',SOF='mg_offers_v1',SVND='mg_vendors_v1',SEXP='mg_expenses_v1',SINV='mg_invoices_v1',SPULSE='mg_pulse_v1',SSNAP='mg_snapshots_v1';
+let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],offers=[],vendors=[],expenses=[],invoices=[],pulseEntries=[],snapshots=[],editVendorId=null,actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null,editOfferId=null,editExpenseId=null,editInvoiceId=null;
 let _pulseCurrentId=null;
 // ── Early globals (must be declared before init line) ─────────
 const CAL_KEY = 'mg_cal_v1';
@@ -2632,7 +2759,7 @@ function tyb(t){
 }
 
 // ── Nav group map: pane → group id ────────────────────────────
-var NAV_GROUP_MAP={leads:'people',buyers:'people',sellers:'people',agents:'people',vendors:'people',transactions:'work',pipeline:'work',tasks:'work',appointments:'work',offers:'work',scheduled:'work',finance:'finance',commission:'finance',properties:'properties',leases:'properties',content:'marketing','dm-import':'marketing',textblast:'marketing',activity:'tools',deals:'tools'};
+var NAV_GROUP_MAP={leads:'people',buyers:'people',sellers:'people',agents:'people',vendors:'people',transactions:'work',pipeline:'work',tasks:'work',appointments:'work',offers:'work',scheduled:'work',finance:'finance',commission:'finance',properties:'properties',leases:'properties',content:'marketing','dm-import':'marketing',textblast:'marketing',snapshots:'marketing',activity:'tools',deals:'tools'};
 
 function toggleNavGroup(id){
   var body=document.getElementById('ngb-'+id);
@@ -2747,6 +2874,191 @@ function renderStats(){
     <div class="sc" style="cursor:pointer" onclick="showPane('leads',document.querySelector('[onclick*=leads]'))"><div class="sc-lbl">Hot leads</div><div class="sc-val">${leads.filter(l=>l.temp==='hot').length}</div><div class="sc-sub">of ${leads.length} total</div></div>
     <div class="sc${activeTx?' warn':''}" style="cursor:pointer" onclick="showPane('transactions',document.querySelector('[onclick*=transactions]'))"><div class="sc-lbl">In Escrow</div><div class="sc-val">${activeTx}</div><div class="sc-sub">active transactions</div></div>
     <div class="sc${unpaidTotal>0?' alert':''}" style="cursor:pointer" onclick="showPane('finance',document.querySelector('[onclick*=finance]'))"><div class="sc-lbl">Unpaid</div><div class="sc-val">${fmtMoney(unpaidTotal)}</div><div class="sc-sub">${unpaidInvs.length} invoice${unpaidInvs.length!==1?'s':''}</div></div>`;
+}
+
+// ── Neighborhood Snapshots ────────────────────────────────────
+var SNAP_HOOD_DEFAULTS = {
+  'Silver Lake':    { priceRange:'$750K – $1.4M', median:'$950,000', dom:'16', lts:'101%', propTypes:'Craftsman bungalows, Spanish revivals, modern condos', highlights:'Silver Lake Reservoir, Sunset Junction, walkable dining scene, arts community', schools:'Ivanhoe Elementary (9/10), John Marshall HS' },
+  'Los Feliz':      { priceRange:'$900K – $1.8M', median:'$1.15M',  dom:'18', lts:'100%', propTypes:'Spanish Colonial, Craftsman homes, vintage apartments', highlights:'Griffith Park, Vermont Ave dining, Village Theatre, tight-knit community', schools:'Two highly-rated elementary schools' },
+  'Echo Park':      { priceRange:'$700K – $1.2M', median:'$850,000', dom:'20', lts:'99%',  propTypes:'Craftsman bungalows, modern new builds, mixed-use condos', highlights:'Echo Park Lake, Dodger Stadium proximity, vibrant murals, up-and-coming dining', schools:'Allesandro Elementary' },
+  'Highland Park':  { priceRange:'$650K – $1.1M', median:'$790,000', dom:'22', lts:'99%',  propTypes:'Craftsman bungalows, Spanish revivals, new construction', highlights:'York Blvd, Figueroa corridor, thriving arts scene, best value in Northeast LA', schools:'Annandale Elementary' },
+  'West Hollywood': { priceRange:'$600K – $2.5M', median:'$950,000', dom:'24', lts:'98%',  propTypes:'High-rise condos, sleek apartments, luxury townhomes', highlights:'Sunset Strip, Santa Monica Blvd, world-class dining & nightlife, highly walkable', schools:'West Hollywood Elementary' },
+  'Beverly Hills':  { priceRange:'$2M – $20M+',   median:'$4.2M',   dom:'45', lts:'96%',  propTypes:'Estates, luxury condos, gated properties', highlights:'Rodeo Drive, top-ranked schools, prestige address, unmatched amenities', schools:'Beverly Hills USD (among top in CA)' },
+  'Westwood':       { priceRange:'$900K – $3M',    median:'$1.4M',   dom:'28', lts:'99%',  propTypes:'Condos, townhomes, classic single-family homes', highlights:'UCLA campus, Village dining, easy 405/10 access, diverse community', schools:'Westwood Charter Elementary (10/10)' },
+  'Brentwood':      { priceRange:'$1.8M – $5M',    median:'$2.6M',   dom:'30', lts:'98%',  propTypes:'Traditional estates, contemporary homes, luxury condos', highlights:'San Vicente Blvd, Brentwood Country Mart, Mandeville Canyon hiking, top schools', schools:'Kenter Canyon Elementary (10/10)' },
+  'Malibu':         { priceRange:'$2M – $15M+',    median:'$3.8M',   dom:'60', lts:'95%',  propTypes:'Beach cottages, cliff-top estates, gated compounds', highlights:'27 miles of coastline, PCH lifestyle, celebrity enclave, ultimate privacy', schools:'Malibu High School (small, community-focused)' },
+  'Santa Monica':   { priceRange:'$1.2M – $5M',    median:'$1.9M',   dom:'26', lts:'99%',  propTypes:'Condos, townhomes, California bungalows, luxury new builds', highlights:'3rd Street Promenade, beach access, best walkability in LA, Bergamot Station', schools:'Franklin Elementary (9/10)' }
+};
+
+var _snapCurrentId = null;
+
+function loadSnapshots(){
+  try{snapshots=JSON.parse(localStorage.getItem(SSNAP)||'null')||[];}catch(e){snapshots=[];}
+}
+function saveSnapshots(){
+  localStorage.setItem(SSNAP,JSON.stringify(snapshots));
+}
+function openNewSnapshot(){
+  _snapCurrentId=null;
+  document.getElementById('snap-client-first').value='';
+  document.getElementById('snap-client-last').value='';
+  document.getElementById('snap-client-email').value='';
+  document.getElementById('snap-budget').value='';
+  document.getElementById('snap-note').value='';
+  document.getElementById('snap-actions').style.display='none';
+  document.getElementById('snap-preview').innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text3)"><i class="ti ti-map-pin" style="font-size:36px;display:block;margin-bottom:10px;color:var(--border)"></i><div style="font-size:13px">Fill in the form and hit Generate Snapshot</div></div>';
+  document.querySelectorAll('#snap-priorities input[type=checkbox]').forEach(function(c){c.checked=false;});
+  snapPrefill();
+}
+function snapPrefill(){
+  var hood=document.getElementById('snap-hood').value;
+  var d=SNAP_HOOD_DEFAULTS[hood]||{};
+  document.getElementById('snap-price-range').value=d.priceRange||'';
+  document.getElementById('snap-median').value=d.median||'';
+  document.getElementById('snap-dom').value=d.dom||'';
+  document.getElementById('snap-lts').value=d.lts||'';
+  document.getElementById('snap-prop-types').value=d.propTypes||'';
+  document.getElementById('snap-highlights').value=d.highlights||'';
+  document.getElementById('snap-schools').value=d.schools||'';
+}
+async function generateSnapshot(){
+  var btn=document.getElementById('snap-generate-btn');
+  var hood=document.getElementById('snap-hood').value;
+  var firstName=document.getElementById('snap-client-first').value.trim()||'there';
+  var lastName=document.getElementById('snap-client-last').value.trim();
+  var email=document.getElementById('snap-client-email').value.trim();
+  var priceRange=document.getElementById('snap-price-range').value;
+  var median=document.getElementById('snap-median').value;
+  var dom=document.getElementById('snap-dom').value;
+  var lts=document.getElementById('snap-lts').value;
+  var propTypes=document.getElementById('snap-prop-types').value;
+  var highlights=document.getElementById('snap-highlights').value;
+  var schools=document.getElementById('snap-schools').value;
+  var budget=document.getElementById('snap-budget').value;
+  var buyerType=document.getElementById('snap-buyer-type').value;
+  var priorities=[...document.querySelectorAll('#snap-priorities input:checked')].map(function(c){return c.value;}).join(', ');
+  var note=document.getElementById('snap-note').value.trim();
+
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Generating…';
+
+  try{
+    var resp=await fetch(BACKEND+'/api/generate-snapshot',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({neighborhood:hood,clientName:firstName,priceRange,median,dom,lts,propTypes,highlights,schools,budget,buyerType,priorities,note})
+    });
+    var data=await resp.json();
+    if(!data.ok)throw new Error(data.error||'Generation failed');
+
+    // Build slug and save
+    var slug=hood.toLowerCase().replace(/\s+/g,'-')+'-'+Math.random().toString(36).slice(2,7);
+    var snap={
+      id:'snap_'+Date.now(),slug,neighborhood:hood,clientName:firstName+' '+(lastName||''),
+      clientEmail:email,budget,buyerType,priceRange,median,dom,lts,propTypes,highlights,schools,
+      content:data.content,note,createdAt:new Date().toISOString()
+    };
+    _snapCurrentId=snap.id;
+    snapshots=snapshots.filter(function(s){return s.id!==snap.id;});
+    snapshots.unshift(snap);
+    saveSnapshots();
+
+    // Save to backend for public page
+    fetch(BACKEND+'/api/snapshots',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(snap)}).catch(function(){});
+
+    renderSnapPreview(snap);
+    var link=location.origin.replace(location.port?':'+location.port:'','')+'/snapshot/'+slug;
+    // Use the deployed domain
+    link='https://mgoldenrealty.com/snapshot/'+slug;
+    document.getElementById('snap-link-field').value=link;
+    document.getElementById('snap-actions').style.display='';
+    renderSnapHistory();
+    toast('Snapshot generated ✓');
+  }catch(e){
+    toast('Generation failed: '+e.message,'err');
+  }
+  btn.disabled=false;btn.innerHTML='<i class="ti ti-sparkles"></i> Generate Snapshot';
+}
+function renderSnapPreview(snap){
+  var priorities=[...document.querySelectorAll('#snap-priorities input:checked')].map(function(c){return c.value;});
+  var highlightList=(snap.highlights||'').split(',').map(function(h){return '<span style="display:inline-block;background:rgba(232,104,26,0.1);border:1px solid rgba(232,104,26,0.2);color:var(--accent);padding:3px 10px;border-radius:99px;font-size:11px;margin:2px">'+h.trim()+'</span>';}).join('');
+  document.getElementById('snap-preview').innerHTML=
+    '<div style="font-family:inherit">'
+    +'<div style="background:linear-gradient(135deg,rgba(232,104,26,0.15),rgba(232,104,26,0.05));border:1px solid rgba(232,104,26,0.2);border-radius:12px;padding:20px;margin-bottom:16px">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Prepared for</div>'
+    +'<div style="font-size:22px;font-weight:800;color:var(--text)">'+(snap.clientName||'Your Client')+'</div>'
+    +'<div style="font-size:14px;color:var(--text2);margin-top:2px">'+snap.neighborhood+' Neighborhood Snapshot</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px">'
+    +'<div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Median Price</div><div style="font-size:15px;font-weight:700;color:var(--text);margin-top:2px">'+(snap.median||'—')+'</div></div>'
+    +'<div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Price Range</div><div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">'+(snap.priceRange||'—')+'</div></div>'
+    +'<div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Days on Market</div><div style="font-size:15px;font-weight:700;color:var(--text);margin-top:2px">'+(snap.dom||'—')+'</div></div>'
+    +'<div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">List-to-Sale</div><div style="font-size:15px;font-weight:700;color:var(--text);margin-top:2px">'+(snap.lts||'—')+'</div></div>'
+    +'</div>'
+    +'<div style="font-size:14px;line-height:1.8;color:var(--text2);margin-bottom:16px;white-space:pre-wrap">'+snap.content+'</div>'
+    +'<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Highlights</div>'+highlightList+'</div>'
+    +(snap.note?'<div style="background:rgba(232,104,26,0.08);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 8px 8px 0;font-size:13px;color:var(--text2);margin-bottom:16px"><strong style="color:var(--text)">Matt\'s note:</strong> '+snap.note+'</div>':'')
+    +'</div>';
+}
+function copySnapLink(){
+  var val=document.getElementById('snap-link-field').value;
+  navigator.clipboard.writeText(val).then(function(){toast('Link copied ✓');});
+}
+async function sendSnapshotEmail(){
+  var snap=snapshots.find(function(s){return s.id===_snapCurrentId;});
+  if(!snap){toast('Generate a snapshot first','err');return;}
+  if(!snap.clientEmail){toast('Add client email first','err');return;}
+  var btn=document.querySelector('[onclick="sendSnapshotEmail()"]');
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  try{
+    var link='https://mgoldenrealty.com/snapshot/'+snap.slug;
+    var r=await fetch(BACKEND+'/api/send-snapshot-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({snap,link})});
+    var d=await r.json();
+    if(!d.ok)throw new Error(d.error||'Send failed');
+    toast('Email sent to '+snap.clientEmail+' ✓');
+  }catch(e){toast('Email failed: '+e.message,'err');}
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-mail" style="font-size:11px"></i> Send Email';}
+}
+function renderSnapHistory(){
+  var el=document.getElementById('snap-history');
+  if(!el)return;
+  if(!snapshots.length){el.innerHTML='<div class="empty">No snapshots yet</div>';return;}
+  el.innerHTML=snapshots.slice(0,10).map(function(s){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="loadSnapshot(\''+s.id+'\')">'
+      +'<div><div style="font-size:12px;font-weight:600">'+s.neighborhood+(s.clientName&&s.clientName.trim()?' → '+s.clientName:'')+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+new Date(s.createdAt).toLocaleDateString()+(s.clientEmail?' · '+s.clientEmail:'')+'</div></div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<a href="https://mgoldenrealty.com/snapshot/'+s.slug+'" target="_blank" onclick="event.stopPropagation()" style="font-size:11px;color:var(--accent)"><i class="ti ti-external-link"></i></a>'
+      +'<button onclick="event.stopPropagation();deleteSnapshot(\''+s.id+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 6px">×</button>'
+      +'</div></div>';
+  }).join('');
+}
+function loadSnapshot(id){
+  var snap=snapshots.find(function(s){return s.id===id;});
+  if(!snap)return;
+  _snapCurrentId=id;
+  document.getElementById('snap-hood').value=snap.neighborhood;
+  document.getElementById('snap-client-first').value=(snap.clientName||'').split(' ')[0]||'';
+  document.getElementById('snap-client-last').value=(snap.clientName||'').split(' ').slice(1).join(' ')||'';
+  document.getElementById('snap-client-email').value=snap.clientEmail||'';
+  document.getElementById('snap-price-range').value=snap.priceRange||'';
+  document.getElementById('snap-median').value=snap.median||'';
+  document.getElementById('snap-dom').value=snap.dom||'';
+  document.getElementById('snap-lts').value=snap.lts||'';
+  document.getElementById('snap-prop-types').value=snap.propTypes||'';
+  document.getElementById('snap-highlights').value=snap.highlights||'';
+  document.getElementById('snap-schools').value=snap.schools||'';
+  document.getElementById('snap-budget').value=snap.budget||'';
+  document.getElementById('snap-note').value=snap.note||'';
+  renderSnapPreview(snap);
+  var link='https://mgoldenrealty.com/snapshot/'+snap.slug;
+  document.getElementById('snap-link-field').value=link;
+  document.getElementById('snap-actions').style.display='';
+}
+function deleteSnapshot(id){
+  snapshots=snapshots.filter(function(s){return s.id!==id;});
+  saveSnapshots();
+  renderSnapHistory();
+  toast('Snapshot deleted');
 }
 
 // ── Market Pulse ──────────────────────────────────────────────
@@ -3558,7 +3870,7 @@ function logShowingFeedback(apptId) {
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-load();loadFinance();loadPulse();initNavGroups();renderAll();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadSmsInbox,500);setTimeout(loadInbox,800);loadCalendar();
+load();loadFinance();loadPulse();loadSnapshots();initNavGroups();renderAll();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadSmsInbox,500);setTimeout(loadInbox,800);loadCalendar();
 // Set today's date as default for expense log
 (function(){ const d=document.getElementById('exp-date'); if(d) d.value=new Date().toISOString().split('T')[0]; })();
 if(!loadGcalFromCache()) setTimeout(fetchGcalEvents, 1200);

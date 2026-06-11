@@ -665,6 +665,205 @@ footer{border-top:1px solid var(--border);padding:32px 40px;display:flex;align-i
 </html>`;
 }
 
+// ── Neighborhood Snapshots ────────────────────────────────────
+// In-memory store (snapshots also persist in Supabase via /crm/push)
+const snapStore = {};
+
+app.post('/api/generate-snapshot', async (req, res) => {
+  try {
+    const { neighborhood, clientName, priceRange, median, dom, lts, propTypes, highlights, schools, budget, buyerType, priorities, note } = req.body;
+    const prompt = `You are Matt Golden, a warm and knowledgeable real estate agent in Los Angeles. Write a personalized neighborhood snapshot for a client named ${clientName || 'a buyer'} who is interested in ${neighborhood}.
+
+Here is the current market data:
+- Price range: ${priceRange}
+- Median price: ${median}
+- Average days on market: ${dom} days
+- List-to-sale ratio: ${lts}
+- Property types: ${propTypes}
+- Neighborhood highlights: ${highlights}
+- Schools: ${schools}
+${budget ? `- Client's budget: ${budget}` : ''}
+${buyerType ? `- Buyer type: ${buyerType}` : ''}
+${priorities ? `- Client priorities: ${priorities}` : ''}
+${note ? `- Agent note: ${note}` : ''}
+
+Write 3–4 paragraphs (250–350 words total):
+1. What makes ${neighborhood} special right now — the vibe, lifestyle, why buyers love it
+2. What the market data means for a buyer (honest, not hype)
+3. What kind of buyer ${neighborhood} is perfect for (tie to the client's situation if data is given)
+4. A warm closing line from Matt encouraging them to reach out
+
+Write in first person as Matt. Conversational, confident, not corporate. No headers or bullets — just flowing paragraphs. End with a natural sign-off.`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    res.json({ ok: true, content: msg.content[0].text });
+  } catch (e) {
+    console.error('/api/generate-snapshot error:', e);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/snapshots', async (req, res) => {
+  try {
+    const snap = req.body;
+    if (!snap.slug) return res.json({ ok: false, error: 'No slug' });
+    snapStore[snap.slug] = snap;
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/snapshot/:slug', (req, res) => {
+  const snap = snapStore[req.params.slug];
+  if (!snap) return res.status(404).json({ error: 'Not found' });
+  res.json(snap);
+});
+
+app.get('/snapshot/:slug', async (req, res) => {
+  const slug = req.params.slug;
+  const snap = snapStore[slug];
+  if (!snap) {
+    return res.status(404).send(`<!DOCTYPE html><html><head><title>Snapshot Not Found</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{font-family:sans-serif;background:#0e0e0e;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}a{color:#e8681a}</style>
+</head><body><div><div style="font-size:48px">🏠</div><h2>Snapshot not found</h2><p>This link may have expired. <a href="https://mgoldenrealty.com">Visit MG Realty</a></p></div></body></html>`);
+  }
+
+  const highlightTags = (snap.highlights || '').split(',').map(h =>
+    `<span class="tag">${h.trim()}</span>`
+  ).join('');
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${snap.neighborhood} Snapshot – MG Realty</title>
+<meta name="description" content="Your personalized ${snap.neighborhood} neighborhood guide from Matt Golden at MG Realty.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0e0e0f;color:#e8e8e8;min-height:100vh}
+.hero{background:linear-gradient(135deg,#1a1007 0%,#0e0e0f 60%);border-bottom:1px solid rgba(232,104,26,0.2);padding:48px 24px 36px}
+.hero-inner{max-width:680px;margin:0 auto}
+.badge{display:inline-block;background:rgba(232,104,26,0.15);border:1px solid rgba(232,104,26,0.3);color:#e8681a;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 12px;border-radius:99px;margin-bottom:16px}
+.hero h1{font-size:clamp(28px,6vw,44px);font-weight:800;color:#fff;line-height:1.1;margin-bottom:8px}
+.hero-sub{font-size:15px;color:rgba(255,255,255,0.5);margin-bottom:28px}
+.prepared-for{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 20px;display:inline-block}
+.prepared-for .label{font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.prepared-for .name{font-size:20px;font-weight:700;color:#fff}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:680px;margin:0 auto;padding:28px 24px}
+@media(min-width:500px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{background:#161617;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px;text-align:center}
+.stat-label{font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.stat-val{font-size:18px;font-weight:800;color:#fff}
+.stat-val.accent{color:#e8681a}
+.body{max-width:680px;margin:0 auto;padding:0 24px 48px}
+.content-block{background:#161617;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:28px;margin-bottom:20px;font-size:15px;line-height:1.8;color:rgba(255,255,255,0.8);white-space:pre-wrap}
+.section-title{font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.tag{background:rgba(232,104,26,0.1);border:1px solid rgba(232,104,26,0.2);color:#e8681a;padding:5px 14px;border-radius:99px;font-size:12px;font-weight:500}
+${snap.note ? '.note{background:rgba(232,104,26,0.06);border-left:3px solid #e8681a;border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:20px;font-size:14px;color:rgba(255,255,255,0.7);line-height:1.7}' : ''}
+.schools{background:#161617;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px}
+.schools-icon{font-size:24px;flex-shrink:0;margin-top:2px}
+.cta{background:linear-gradient(135deg,rgba(232,104,26,0.15),rgba(232,104,26,0.05));border:1px solid rgba(232,104,26,0.25);border-radius:16px;padding:28px;text-align:center;margin-bottom:20px}
+.cta h3{font-size:20px;font-weight:700;color:#fff;margin-bottom:8px}
+.cta p{font-size:14px;color:rgba(255,255,255,0.55);margin-bottom:20px}
+.cta-btn{display:inline-block;background:#e8681a;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:99px;text-decoration:none;transition:opacity .15s}
+.cta-btn:hover{opacity:.85}
+footer{text-align:center;padding:24px;font-size:12px;color:rgba(255,255,255,0.2);border-top:1px solid rgba(255,255,255,0.05)}
+footer a{color:rgba(255,255,255,0.35);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-inner">
+    <div class="badge">Neighborhood Snapshot</div>
+    <h1>${snap.neighborhood}, Los Angeles</h1>
+    <div class="hero-sub">Current Market · ${new Date(snap.createdAt).toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
+    ${snap.clientName && snap.clientName.trim() ? `<div class="prepared-for"><div class="label">Prepared for</div><div class="name">${snap.clientName}</div></div>` : ''}
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Median Price</div><div class="stat-val accent">${snap.median||'—'}</div></div>
+  <div class="stat"><div class="stat-label">Price Range</div><div class="stat-val" style="font-size:14px">${snap.priceRange||'—'}</div></div>
+  <div class="stat"><div class="stat-label">Days on Market</div><div class="stat-val">${snap.dom||'—'}</div></div>
+  <div class="stat"><div class="stat-label">List-to-Sale</div><div class="stat-val">${snap.lts||'—'}</div></div>
+</div>
+
+<div class="body">
+  <div class="section-title">About the neighborhood</div>
+  <div class="content-block">${snap.content||''}</div>
+
+  ${snap.highlights ? `<div class="section-title">What you'll love</div><div class="tags">${highlightTags}</div>` : ''}
+
+  ${snap.schools ? `<div class="schools"><div class="schools-icon">🎒</div><div><div class="section-title" style="margin-bottom:4px">Schools</div><div style="font-size:14px;color:rgba(255,255,255,0.7)">${snap.schools}</div></div></div>` : ''}
+
+  ${snap.note ? `<div class="note"><strong style="color:#e8681a">A note from Matt:</strong> ${snap.note}</div>` : ''}
+
+  <div class="cta">
+    <h3>Ready to explore ${snap.neighborhood}?</h3>
+    <p>I'd love to show you what's available. Let's find the right home for you.</p>
+    <a href="tel:+13236883855" class="cta-btn">Call Matt · (323) 688-3855</a>
+  </div>
+</div>
+
+<footer>
+  <strong style="color:rgba(255,255,255,0.4)">MG Realty · Matt Golden</strong><br>
+  CalDRE #<br>
+  <a href="https://mgoldenrealty.com">mgoldenrealty.com</a> ·
+  <a href="https://mgoldenrealty.com/privacy">Privacy Policy</a>
+</footer>
+</body>
+</html>`);
+});
+
+// ── Email — send snapshot ──────────────────────────────────────
+app.post('/api/send-snapshot-email', async (req, res) => {
+  try {
+    const { snap, link } = req.body;
+    if (!snap || !snap.clientEmail) return res.json({ ok: false, error: 'Missing email' });
+    const firstName = (snap.clientName || '').split(' ')[0] || 'there';
+    const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0e0e0f;color:#e8e8e8;max-width:600px;margin:0 auto;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.07)">
+  <div style="background:linear-gradient(135deg,#1a1007,#0e0e0f);padding:40px 36px 28px;border-bottom:1px solid rgba(232,104,26,0.2)">
+    <div style="font-size:11px;font-weight:700;color:#e8681a;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Neighborhood Snapshot</div>
+    <h1 style="font-size:30px;font-weight:800;color:#fff;margin:0 0 8px">${snap.neighborhood}</h1>
+    <p style="color:rgba(255,255,255,0.5);margin:0">Prepared personally for you, ${firstName}</p>
+  </div>
+  <div style="padding:32px 36px">
+    <p style="font-size:15px;line-height:1.7;color:rgba(255,255,255,0.75);margin:0 0 24px">Hey ${firstName} — I put together a quick snapshot of ${snap.neighborhood} with current market data and my honest take on what it looks like for you right now.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px">
+      <div style="background:#161617;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;text-align:center"><div style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Median</div><div style="font-size:17px;font-weight:700;color:#e8681a">${snap.median||'—'}</div></div>
+      <div style="background:#161617;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;text-align:center"><div style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Days on Market</div><div style="font-size:17px;font-weight:700;color:#fff">${snap.dom||'—'}</div></div>
+    </div>
+    <a href="${link}" style="display:block;background:#e8681a;color:#fff;text-align:center;font-weight:700;font-size:16px;padding:16px 24px;border-radius:99px;text-decoration:none;margin-bottom:28px">View Full Snapshot →</a>
+    ${snap.note ? `<div style="background:rgba(232,104,26,0.08);border-left:3px solid #e8681a;padding:14px 18px;border-radius:0 10px 10px 0;font-size:14px;color:rgba(255,255,255,0.65);line-height:1.7;margin-bottom:24px"><strong style="color:#e8681a">A note from me:</strong> ${snap.note}</div>` : ''}
+    <p style="font-size:14px;color:rgba(255,255,255,0.45);line-height:1.7;margin:0">Any questions — just reply to this email or call/text me at (323) 688-3855. Happy to chat.</p>
+  </div>
+  <div style="padding:20px 36px;border-top:1px solid rgba(255,255,255,0.07);text-align:center">
+    <p style="font-size:12px;color:rgba(255,255,255,0.25);margin:0"><strong style="color:rgba(255,255,255,0.4)">Matt Golden · MG Realty</strong> · (323) 688-3855 · <a href="https://mgoldenrealty.com" style="color:rgba(255,255,255,0.35)">mgoldenrealty.com</a></p>
+  </div>
+</div>`;
+
+    await resend.emails.send({
+      from: 'Matt Golden <matt@mgoldenrealty.com>',
+      to: snap.clientEmail,
+      subject: `Your ${snap.neighborhood} Neighborhood Snapshot`,
+      html
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('/api/send-snapshot-email error:', e);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/privacy', (req, res) => res.send(legalPage('Privacy Policy', `
 <p>MG Realty ("we," "us," or "our"), operated by Matt Golden, is a licensed real estate business in Los Angeles, California. This Privacy Policy describes how we collect, use, and protect your information in connection with our SMS messaging program and website.</p>
 
