@@ -774,6 +774,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <select id="ftype" onchange="renderLeads()" style="width:auto"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
       <select id="fstage" onchange="renderLeads()" style="width:auto"><option value="">All stages</option><option value="new">New</option><option value="contacted">Contacted</option><option value="showing">Showing</option><option value="offer">Offer</option><option value="in_escrow">In Escrow</option><option value="closed">Closed</option></select>
       <button class="btn" onclick="openImportCSV()"><i class="ti ti-upload"></i> Import CSV</button>
+      <button class="btn" id="gcontacts-sync-btn" onclick="syncAllToGoogleContacts()" style="color:#4285F4;border-color:#4285F4;background:transparent"><i class="ti ti-address-book" style="font-size:13px"></i> Sync Contacts</button>
       <button class="btn btn-gold" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
   </div>
@@ -3910,6 +3911,24 @@ function saveLead(){
       .then(r=>r.json()).then(d=>{ if(d.ok) toast('✓ 30/60/90 day check-in sequence started!'); })
       .catch(()=>{});
   }
+  // Auto-sync to Google Contacts
+  if(lead.name || lead.phone || lead.email){
+    fetch(BACKEND+'/contacts/sync-lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId:lead.id})})
+      .then(r=>r.json()).then(d=>{ if(d.ok) console.log('[Contacts] synced lead',lead.id,d.resourceName); })
+      .catch(e=>console.warn('[Contacts] sync-lead failed:',e.message));
+  }
+}
+
+async function syncAllToGoogleContacts(){
+  const btn=document.getElementById('gcontacts-sync-btn');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:13px"></i> Syncing…';}
+  try{
+    const r=await fetch(BACKEND+'/contacts/sync',{method:'POST',headers:{'Content-Type':'application/json'}});
+    const d=await r.json();
+    if(d.ok){toast(`✓ Synced ${d.synced}/${d.total} leads to Google Contacts`);}
+    else{toast('Contacts sync error: '+(d.error||'unknown'),'err');}
+  }catch(e){toast('Contacts sync failed: '+e.message,'err');}
+  finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-address-book" style="font-size:13px"></i> Sync Contacts';}}
 }
 function delLead(id){if(confirm('Delete this lead and all activity?')){trackDeletedId(id);leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();pushToBackend();renderAll();toast('Lead deleted');}}
 

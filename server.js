@@ -160,6 +160,7 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/gmail.modify',
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/contacts',
 ].join(' ');
 
 app.get('/auth/google', (req, res) => {
@@ -598,6 +599,133 @@ app.post('/crm/push', async (req, res) => {
     res.json({ ok: true });
   } catch(e) {
     console.error('CRM PUSH ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Google Contacts Sync ──────────────────────────────────────
+async function getContactsAccessToken() {
+  const { google } = require('googleapis');
+  const oauth2 = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
+  oauth2.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+  const { token } = await oauth2.getAccessToken();
+  return token;
+}
+
+async function syncLeadToGoogleContact(lead) {
+  const token = await getContactsAccessToken();
+  const body = {
+    names: [{ givenName: (lead.name || '').split(' ')[0] || '', familyName: (lead.name || '').split(' ').slice(1).join(' ') || '' }],
+    phoneNumbers: lead.phone ? [{ value: lead.phone, type: 'mobile' }] : [],
+    emailAddresses: lead.email ? [{ value: lead.email, type: 'home' }] : [],
+    biographies: lead.notes ? [{ value: lead.notes, contentType: 'TEXT_PLAIN' }] : [],
+    userDefined: [
+      { key: 'CRM Lead ID', value: String(lead.id || '') },
+      { key: 'Lead Type', value: lead.type || '' },
+      { key: 'Status', value: lead.status || '' },
+      { key: 'Source', value: lead.source || '' },
+    ].filter(f => f.value),
+  };
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+
+  if (lead.googleContactId) {
+    // Update existing contact
+    const url = `https://people.googleapis.com/v1/${lead.googleContactId}:updateContact?updatePersonFields=names,phoneNumbers,emailAddresses,biographies,userDefined`;
+    const patchBody = { ...body, etag: lead.googleContactEtag };
+    const r = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(patchBody) });
+    if (r.status === 409) {
+      // etag conflict — re-fetch then retry
+      const getR = await fetch(`https://people.googleapis.com/v1/${lead.googleContactId}?personFields=metadata`, { headers });
+      if (getR.ok) {
+        const person = await getR.json();
+        patchBody.etag = person.etag;
+        const retryR = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(patchBody) });
+        if (retryR.ok) {
+          const updated = await retryR.json();
+          return { resourceName: updated.resourceName, etag: updated.etag };
+        }
+      }
+    }
+    if (!r.ok) {
+      const err = await r.text();
+      throw new Error(`People API PATCH ${r.status}: ${err}`);
+    }
+    const updated = await r.json();
+    return { resourceName: updated.resourceName, etag: updated.etag };
+  } else {
+    // Create new contact
+    const r = await fetch('https://people.googleapis.com/v1/people:createContact', {
+      method: 'POST', headers, body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const err = await r.text();
+      throw new Error(`People API POST ${r.status}: ${err}`);
+    }
+    const created = await r.json();
+    return { resourceName: created.resourceName, etag: created.etag };
+  }
+}
+
+// Sync a single lead by ID
+app.post('/contacts/sync-lead', async (req, res) => {
+  try {
+    const { leadId } = req.body;
+    const crm = await readCRM();
+    const lead = (crm.leads || []).find(l => String(l.id) === String(leadId));
+    if (!lead) return res.status(404).json({ ok: false, error: 'Lead not found' });
+
+    const result = await syncLeadToGoogleContact(lead);
+    // Persist googleContactId + etag back to Supabase
+    lead.googleContactId = result.resourceName;
+    lead.googleContactEtag = result.etag;
+    crm.leads = (crm.leads || []).map(l => String(l.id) === String(leadId) ? lead : l);
+    await writeCRM(crm);
+
+    res.json({ ok: true, resourceName: result.resourceName });
+  } catch(e) {
+    console.error('CONTACTS SYNC-LEAD ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Bulk sync all leads
+app.post('/contacts/sync', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const leads = crm.leads || [];
+    const results = [];
+    let updated = false;
+
+    for (const lead of leads) {
+      if (!lead.name && !lead.phone && !lead.email) continue;
+      try {
+        const result = await syncLeadToGoogleContact(lead);
+        lead.googleContactId = result.resourceName;
+        lead.googleContactEtag = result.etag;
+        results.push({ id: lead.id, name: lead.name, resourceName: result.resourceName, ok: true });
+        updated = true;
+      } catch(e) {
+        console.error(`Contacts sync failed for lead ${lead.id}:`, e.message);
+        results.push({ id: lead.id, name: lead.name, ok: false, error: e.message });
+      }
+    }
+
+    if (updated) {
+      crm.leads = leads;
+      await writeCRM(crm);
+    }
+
+    res.json({ ok: true, synced: results.filter(r => r.ok).length, total: results.length, results });
+  } catch(e) {
+    console.error('CONTACTS SYNC ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
