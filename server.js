@@ -978,7 +978,6 @@ app.post('/calendar/create', async (req, res) => {
 // List upcoming events (next 14 days)
 app.get('/calendar/list', async (req, res) => {
   try {
-    const token = await googleToken();
     const days  = parseInt(req.query.days) || 14;
     const now   = new Date();
     const later = new Date(now); later.setDate(later.getDate() + days);
@@ -992,13 +991,7 @@ app.get('/calendar/list', async (req, res) => {
       timeZone:     'America/Los_Angeles'
     });
 
-    const r = await fetch(`${GCAL_BASE}/calendars/${GCAL_ID}/events?${params}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error?.message || JSON.stringify(data));
-
-    const events = (data.items || []).map(e => ({
+    const mapEvents = (items, source) => (items || []).map(e => ({
       id:          e.id,
       title:       e.summary || '(no title)',
       start:       e.start?.dateTime || e.start?.date,
@@ -1006,8 +999,38 @@ app.get('/calendar/list', async (req, res) => {
       location:    e.location || '',
       description: e.description || '',
       htmlLink:    e.htmlLink || '',
-      allDay:      !!e.start?.date
+      allDay:      !!e.start?.date,
+      source
     }));
+
+    // Fetch MG Realty calendar
+    const token1 = await googleToken();
+    const r1 = await fetch(`${GCAL_BASE}/calendars/${GCAL_ID}/events?${params}`, {
+      headers: { 'Authorization': `Bearer ${token1}` }
+    });
+    const data1 = await r1.json();
+    if (!r1.ok) throw new Error(data1.error?.message || JSON.stringify(data1));
+    const events1 = mapEvents(data1.items, 'mgrealty');
+
+    // Fetch Compass calendar (if token available)
+    let events2 = [];
+    const token2 = await googleTokenCompass();
+    if (token2) {
+      const r2 = await fetch(`${GCAL_BASE}/calendars/primary/events?${params}`, {
+        headers: { 'Authorization': `Bearer ${token2}` }
+      });
+      const data2 = await r2.json();
+      if (r2.ok) {
+        events2 = mapEvents(data2.items, 'compass');
+      } else {
+        console.warn('COMPASS CALENDAR ERROR:', data2.error?.message);
+      }
+    }
+
+    // Merge and sort by start time
+    const events = [...events1, ...events2].sort((a, b) =>
+      new Date(a.start) - new Date(b.start)
+    );
 
     res.json({ ok: true, events });
   } catch (e) {
