@@ -3083,6 +3083,19 @@ app.post('/api/sms-reply', async (req, res) => {
   }
 });
 
+// ── Scheduled SMS (lightweight store + send endpoint) ─────────
+const scheduledSmsStore = {};
+app.post('/api/schedule-sms', (req, res) => {
+  const item = req.body;
+  if (!item || !item.id) return res.json({ ok: false });
+  scheduledSmsStore[item.id] = item;
+  res.json({ ok: true });
+});
+app.delete('/api/schedule-sms/:id', (req, res) => {
+  delete scheduledSmsStore[req.params.id];
+  res.json({ ok: true });
+});
+
 // ── AI Email Draft ────────────────────────────────────────────
 app.post('/api/draft-email', async (req, res) => {
   try {
