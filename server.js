@@ -217,7 +217,7 @@ app.get('/auth/google/compass', (req, res) => {
     client_id:     process.env.GOOGLE_CLIENT_ID,
     redirect_uri:  `https://mg-realty-backend.onrender.com/auth/google/compass/callback`,
     response_type: 'code',
-    scope:         'https://www.googleapis.com/auth/gmail.modify',
+    scope:         'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar.readonly',
     access_type:   'offline',
     prompt:        'consent',
     login_hint:    'matthewgolden@compass.com',
@@ -976,6 +976,81 @@ app.post('/calendar/create', async (req, res) => {
 });
 
 // List upcoming events (next 14 days)
+// Parse iCal text into event objects filtered to a time window
+function parseIcal(text, now, later) {
+  // Unfold lines (continuation lines start with space/tab)
+  const unfolded = text.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
+  const lines = unfolded.split(/\r\n|\n|\r/);
+
+  const events = [];
+  let inEvent = false;
+  let current = {};
+
+  const parseIcalDate = (val) => {
+    // Remove TZID param if present: DTSTART;TZID=America/Los_Angeles:20260611T100000
+    const raw = val.includes(':') ? val.split(':').pop() : val;
+    if (raw.length === 8) {
+      // All-day: YYYYMMDD
+      return { date: `${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`, allDay: true };
+    }
+    // YYYYMMDDTHHMMSSZ or YYYYMMDDTHHMMSS
+    const y = raw.slice(0,4), mo = raw.slice(4,6), d = raw.slice(6,8);
+    const h = raw.slice(9,11), mi = raw.slice(11,13), s = raw.slice(13,15);
+    const utc = raw.endsWith('Z');
+    return { date: `${y}-${mo}-${d}T${h}:${mi}:${s}${utc ? 'Z' : ''}`, allDay: false };
+  };
+
+  for (const line of lines) {
+    if (line === 'BEGIN:VEVENT') { inEvent = true; current = {}; continue; }
+    if (line === 'END:VEVENT') {
+      inEvent = false;
+      if (current.start) {
+        const startD = new Date(current.start);
+        const endD   = current.end ? new Date(current.end) : startD;
+        if (startD <= later && endD >= now) {
+          events.push(current);
+        }
+      }
+      continue;
+    }
+    if (!inEvent) continue;
+
+    const colon = line.indexOf(':');
+    if (colon === -1) continue;
+    const key = line.slice(0, colon).toUpperCase();
+    const val = line.slice(colon + 1).trim();
+
+    if (key.startsWith('DTSTART')) {
+      const p = parseIcalDate(line.slice(colon + 1));
+      current.start = p.date; current.allDay = p.allDay;
+    } else if (key.startsWith('DTEND')) {
+      current.end = parseIcalDate(line.slice(colon + 1)).date;
+    } else if (key === 'SUMMARY') {
+      current.title = val.replace(/\\,/g, ',').replace(/\\n/g, ' ');
+    } else if (key === 'LOCATION') {
+      current.location = val.replace(/\\,/g, ',').replace(/\\n/g, '\n');
+    } else if (key === 'DESCRIPTION') {
+      current.description = val.replace(/\\,/g, ',').replace(/\\n/g, '\n');
+    } else if (key === 'UID') {
+      current.id = val;
+    } else if (key === 'URL') {
+      current.htmlLink = val;
+    }
+  }
+
+  return events.map(e => ({
+    id:          e.id || '',
+    title:       e.title || '(no title)',
+    start:       e.start,
+    end:         e.end || e.start,
+    location:    e.location || '',
+    description: e.description || '',
+    htmlLink:    e.htmlLink || '',
+    allDay:      !!e.allDay,
+    source:      'compass'
+  }));
+}
+
 app.get('/calendar/list', async (req, res) => {
   try {
     const days  = parseInt(req.query.days) || 14;
@@ -1012,18 +1087,20 @@ app.get('/calendar/list', async (req, res) => {
     if (!r1.ok) throw new Error(data1.error?.message || JSON.stringify(data1));
     const events1 = mapEvents(data1.items, 'mgrealty');
 
-    // Fetch Compass calendar (if token available)
+    // Fetch Compass calendar via iCal feed
     let events2 = [];
-    const token2 = await googleTokenCompass();
-    if (token2) {
-      const r2 = await fetch(`${GCAL_BASE}/calendars/primary/events?${params}`, {
-        headers: { 'Authorization': `Bearer ${token2}` }
-      });
-      const data2 = await r2.json();
-      if (r2.ok) {
-        events2 = mapEvents(data2.items, 'compass');
-      } else {
-        console.warn('COMPASS CALENDAR ERROR:', data2.error?.message);
+    const icalUrl = process.env.COMPASS_ICAL_URL;
+    if (icalUrl) {
+      try {
+        const r2 = await fetch(icalUrl);
+        if (r2.ok) {
+          const icalText = await r2.text();
+          events2 = parseIcal(icalText, now, later);
+        } else {
+          console.warn('COMPASS ICAL FETCH ERROR:', r2.status);
+        }
+      } catch(e2) {
+        console.warn('COMPASS ICAL ERROR:', e2.message);
       }
     }
 
@@ -4862,13 +4939,11 @@ Rules:
 // Debug: test Compass calendar auth
 app.get('/debug/compass-cal', async (req, res) => {
   try {
-    const token = await googleTokenCompass();
-    if (!token) return res.json({ ok: false, error: 'No Compass token — GOOGLE_REFRESH_TOKEN_COMPASS missing or null' });
-    const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&singleEvents=true&orderBy=startTime&timeMin=' + new Date().toISOString(), {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await r.json();
-    res.json({ ok: r.ok, status: r.status, items: data.items?.length ?? 0, error: data.error || null, sample: data.items?.[0] || null });
+    const icalUrl = process.env.COMPASS_ICAL_URL;
+    if (!icalUrl) return res.json({ ok: false, error: 'COMPASS_ICAL_URL not set' });
+    const r = await fetch(icalUrl);
+    const text = await r.text();
+    res.json({ ok: r.ok, status: r.status, length: text.length, preview: text.slice(0, 500) });
   } catch(e) {
     res.json({ ok: false, error: e.message });
   }
