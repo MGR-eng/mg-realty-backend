@@ -3013,6 +3013,7 @@ NO ACTION: {"action":"none"}
       }
     } catch(e) {
       console.error('SMS action parse error:', e.message, '\nRaw:', raw);
+      reply = `Error saving: ${e.message.substring(0, 200)}`;
     }
 
     if (reply.length > 320) reply = reply.substring(0, 317) + '…';
