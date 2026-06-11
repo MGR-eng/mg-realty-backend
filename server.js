@@ -5035,6 +5035,21 @@ Rules:
   }
 });
 
+// Debug: test SMS add_lead write path
+app.get('/debug/sms-write', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const before = crm.leads.length;
+    crm.leads.push({ id: 'debug_' + Date.now(), first: 'Debug', last: 'Test', phone: '000', email: '', temp: 'cold', stage: 'new', added: new Date().toISOString().split('T')[0] });
+    await writeCRM(crm);
+    const crm2 = await readCRM();
+    const after = crm2.leads.length;
+    res.json({ ok: true, before, after, persisted: after > before });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // Debug: test Compass calendar auth
 app.get('/debug/compass-cal', async (req, res) => {
   try {
