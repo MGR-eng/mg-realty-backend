@@ -1561,6 +1561,18 @@ function findLead(crm, name) {
   );
 }
 
+function fuzzyLeadSuggestions(crm, name) {
+  if (!name) return [];
+  const parts = name.toLowerCase().split(' ').filter(Boolean);
+  return crm.leads
+    .filter(l => parts.some(p =>
+      (l.first + ' ' + l.last).toLowerCase().includes(p) ||
+      (l.phone || '').includes(p)
+    ))
+    .slice(0, 3)
+    .map(l => `${l.first} ${l.last}`);
+}
+
 async function executeSmsAction(action, crm) {
   let modified = false;
   const now = new Date();
@@ -1715,10 +1727,63 @@ Return only: {"ok":true}`, [calMcp]);
         </div>`
       });
     }
+  } else if (action.action === 'send_sms') {
+    // Send a text to a lead on Matt's behalf
+    const lead = findLead(crm, action.lead);
+    const toPhone = action.phone || lead?.phone;
+    if (toPhone && action.message) {
+      await sendSMS(toPhone, action.message);
+      // Log it as activity
+      if (lead) {
+        crm.activities.push({
+          id: 'a' + Date.now(),
+          leadId: lead.id,
+          leadName: `${lead.first} ${lead.last}`,
+          date: today,
+          time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+          type: 'text',
+          direction: 'outbound',
+          outcome: 'sent',
+          notes: action.message
+        });
+        crm.leads = crm.leads.map(l => l.id === lead.id ? { ...l, lastcontact: today, lcmethod: 'text' } : l);
+        modified = true;
+      }
+    }
+  } else if (action.action === 'update_lead') {
+    const lead = findLead(crm, action.lead);
+    if (lead) {
+      const updates = {};
+      if (action.email)    updates.email    = action.email;
+      if (action.phone)    updates.phone    = action.phone;
+      if (action.address)  updates.address  = action.address;
+      if (action.prop)     updates.prop     = action.prop;
+      if (action.source)   updates.source   = action.source;
+      if (action.temp)     updates.temp     = action.temp;
+      if (action.stage)    updates.stage    = action.stage;
+      if (action.budget)   updates.budget   = action.budget;
+      if (action.note)     updates.notes    = (lead.notes ? lead.notes + '\n' : '') + action.note;
+      if (action.birthday) updates.birthday = action.birthday;
+      crm.leads = crm.leads.map(l => l.id === lead.id ? { ...l, ...updates } : l);
+      modified = true;
+    }
+  } else if (action.action === 'log_expense') {
+    const expense = {
+      id: 'exp' + Date.now(),
+      date: action.date || today,
+      category: action.category || 'Other',
+      description: action.description || action.notes || '',
+      amount: parseFloat(action.amount) || 0,
+      leadName: action.leadName || '',
+      status: 'paid'
+    };
+    if (!crm.expenses) crm.expenses = [];
+    crm.expenses.push(expense);
+    modified = true;
   }
 
   if (modified) await writeCRM(crm);
-  return modified;
+  return { ok: modified, action: action.action };
 }
 
 // ── Twilio: send outbound SMS ─────────────────────────────────
@@ -2839,11 +2904,19 @@ app.post('/sms', async (req, res) => {
       .slice(0, 5)
       .map(t => ({ title: t.title, lead: t.leadName, due: t.due }));
 
-    const systemPrompt = `You are Matt Golden's AI assistant for MG Realty in Los Angeles. Matt texts you to manage his real estate business — you're his right hand.
+    const hotLeads = crm.leads.filter(l => l.temp === 'hot' && l.temp !== 'done').map(l => `${l.first} ${l.last}`);
+    const overdueLeads = crm.leads.filter(l => l.temp !== 'done' && l.followup && l.followup < today2).map(l => `${l.first} ${l.last} (due ${l.followup})`);
+
+    const systemPrompt = `You are Matt Golden's AI assistant for MG Realty in Los Angeles. Matt texts you from his personal phone to manage his entire real estate business hands-free.
 
 TODAY: ${today2} (${now2.toLocaleDateString('en-US', { weekday: 'long' })})
 
-=== LEADS (${crm.leads.filter(l => l.temp !== 'done').length} active) ===
+=== PIPELINE SNAPSHOT ===
+Active leads: ${crm.leads.filter(l => l.temp !== 'done').length}
+Hot leads: ${hotLeads.join(', ') || 'none'}
+Overdue follow-ups: ${overdueLeads.join(', ') || 'none'}
+
+=== ALL LEADS ===
 ${JSON.stringify(leadSummary)}
 
 === RECENT ACTIVITY ===
@@ -2855,34 +2928,47 @@ ${JSON.stringify(upcomingAppts)}
 === OPEN TASKS ===
 ${JSON.stringify(openTasks)}
 
-=== YOUR CAPABILITIES ===
-You can do anything Matt asks. Always pick the right action:
+=== ACTIONS — pick the best one ===
 
-- Log activity: {"action":"log_activity","lead":"Name","type":"call|text|email|showing|offer","outcome":"...","notes":"...","followupDate":"YYYY-MM-DD","followupMethod":"call|text|email"}
-- Update stage: {"action":"update_stage","lead":"Name","stage":"new|contacted|showing|offer|closed"}
-- Update temp: {"action":"update_temp","lead":"Name","temp":"hot|warm|cold|done"}
-- Set follow-up: {"action":"update_followup","lead":"Name","date":"YYYY-MM-DD","method":"call|text|email"}
-- Add note: {"action":"add_note","lead":"Name","note":"..."}
-- Add new lead: {"action":"add_lead","first":"...","last":"...","phone":"...","email":"...","temp":"warm","source":"...","notes":"..."}
-- Create task: {"action":"create_task","title":"...","leadName":"...","due":"YYYY-MM-DD","notes":"..."}
-- Schedule appointment (CRM only): {"action":"create_appointment","leadName":"...","type":"showing|call|meeting|offer","date":"YYYY-MM-DD","time":"HH:MM","address":"..."}
-- Schedule on Google Calendar: {"action":"create_calendar_event","title":"...","start":"YYYY-MM-DDTHH:MM:SS","end":"YYYY-MM-DDTHH:MM:SS","location":"...","description":"...","leadName":"...","apptType":"showing"}
-- Send email to lead: {"action":"send_email_template","leadName":"...","email":"...","subject":"...","body":"..."}
-- Send digest email: {"action":"send_digest"}
-- No action needed: {"action":"none"}
+ADDING A BRAND NEW CONTACT (use when Matt says "add", "new contact", "met someone", "new lead"):
+{"action":"add_lead","first":"Jane","last":"Doe","phone":"310-555-1234","email":"jane@email.com","temp":"warm","source":"referral","notes":"Interested in WeHo condos","followupDate":"YYYY-MM-DD"}
+→ Do NOT use add_lead to look up existing people. Only for brand new contacts.
+
+SEND A TEXT TO A LEAD on Matt's behalf:
+{"action":"send_sms","lead":"Full Name","phone":"if known","message":"Hey Sarah, running 5 min late!"}
+
+UPDATE LEAD INFO (change email, phone, address, budget, notes, etc.):
+{"action":"update_lead","lead":"Full Name","email":"...","phone":"...","address":"...","prop":"property interested in","budget":"...","note":"appended note","temp":"hot|warm|cold|done","stage":"new|contacted|showing|offer|closed"}
+
+LOG AN EXPENSE:
+{"action":"log_expense","amount":150,"category":"Gas|Marketing|Meals|Supplies|Other","description":"...","leadName":"optional","date":"YYYY-MM-DD"}
+
+LOG ACTIVITY (call, text, showing, offer, email — for EXISTING leads):
+{"action":"log_activity","lead":"Name","type":"call|text|email|showing|offer","outcome":"...","notes":"...","followupDate":"YYYY-MM-DD","followupMethod":"call|text|email"}
+
+UPDATE STAGE: {"action":"update_stage","lead":"Name","stage":"new|contacted|showing|offer|closed"}
+UPDATE TEMP: {"action":"update_temp","lead":"Name","temp":"hot|warm|cold|done"}
+SET FOLLOW-UP: {"action":"update_followup","lead":"Name","date":"YYYY-MM-DD","method":"call|text|email"}
+ADD NOTE: {"action":"add_note","lead":"Name","note":"..."}
+CREATE TASK: {"action":"create_task","title":"...","leadName":"...","due":"YYYY-MM-DD","notes":"..."}
+SCHEDULE APPOINTMENT: {"action":"create_appointment","leadName":"...","type":"showing|call|meeting|offer","date":"YYYY-MM-DD","time":"HH:MM","address":"..."}
+GOOGLE CALENDAR EVENT: {"action":"create_calendar_event","title":"...","start":"YYYY-MM-DDTHH:MM:SS","end":"YYYY-MM-DDTHH:MM:SS","location":"...","description":"...","leadName":"...","apptType":"showing"}
+SEND EMAIL: {"action":"send_email_template","leadName":"...","email":"...","subject":"...","body":"..."}
+SEND DIGEST: {"action":"send_digest"}
+NO ACTION: {"action":"none"}
 
 === RESPONSE RULES ===
-1. First line: JSON action (always required, even if {"action":"none"})
-2. Remaining lines: your conversational reply to Matt
-3. Be direct and brief — Matt is busy. Under 300 chars for routine tasks, more detail only when he asks.
-4. For questions about leads/pipeline, give real answers from the data above.
-5. If a lead name is ambiguous, ask which one.
-6. Always confirm what you did.
-7. Don't use command syntax — talk naturally.`;
+1. ALWAYS output the JSON action on the first line — even for questions (use {"action":"none"})
+2. Then your reply to Matt on the next lines
+3. Be direct, brief, conversational — under 280 chars unless Matt asks for detail
+4. For pipeline questions ("who's hot?", "what's overdue?", "how's my pipeline?") use {"action":"none"} and answer from the data
+5. If you can't find a lead name, suggest the closest match: "Couldn't find X — did you mean [similar name]?"
+6. NEVER use add_lead to look up an existing person
+7. Confirm everything you do in plain English`;
 
     const result = await anthropic.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 600,
+      max_tokens: 800,
       system: systemPrompt,
       messages: [{ role: 'user', content: inboundMsg }],
     });
@@ -2909,8 +2995,18 @@ You can do anything Matt asks. Always pick the right action:
           });
           reply = `Digest sent — ${overdue.length} overdue, ${dueToday.length} due today.`;
         } else if (action.action !== 'none') {
-          const ok = await executeSmsAction(action, crm);
-          if (!ok && action.lead) reply = `Couldn't find "${action.lead}" — check the name and try again.`;
+          // Actions that don't need an existing lead — always succeed
+          const noLookupActions = ['add_lead', 'create_task', 'create_appointment', 'create_calendar_event', 'send_email_template', 'log_expense', 'send_digest'];
+          const result = await executeSmsAction(action, crm);
+          if (!result.ok && !noLookupActions.includes(action.action)) {
+            const leadName = action.lead || action.leadName;
+            const suggestions = fuzzyLeadSuggestions(crm, leadName);
+            if (suggestions.length) {
+              reply = `Couldn't find "${leadName}" — did you mean ${suggestions.join(' or ')}?`;
+            } else {
+              reply = `Couldn't find "${leadName}" — check the name and try again.`;
+            }
+          }
         }
       }
     } catch(e) {
