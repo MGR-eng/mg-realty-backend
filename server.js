@@ -4859,5 +4859,20 @@ Rules:
   }
 });
 
+// Debug: test Compass calendar auth
+app.get('/debug/compass-cal', async (req, res) => {
+  try {
+    const token = await googleTokenCompass();
+    if (!token) return res.json({ ok: false, error: 'No Compass token — GOOGLE_REFRESH_TOKEN_COMPASS missing or null' });
+    const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&singleEvents=true&orderBy=startTime&timeMin=' + new Date().toISOString(), {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await r.json();
+    res.json({ ok: r.ok, status: r.status, items: data.items?.length ?? 0, error: data.error || null, sample: data.items?.[0] || null });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
