@@ -2614,7 +2614,9 @@ const BACKEND = 'https://mg-realty-backend.onrender.com';
 const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
 const DIGEST_EMAIL = 'goldenmb@gmail.com';
 
-const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1',SOF='mg_offers_v1',SVND='mg_vendors_v1',SEXP='mg_expenses_v1',SINV='mg_invoices_v1',SPULSE='mg_pulse_v1',SSNAP='mg_snapshots_v1';
+const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2',ST='mg_tasks_v1',SPR='mg_props_v1',SD='mg_deals_v1',SAGT='mg_agents_v1',SLSE='mg_leases_v1',SOF='mg_offers_v1',SVND='mg_vendors_v1',SEXP='mg_expenses_v1',SINV='mg_invoices_v1',SPULSE='mg_pulse_v1',SSNAP='mg_snapshots_v1',SDEL='mg_deleted_leads_v1';
+function getDeletedIds(){return new Set(JSON.parse(localStorage.getItem(SDEL)||'[]'));}
+function trackDeletedId(id){try{const ids=JSON.parse(localStorage.getItem(SDEL)||'[]');if(!ids.includes(id)){ids.push(id);localStorage.setItem(SDEL,JSON.stringify(ids));}}catch(e){}}
 let leads=[],acts=[],appts=[],tasks=[],props=[],deals=[],agents=[],leases=[],offers=[],vendors=[],expenses=[],invoices=[],pulseEntries=[],snapshots=[],editVendorId=null,actLeadId=null,editLeadId=null,editPropId=null,editTaskId=null,editAgentId=null,editLeaseId=null,currentLeaseId=null,currentLeaseDocId=null,editOfferId=null,editExpenseId=null,editInvoiceId=null;
 let _pulseCurrentId=null;
 // ── Early globals (must be declared before init line) ─────────
@@ -2670,10 +2672,11 @@ async function pushToBackend(){
       if(pr.ok){
         const {ok,data} = await pr.json();
         if(ok && data){
+          const _delIds = getDeletedIds();
           const merge = (local, remote) => {
             if(!remote?.length) return local;
             const localIds = new Set(local.map(x=>x.id));
-            const extras = remote.filter(x=>!localIds.has(x.id));
+            const extras = remote.filter(x=>!localIds.has(x.id) && !_delIds.has(x.id));
             return extras.length ? [...local, ...extras] : local;
           };
           mergedLeads = merge(leads, data.leads);
@@ -2719,19 +2722,22 @@ async function syncFromBackend(){
     const {ok,data}=await r.json();
     if(!ok||!data){console.warn('Sync returned no data');toast('Sync error: no data','err');return;}
     let changed=false;
-    // Always replace with Supabase data (source of truth)
-    if(Array.isArray(data.leads)){leads=data.leads;changed=true;}
-    if(Array.isArray(data.activities)){acts=data.activities;changed=true;}
-    if(Array.isArray(data.appointments)){appts=data.appointments;changed=true;}
-    if(Array.isArray(data.tasks)){tasks=data.tasks;changed=true;}
-    if(Array.isArray(data.properties)){props=data.properties;changed=true;}
-    if(Array.isArray(data.deals)){deals=data.deals;changed=true;}
-    if(Array.isArray(data.agents)){agents=data.agents;changed=true;}
-    if(Array.isArray(data.leases)){leases=data.leases;changed=true;}
-    if(Array.isArray(data.offers)){offers=data.offers;changed=true;}
-    if(Array.isArray(data.vendors)){vendors=data.vendors;changed=true;}
-    if(Array.isArray(data.expenses)){expenses=data.expenses;changed=true;}
-    if(Array.isArray(data.invoices)){invoices=data.invoices;changed=true;}
+    const deletedIds = getDeletedIds();
+    // Merge: add remote items not already in local, but never re-add deleted leads
+    const mergeIn = (local, remote) => {
+      if(!Array.isArray(remote)) return local;
+      const localIds = new Set(local.map(x=>x.id));
+      const toAdd = remote.filter(x => !localIds.has(x.id) && !deletedIds.has(x.id));
+      return toAdd.length ? [...local, ...toAdd] : local;
+    };
+    const newLeads = mergeIn(leads, data.leads);
+    if(newLeads.length !== leads.length){leads=newLeads;changed=true;}
+    const newActs = mergeIn(acts, data.activities);
+    if(newActs.length !== acts.length){acts=newActs;changed=true;}
+    const newAppts = mergeIn(appts, data.appointments);
+    if(newAppts.length !== appts.length){appts=newAppts;changed=true;}
+    const newTasks = mergeIn(tasks, data.tasks);
+    if(newTasks.length !== tasks.length){tasks=newTasks;changed=true;}
     if(changed){
       try{
         localStorage.setItem(SL,JSON.stringify(leads));
@@ -3907,7 +3913,7 @@ function saveLead(){
       .catch(()=>{});
   }
 }
-function delLead(id){if(confirm('Delete this lead and all activity?')){leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();pushToBackend();renderAll();toast('Lead deleted');}}
+function delLead(id){if(confirm('Delete this lead and all activity?')){trackDeletedId(id);leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();pushToBackend();renderAll();toast('Lead deleted');}}
 
 function openAct(id){
   actLeadId=id;const l=leads.find(x=>x.id===id);
