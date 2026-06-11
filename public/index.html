@@ -2931,6 +2931,7 @@ function showPane(id,el){
   renderAll();
   if(id==='deals') renderDealHistory();
   if(id==='textblast') tbUpdatePreview();
+  if(id==='leads') syncFromBackend();
 }
 function toggleMoreSheet(){
   document.getElementById('moreSheet').classList.toggle('open');
@@ -3980,6 +3981,8 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 load();loadFinance();loadPulse();loadSnapshots();loadScheduledSms();initNavGroups();renderAll();renderScheduledSmsList();syncFromBackend();setTimeout(loadCallList,300);setTimeout(loadSmsInbox,500);setTimeout(loadInbox,800);loadCalendar();
+// Auto-sync from backend every 30 seconds so SMS-added leads appear without page refresh
+setInterval(syncFromBackend, 30000);
 // Set today's date as default for expense log
 (function(){ const d=document.getElementById('exp-date'); if(d) d.value=new Date().toISOString().split('T')[0]; })();
 if(!loadGcalFromCache()) setTimeout(fetchGcalEvents, 1200);
