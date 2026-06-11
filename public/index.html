@@ -2749,6 +2749,7 @@ async function syncFromBackend(){
       }catch(e){}
       renderAll();
       console.log('Synced from Supabase: '+leads.length+' leads');
+      toast('Synced: '+leads.length+' leads from cloud');
       if(typeof checkLeaseRenewalReminders==='function')setTimeout(checkLeaseRenewalReminders,1500);
     }
   }catch(e){console.warn('Backend sync failed:',e.message);toast('Sync failed: '+e.message,'err');}
