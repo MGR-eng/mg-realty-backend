@@ -2974,9 +2974,11 @@ NO ACTION: {"action":"none"}
     });
 
     const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    // Strip any markdown code fences the AI might wrap around the JSON
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+    const lines = cleaned.split('\n').map(l => l.trim()).filter(Boolean);
 
-    let reply = raw;
+    let reply = cleaned;
     try {
       const jsonLine = lines.find(l => l.startsWith('{'));
       if (jsonLine) {
