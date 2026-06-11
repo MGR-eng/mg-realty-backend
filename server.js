@@ -4943,7 +4943,10 @@ app.get('/debug/compass-cal', async (req, res) => {
     if (!icalUrl) return res.json({ ok: false, error: 'COMPASS_ICAL_URL not set' });
     const r = await fetch(icalUrl);
     const text = await r.text();
-    res.json({ ok: r.ok, status: r.status, length: text.length, preview: text.slice(0, 500) });
+    const now = new Date();
+    const later = new Date(now); later.setDate(later.getDate() + 30);
+    const events = parseIcal(text, now, later);
+    res.json({ ok: true, length: text.length, eventCount: events.length, events: events.slice(0, 10) });
   } catch(e) {
     res.json({ ok: false, error: e.message });
   }
