@@ -1650,6 +1650,7 @@ async function executeSmsAction(action, crmSnapshot) {
       followup: action.followupDate || '',
       method: action.followupMethod || 'call'
     };
+    console.log(`[SMS add_lead] Before: ${crm.leads.length} leads. Adding: ${lead.first} ${lead.last} id=${lead.id}`);
     crm.leads.push(lead);
     modified = true;
   } else if (action.action === 'create_task') {
@@ -1785,7 +1786,13 @@ Return only: {"ok":true}`, [calMcp]);
     modified = true;
   }
 
-  if (modified) await writeCRM(crm);
+  if (modified) {
+    console.log(`[SMS write] Action=${action.action} leads=${crm.leads.length} tasks=${crm.tasks.length}`);
+    await writeCRM(crm);
+    // Verify write persisted
+    const verify = await readCRM();
+    console.log(`[SMS verify] Supabase now has ${verify.leads.length} leads`);
+  }
   return { ok: modified, action: action.action };
 }
 
@@ -5035,6 +5042,16 @@ Rules:
   } catch(e) {
     console.error('MARKET REPORT ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Debug: show current leads in Supabase
+app.get('/debug/leads', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    res.json({ count: crm.leads.length, leads: crm.leads.map(l => ({ id: l.id, name: `${l.first} ${l.last}`, added: l.added, phone: l.phone })) });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
   }
 });
 
