@@ -7599,12 +7599,15 @@ function renderOffers() {
   }
 
   grid.innerHTML = filtered.sort((a,b) => (b.offerDate||'').localeCompare(a.offerDate||'')).map(o => {
+    try {
     const lead = leads.find(l => l.id === o.leadId);
     const expiryDays = o.expiry ? du(o.expiry) : null;
     const expStr = expiryDays === null ? '' : expiryDays < 0 ? `<span style="color:var(--red);font-weight:600">Expired ${Math.abs(expiryDays)}d ago</span>` : expiryDays === 0 ? `<span style="color:var(--red);font-weight:600">Expires TODAY</span>` : expiryDays <= 3 ? `<span style="color:var(--amber);font-weight:600">Expires in ${expiryDays}d</span>` : `Expires ${o.expiry}`;
-    const priceDiff = o.offerPrice && o.listPrice ? (() => {
-      const op = parseFloat(o.offerPrice.replace(/[^0-9.]/g,''));
-      const lp = parseFloat(o.listPrice.replace(/[^0-9.]/g,''));
+    const _opStr = typeof o.offerPrice === 'string' ? o.offerPrice : String(o.offerPrice||'');
+    const _lpStr = typeof o.listPrice  === 'string' ? o.listPrice  : String(o.listPrice||'');
+    const priceDiff = _opStr && _lpStr ? (() => {
+      const op = parseFloat(_opStr.replace(/[^0-9.]/g,''));
+      const lp = parseFloat(_lpStr.replace(/[^0-9.]/g,''));
       if (!op || !lp) return '';
       const diff = op - lp;
       const pct = ((diff/lp)*100).toFixed(1);
@@ -7639,6 +7642,7 @@ function renderOffers() {
         <button class="btn btn-sm btn-red" onclick="deleteOffer('${o.id}')" title="Delete"><i class="ti ti-trash" style="font-size:11px"></i></button>
       </div>
     </div>`;
+    } catch(e) { console.error('renderOffers item error:', e.message, o); return ''; }
   }).join('');
 }
 
