@@ -1573,7 +1573,10 @@ function fuzzyLeadSuggestions(crm, name) {
     .map(l => `${l.first} ${l.last}`);
 }
 
-async function executeSmsAction(action, crm) {
+async function executeSmsAction(action, crmSnapshot) {
+  // Always read fresh CRM right before modifying to avoid race conditions
+  // with the frontend pushing stale localStorage data
+  const crm = await readCRM();
   let modified = false;
   const now = new Date();
   const today = now.toISOString().split('T')[0];
