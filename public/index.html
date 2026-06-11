@@ -7610,7 +7610,8 @@ function renderOffers() {
       return `<span style="color:${diff>=0?'var(--green)':'var(--red)'};font-size:11px">${diff>=0?'+':''}${pct}% vs list</span>`;
     })() : '';
 
-    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;border-left:3px solid ${(OFFER_STATUS_CFG[o.status||'pending']||OFFER_STATUS_CFG.pending).color}">
+    const _oCfg = (OFFER_STATUS_CFG && (OFFER_STATUS_CFG[o.status] || OFFER_STATUS_CFG.pending)) || {color:'#F39C12'};
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;border-left:3px solid ${_oCfg.color}">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="font-weight:700;font-size:14px;line-height:1.3;flex:1">${o.address}</div>
         ${ofStatusBadge(o.status||'pending')}
