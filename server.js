@@ -1268,16 +1268,18 @@ app.post('/gmail/digest', async (req, res) => {
   try {
     const { to, subject, overdue, dueToday, dueWeek, appointments, recentActivity } = req.body;
 
-    const fmt = l => `<tr><td>${l.first} ${l.last}</td><td>${l.phone || '—'}</td><td>${l.temp.toUpperCase()}</td><td>${l.followup || 'not set'}</td><td>${(l.notes || '').substring(0, 80)}</td></tr>`;
-    const apptFmt = a => `<tr><td>${a.leadName}</td><td>${a.type}</td><td>${a.date} ${a.time}</td><td>${a.address || 'TBD'}</td></tr>`;
-    const actFmt  = a => `<tr><td>${a.leadName}</td><td>${a.type}</td><td>${a.outcome}</td><td>${a.date}</td></tr>`;
+    const fmt = l => `<tr><td style="${tdStyle}"><strong>${(l.first||'')} ${(l.last||'')}</strong></td><td style="${tdStyle}">${l.phone || '—'}</td><td style="${tdStyle}">${(l.temp||'').toUpperCase()}</td><td style="${tdStyle}">${l.followup || 'not set'}</td><td style="${tdStyle}">${(l.notes || '').substring(0, 80)}</td></tr>`;
+    const apptFmt = a => `<tr><td style="${tdStyle}"><strong>${a.leadName||'—'}</strong></td><td style="${tdStyle}">${a.type||'—'}</td><td style="${tdStyle}">${a.date||''} ${a.time||''}</td><td style="${tdStyle}">${a.address || 'TBD'}</td></tr>`;
+    const actFmt  = a => `<tr><td style="${tdStyle}"><strong>${a.leadName||'Unknown'}</strong></td><td style="${tdStyle}">${a.type||'—'}</td><td style="${tdStyle}">${a.outcome||'—'}</td><td style="${tdStyle}">${a.date||'—'}</td></tr>`;
 
     const tableStyle = `width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px;`;
     const thStyle = `background:#333;color:#fff;padding:8px;text-align:left;`;
     const tdStyle = `padding:8px;border-bottom:1px solid #eee;`;
 
+    const dot = color => `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:7px;vertical-align:middle"></span>`;
+
     const section = (title, color, rows, headers) => rows.length === 0 ? '' : `
-      <h3 style="color:${color};margin:24px 0 8px">${title} (${rows.length})</h3>
+      <h3 style="color:${color};margin:24px 0 8px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">${dot(color)}${title} (${rows.length})</h3>
       <table style="${tableStyle}">
         <thead><tr>${headers.map(h => `<th style="${thStyle}">${h}</th>`).join('')}</tr></thead>
         <tbody>${rows}</tbody>
@@ -1287,15 +1289,15 @@ app.post('/gmail/digest', async (req, res) => {
       <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto">
         <div style="background:#1A1914;padding:20px 24px;border-radius:8px 8px 0 0;text-align:center">
           <img src="https://mg-realty-backend.onrender.com/icons/mg-logo.jpg" alt="MG Realty" style="max-height:64px;max-width:200px;object-fit:contain;display:block;margin:0 auto 12px">
-          <h1 style="color:#fff;margin:0;font-size:18px">Daily Digest</h1>
-          <p style="color:#666;margin:4px 0 0;font-size:13px">${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+          <h1 style="color:#fff;margin:0;font-size:18px">MG Realty &mdash; Daily Lead Digest</h1>
+          <p style="color:#aaa;margin:4px 0 0;font-size:13px">${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
         <div style="padding:24px;background:#ffffff;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px">
-          ${section('🔴 Overdue','#c0392b', overdue.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
-          ${section('🟡 Due Today','#e67e22', dueToday.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
-          ${section('🟢 Due This Week','#27ae60', dueWeek.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
-          ${section('📅 Upcoming Appointments','#2980b9', appointments.map(apptFmt).join(''), ['Lead','Type','Date & Time','Address'])}
-          ${section('📋 Recent Activity','#8e44ad', recentActivity.slice(0,5).map(actFmt).join(''), ['Lead','Type','Outcome','Date'])}
+          ${section('Overdue','#c0392b', overdue.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
+          ${section('Due Today','#e67e22', dueToday.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
+          ${section('Due This Week','#27ae60', dueWeek.map(fmt).join(''), ['Name','Phone','Temp','Follow-up','Notes'])}
+          ${section('Upcoming Appointments','#2980b9', appointments.map(apptFmt).join(''), ['Lead','Type','Date & Time','Address'])}
+          ${section('Recent Activity','#8e44ad', recentActivity.slice(0,5).map(actFmt).join(''), ['Lead','Type','Outcome','Date'])}
           <p style="margin-top:32px;color:#444;font-size:13px">Open your MG Realty CRM to take action.</p>
         </div>
       </div>`;

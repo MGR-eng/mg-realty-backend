@@ -2760,13 +2760,7 @@ async function syncFromBackend(){
   }catch(e){console.warn('Backend sync failed:',e.message);toast('Sync failed: '+e.message,'err');}
 }
 function seed(){
-  const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().split('T')[0];};
-  return[
-    {id:'1',first:'Sarah',last:'Chen',phone:'(310) 555-0193',email:'schen@gmail.com',prop:'2BR Silver Lake ~$750k',ohdate:d(-3),temp:'hot',type:'buyer',followup:d(0),method:'call',lastcontact:d(-3),lcmethod:'call',notes:'Pre-approved $800k. Loved kitchen. School district matters.',stage:'showing',source:'Open House'},
-    {id:'2',first:'Marcus',last:'Webb',phone:'(323) 555-0144',email:'mwebb@yahoo.com',prop:'4-unit income property',ohdate:d(-7),temp:'warm',type:'buyer',followup:d(2),method:'email',lastcontact:d(-5),lcmethod:'email',notes:'Investor, cash. Wants 5%+ cap rate.',stage:'contacted',source:'Referral'},
-    {id:'3',first:'Linda',last:'Torres',phone:'(818) 555-0177',email:'ltorres@me.com',prop:'Selling Los Feliz home',ohdate:d(-1),temp:'hot',type:'seller',followup:d(1),method:'text',lastcontact:d(-1),lcmethod:'text',notes:'Needs to sell by March. Divorce — be sensitive.',stage:'offer',source:'Zillow'},
-    {id:'4',first:'Kevin',last:'Park',phone:'(310) 555-0122',email:'kpark@gmail.com',prop:'Condo under $500k',ohdate:d(-14),temp:'cold',type:'buyer',followup:d(5),method:'call',lastcontact:d(-14),lcmethod:'',notes:'First-time buyer. Still browsing.',stage:'new',source:'Instagram'},
-  ];
+  return [];
 }
 
 function setSyncStatus(state,msg){
