@@ -2746,14 +2746,17 @@ async function submitForm(e) {
 // ── Lead capture form ─────────────────────────────────────────
 app.post('/leads/capture', async (req, res) => {
   try {
-    const { first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notify } = req.body;
-    if (!first || !last || !phone) return res.status(400).json({ ok: false, error: 'Missing required fields' });
+    const { first, last, phone, email, intent, budget, timeline, neighborhood,
+            source, notes, notify, prop, type, smsConsent } = req.body;
+    if (!first || !phone) return res.status(400).json({ ok: false, error: 'Missing required fields' });
 
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const today     = new Date().toISOString().split('T')[0];
+    const tomorrow  = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const day2Date  = new Date(Date.now() + 86400000).toISOString(); // 24hr later for follow-up
 
     const leadNotes = [
-      intent      ? `Looking to: ${intent}`         : '',
+      prop        ? `Property: ${prop}`              : '',
+      intent      ? `Looking to: ${intent}`          : '',
       budget      ? `Budget: ${budget}`              : '',
       timeline    ? `Timeline: ${timeline}`          : '',
       neighborhood? `Area: ${neighborhood}`          : '',
@@ -2761,58 +2764,122 @@ app.post('/leads/capture', async (req, res) => {
     ].filter(Boolean).join('\n');
 
     const lead = {
-      id:          'l' + Date.now(),
-      first:       first.trim(),
-      last:        last.trim(),
-      phone:       phone.trim(),
-      email:       (email || '').trim(),
-      temp:        'warm',
-      source:      source || '',
-      stage:       'new',
-      notes:       leadNotes,
-      added:       today,
-      followup:    tomorrow,
-      method:      'call',
-      intent:      intent || '',
-      budget:      budget || '',
-      timeline:    timeline || '',
-      neighborhood: neighborhood || ''
+      id:           'l' + Date.now(),
+      first:        first.trim(),
+      last:         (last || '').trim(),
+      phone:        phone.trim(),
+      email:        (email || '').trim(),
+      type:         type || 'seller',
+      temp:         'warm',
+      source:       source || 'Home Value Form',
+      stage:        'new',
+      notes:        leadNotes,
+      prop:         prop || '',
+      added:        today,
+      followup:     tomorrow,
+      method:       'call',
+      intent:       intent || '',
+      budget:       budget || '',
+      timeline:     timeline || '',
+      neighborhood: neighborhood || '',
+      smsConsent:   !!smsConsent
     };
 
     const crm = await readCRM();
     crm.leads.push(lead);
-    await writeCRM(crm);
-    console.log(`New lead captured: ${first} ${last} (${source || 'unknown source'})`);
 
-    // Respond immediately — notification is fire-and-forget
+    // ── Queue Day-2 follow-up email ──────────────────────────
+    if (email) {
+      const followUpMsg = {
+        id:        'sched_' + Date.now() + '_d2',
+        type:      'email',
+        to:        email,
+        toName:    first + (last ? ' ' + last : ''),
+        subject:   `Quick update on your home valuation, ${first}`,
+        body:      `Hi ${first},\n\nI wanted to follow up on the home valuation request you submitted${prop ? ' for ' + prop : ''}.\n\nI've been pulling comps and researching recent sales in your area. A few things worth knowing right now:\n\n• The LA market is moving fast in certain price bands — knowing your home's value gives you serious negotiating power\n• Sellers who price strategically (not too high, not too low) are getting strong offers\n• I'd love to connect for a quick 15-minute call to walk you through what I'm seeing\n\nWhen works best for you? You can reply to this email or call/text me directly:\n📱 (323) 919-7539\n\nTalk soon,\nMatt Golden\nEstates Director · Rare Properties Inc.\nmgoldenrealty.com | DRE #02130422`,
+        sendAt:    day2Date,
+        status:    'pending',
+        leadId:    lead.id,
+        createdAt: new Date().toISOString(),
+        tag:       'nurture_d2'
+      };
+      if (!crm.scheduled_messages) crm.scheduled_messages = [];
+      crm.scheduled_messages.push(followUpMsg);
+    }
+
+    await writeCRM(crm);
+    console.log(`New lead captured: ${first} ${last || ''} (${source || 'home-value form'})`);
+
+    // Respond immediately — all outreach is fire-and-forget below
     res.json({ ok: true });
 
-    // Notify Matt in the background (won't affect form response)
     const ownerPhone = process.env.OWNER_PHONE;
-    const twilioReady = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM && ownerPhone;
-    const notifyMsg = `🏡 New lead!\n${first} ${last}\n${phone}${email ? '\n' + email : ''}\n${intent || 'inquiry'} | ${budget || 'budget TBD'} | ${timeline || ''}\n${neighborhood || ''}\nSource: ${source || 'unknown'}`;
+    const twilioReady = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM;
 
-    // Extra email to notify (e.g. from ?notify= param on open house sign)
+    // ── 1. Instant confirmation email to SELLER ──────────────
+    if (email) {
+      resend.emails.send({
+        from: 'Matt Golden <matt@mgoldenrealty.com>',
+        to:   email,
+        subject: `Got it, ${first}! I'm on it. 🏡`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1a1a">
+  <div style="background:#111;padding:20px 24px;border-radius:8px 8px 0 0">
+    <p style="margin:0;font-size:13px;font-weight:700;color:#E8681A;text-transform:uppercase;letter-spacing:.08em">MG Realty</p>
+  </div>
+  <div style="background:#fff;padding:28px 24px;border:1px solid #e5e5e5;border-top:none;border-radius:0 0 8px 8px">
+    <h1 style="font-size:22px;font-weight:700;margin:0 0 8px">Hi ${first} — I got your request!</h1>
+    <p style="color:#555;font-size:14px;line-height:1.7;margin:0 0 16px">
+      Thanks for reaching out about${prop ? ` <strong>${prop}</strong>` : ' your home'}. I've received your valuation request and I'm already pulling comparable sales and market data for your area.
+    </p>
+    <div style="background:#f9f9f9;border-left:3px solid #E8681A;padding:14px 16px;border-radius:0 6px 6px 0;margin:0 0 20px">
+      <p style="margin:0;font-size:13px;font-weight:700;color:#111">What happens next:</p>
+      <ol style="margin:8px 0 0;padding-left:18px;font-size:13px;color:#444;line-height:1.8">
+        <li>I'll review your property details and research your neighborhood</li>
+        <li>I'll reach out personally within <strong>24 hours</strong> with my honest assessment</li>
+        <li>We'll set up a quick call or meeting — no pressure, no obligation</li>
+      </ol>
+    </div>
+    <p style="font-size:14px;color:#555;margin:0 0 20px">In the meantime, feel free to reach out directly:</p>
+    <table cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="padding:10px 20px;background:#E8681A;border-radius:6px">
+        <a href="tel:+13239197539" style="color:#fff;font-size:14px;font-weight:700;text-decoration:none">📞 Call or text: (323) 919-7539</a>
+      </td></tr>
+    </table>
+    <p style="margin:24px 0 4px;font-size:13px;color:#555">Talk soon,</p>
+    <p style="margin:0;font-size:14px;font-weight:700">Matt Golden</p>
+    <p style="margin:2px 0 0;font-size:12px;color:#888">Estates Director · Rare Properties Inc. · DRE #02130422</p>
+  </div>
+</div>`
+      }).catch(e => console.error('Seller confirmation email failed:', e.message));
+    }
+
+    // ── 2. Instant confirmation SMS to SELLER ────────────────
+    if (twilioReady && smsConsent && phone) {
+      const sellerSms = `Hi ${first}! This is Matt Golden with MG Realty. I just received your home valuation request${prop ? ' for ' + prop : ''} and I'm already on it. I'll reach out within 24 hours with my analysis. Questions? Reply anytime! 🏡 (323) 919-7539`;
+      sendSMS(phone, sellerSms)
+        .catch(e => console.error('Seller confirmation SMS failed:', e.message));
+    }
+
+    // ── 3. Notify Matt ────────────────────────────────────────
     const notifyEmail = (notify || '').trim() || null;
+    const notifyMsg = `🏡 New seller lead!\n${first} ${last || ''}\n${phone}${email ? '\n' + email : ''}${prop ? '\n📍 ' + prop : ''}\nTimeline: ${timeline || 'TBD'} | Source: ${source || 'Home Value Form'}`;
 
-    if (twilioReady) {
+    if (twilioReady && ownerPhone) {
       sendSMS(ownerPhone, notifyMsg)
-        .then(() => console.log('Lead notification sent via SMS'))
         .catch(e => {
-          console.error('SMS failed, trying email:', e.message);
           sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notifyEmail)
-            .catch(e2 => console.error('Email notification also failed:', e2.message));
+            .catch(e2 => console.error('Matt email notification failed:', e2.message));
         });
     } else {
       sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notifyEmail)
         .catch(e => console.error('Lead email notification failed:', e.message));
     }
 
-    // If notifyEmail set, always send there regardless of SMS path
     if (notifyEmail) {
       sendLeadEmail(first, last, phone, email, intent, budget, timeline, neighborhood, source, notes, notifyEmail)
         .catch(e => console.error('Notify email failed:', e.message));
     }
+
   } catch(e) {
     console.error('LEAD CAPTURE ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -5164,6 +5231,61 @@ Rules:
     res.json({ ok: true, sent });
   } catch(e) {
     console.error('MARKET REPORT ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Social Media Script Generator ────────────────────────────
+app.post('/api/generate-script', async (req, res) => {
+  try {
+    const { topic, format, angle, neighborhood } = req.body;
+    if (!topic || !format) return res.status(400).json({ ok: false, error: 'topic and format required' });
+
+    const formatGuide = {
+      reel:      'a 30–60 second vertical video script with a strong hook in the first 3 seconds, punchy sentences, and a clear CTA at the end',
+      carousel:  'a 5–7 slide carousel — give me a title slide headline, then one short punchy point per slide, and a final CTA slide',
+      caption:   'a standalone Instagram/TikTok caption (no video script needed) — compelling opener, 3–4 value-packed lines, then hashtags',
+      story:     'a 3-frame story sequence — Frame 1 hooks, Frame 2 delivers value, Frame 3 has a CTA with a poll or swipe-up'
+    };
+
+    const topicGuide = {
+      market:    'local LA real estate market stats, trends, what buyers and sellers need to know RIGHT NOW',
+      tips:      angle || 'practical buyer or seller tips that make the process less scary',
+      bts:       'behind-the-scenes real estate agent life — real, relatable, and slightly unfiltered',
+      showcase:  angle || 'a property showcase or just-sold announcement'
+    };
+
+    const systemPrompt = `You are a social media ghostwriter for Matt Golden, a real estate agent in Los Angeles who works with Rare Properties Inc. Matt's voice is: confident but not cocky, conversational, knowledgeable, slightly witty, and always adds real value. He's not salesy. He speaks to motivated buyers and sellers in the LA area (West Hollywood, Silver Lake, Los Feliz, Beverly Hills, Echo Park, etc.).
+
+Generate ${formatGuide[format] || formatGuide.reel}.
+
+Topic: ${topicGuide[topic] || topic}
+${neighborhood ? `Neighborhood angle: ${neighborhood}` : ''}
+
+Return ONLY a JSON object with these fields (no markdown, no explanation):
+{
+  "hook": "The opening line or hook (for reels/stories) or headline (for carousels)",
+  "script": "The full script/body content",
+  "caption": "Ready-to-post caption with line breaks",
+  "hashtags": "20–25 relevant hashtags as a single string",
+  "cta": "The call-to-action line"
+}`;
+
+    const completion = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: `Generate a ${format} about: ${topicGuide[topic] || topic}${neighborhood ? ' in ' + neighborhood : ''}` }],
+      system: systemPrompt
+    });
+
+    let raw = completion.content[0].text.trim();
+    // Strip markdown code fences if present
+    raw = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/,'').trim();
+    const result = JSON.parse(raw);
+    res.json({ ok: true, ...result });
+
+  } catch(e) {
+    console.error('SCRIPT GEN ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

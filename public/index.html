@@ -1420,6 +1420,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <div class="ce-tab" data-tab="calendar" onclick="showCeTab('calendar')"><i class="ti ti-calendar-week" style="font-size:12px"></i> Calendar</div>
       <div class="ce-tab" data-tab="performance" onclick="showCeTab('performance')"><i class="ti ti-chart-bar" style="font-size:12px"></i> Performance</div>
       <div class="ce-tab" data-tab="pulse" onclick="showCeTab('pulse')"><i class="ti ti-activity" style="font-size:12px"></i> Market Pulse</div>
+      <div class="ce-tab" data-tab="scriptgen" onclick="showCeTab('scriptgen')"><i class="ti ti-microphone" style="font-size:12px"></i> Script Generator</div>
     </div>
 
     <!-- GENERATE VIEW -->
@@ -1634,6 +1635,91 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
           <div class="tw" style="padding:18px">
             <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">📊 Neighborhood Performance</div>
             <div id="pulse-leaderboard"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCRIPT GENERATOR VIEW -->
+    <div id="ce-scriptgen-view" style="display:none">
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start">
+
+        <!-- LEFT: Controls -->
+        <div class="tw" style="padding:18px;display:flex;flex-direction:column;gap:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Script Settings</div>
+          <div>
+            <label>Topic</label>
+            <select id="sg-topic">
+              <option value="market">📊 Local market stats & trends</option>
+              <option value="tips">💡 Buyer / seller tips</option>
+              <option value="bts">🎬 Behind the scenes / agent life</option>
+              <option value="showcase">🏡 Property showcase / just sold</option>
+            </select>
+          </div>
+          <div>
+            <label>Format</label>
+            <select id="sg-format">
+              <option value="reel">🎥 Reel / Short video (30–60 sec)</option>
+              <option value="carousel">🖼️ Carousel (5–7 slides)</option>
+              <option value="caption">✍️ Caption only (no video)</option>
+              <option value="story">📱 Story sequence (3 frames)</option>
+            </select>
+          </div>
+          <div>
+            <label>Neighborhood <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+            <input type="text" id="sg-neighborhood" placeholder="Silver Lake, West Hollywood…">
+          </div>
+          <div>
+            <label>Angle / extra context <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+            <textarea id="sg-angle" placeholder="e.g. Interest rate fears, first-time buyer myths, just sold $200k over ask in Echo Park…" style="min-height:70px;resize:vertical"></textarea>
+          </div>
+          <button class="btn btn-gold" id="sg-btn" onclick="generateScript()" style="width:100%;justify-content:center;padding:10px">
+            <i class="ti ti-sparkles"></i> Generate Script
+          </button>
+          <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6">AI-generated in ~10 seconds · Ready to film or post</div>
+        </div>
+
+        <!-- RIGHT: Output -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="tw" id="sg-hook-card" style="padding:16px;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="font-size:11px;font-weight:700;color:#FBBF24;text-transform:uppercase;letter-spacing:.06em">🎣 Hook / Opening Line</div>
+              <button onclick="sgCopy('hook')" class="btn btn-sm" style="background:rgba(251,191,36,0.1);color:#FBBF24;border-color:rgba(251,191,36,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-hook" style="font-size:14px;font-weight:600;color:var(--text1);line-height:1.6"></div>
+          </div>
+          <div class="tw" id="sg-script-card" style="padding:16px;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div id="sg-script-label" style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">📝 Script</div>
+              <button onclick="sgCopy('script')" class="btn btn-sm" style="background:rgba(232,104,26,0.1);color:var(--accent);border-color:rgba(232,104,26,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-script" style="font-size:13px;color:var(--text1);line-height:1.8;white-space:pre-wrap"></div>
+          </div>
+          <div class="tw" id="sg-cta-card" style="padding:16px;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="font-size:11px;font-weight:700;color:#4ADE80;text-transform:uppercase;letter-spacing:.06em">📢 Call to Action</div>
+              <button onclick="sgCopy('cta')" class="btn btn-sm" style="background:rgba(74,222,128,0.1);color:#4ADE80;border-color:rgba(74,222,128,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-cta" style="font-size:13px;color:var(--text1);line-height:1.6"></div>
+          </div>
+          <div class="tw" id="sg-caption-card" style="padding:16px;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.06em">📄 Caption</div>
+              <button onclick="sgCopy('caption')" class="btn btn-sm" style="background:rgba(167,139,250,0.1);color:#A78BFA;border-color:rgba(167,139,250,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-caption" style="font-size:13px;color:var(--text1);line-height:1.7;white-space:pre-wrap"></div>
+          </div>
+          <div class="tw" id="sg-hashtag-card" style="padding:16px;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="font-size:11px;font-weight:700;color:#60A5FA;text-transform:uppercase;letter-spacing:.06em"># Hashtags</div>
+              <button onclick="sgCopy('hashtags')" class="btn btn-sm" style="background:rgba(96,165,250,0.1);color:#60A5FA;border-color:rgba(96,165,250,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-hashtags" style="font-size:12px;color:var(--text2);line-height:1.8"></div>
+          </div>
+          <div id="sg-placeholder" class="tw" style="padding:36px;text-align:center;color:var(--text3)">
+            <div style="font-size:32px;margin-bottom:12px">🎬</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Ready to create content</div>
+            <div style="font-size:13px;line-height:1.7">Pick a topic and format on the left,<br>then hit <strong>Generate Script</strong>.</div>
           </div>
         </div>
       </div>
@@ -5991,6 +6077,7 @@ function showCeTab(tab) {
   document.getElementById('ce-calendar-view').style.display     = tab === 'calendar'    ? '' : 'none';
   document.getElementById('ce-performance-view').style.display  = tab === 'performance' ? '' : 'none';
   document.getElementById('ce-pulse-view').style.display        = tab === 'pulse'       ? '' : 'none';
+  document.getElementById('ce-scriptgen-view').style.display    = tab === 'scriptgen'   ? '' : 'none';
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
@@ -6000,6 +6087,71 @@ function showCeTab(tab) {
   if (tab === 'buyers') { if(typeof renderBuyers==="function") renderBuyers(); }
   if (tab === 'vendors') { if(typeof renderVendors==="function") renderVendors(); }
   if (tab === 'finance') { renderExpenses(); renderInvoices(); }
+}
+
+// ── Script Generator ──────────────────────────────────────────
+var _sgData = {};
+
+async function generateScript() {
+  var topic  = document.getElementById('sg-topic').value;
+  var format = document.getElementById('sg-format').value;
+  var hood   = document.getElementById('sg-neighborhood').value.trim();
+  var angle  = document.getElementById('sg-angle').value.trim();
+  var btn    = document.getElementById('sg-btn');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Generating…';
+
+  // Hide output cards, show placeholder
+  ['sg-hook-card','sg-script-card','sg-cta-card','sg-caption-card','sg-hashtag-card'].forEach(function(id){
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('sg-placeholder').style.display = '';
+  document.getElementById('sg-placeholder').innerHTML = '<div style="font-size:28px;margin-bottom:12px">⏳</div><div style="font-size:13px;color:var(--text2)">Writing your script…</div>';
+
+  try {
+    var r = await fetch(BACKEND + '/api/generate-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, format, neighborhood: hood, angle })
+    });
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Generation failed');
+
+    _sgData = d;
+    document.getElementById('sg-placeholder').style.display = 'none';
+
+    // Script label by format
+    var scriptLabels = { reel:'📝 Script', carousel:'🖼️ Slides', story:'📱 Story Frames', caption:'✍️ Body' };
+    document.getElementById('sg-script-label').textContent = scriptLabels[format] || '📝 Script';
+
+    // Populate and show cards
+    if (d.hook)     { document.getElementById('sg-hook').textContent     = d.hook;     document.getElementById('sg-hook-card').style.display     = ''; }
+    if (d.script)   { document.getElementById('sg-script').textContent   = d.script;   document.getElementById('sg-script-card').style.display   = ''; }
+    if (d.cta)      { document.getElementById('sg-cta').textContent      = d.cta;      document.getElementById('sg-cta-card').style.display      = ''; }
+    if (d.caption)  { document.getElementById('sg-caption').textContent  = d.caption;  document.getElementById('sg-caption-card').style.display  = ''; }
+    if (d.hashtags) { document.getElementById('sg-hashtags').textContent = d.hashtags; document.getElementById('sg-hashtag-card').style.display  = ''; }
+
+    if (typeof toast === 'function') toast('Script generated ✓');
+  } catch(e) {
+    document.getElementById('sg-placeholder').innerHTML = '<div style="font-size:28px;margin-bottom:12px">❌</div><div style="font-size:13px;color:var(--red)">Error: ' + e.message + '</div>';
+    if (typeof toast === 'function') toast('Script generation failed: ' + e.message, 'err');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Script';
+}
+
+function sgCopy(field) {
+  var text = _sgData[field] || '';
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(function(){
+    if (typeof toast === 'function') toast('Copied to clipboard ✓');
+  }).catch(function(){
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    if (typeof toast === 'function') toast('Copied!');
+  });
 }
 
 function renderCalendar() {

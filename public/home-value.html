@@ -305,22 +305,22 @@ async function submitHomeValue() {
 
   const data = {
     first,
-    last: document.getElementById('hv-last').value.trim(),
+    last:       document.getElementById('hv-last').value.trim(),
     phone,
-    email: document.getElementById('hv-email').value.trim(),
-    source: document.getElementById('hv-source').value,
-    type: 'seller',
-    temp: 'warm',
-    prop: address,
+    email:      document.getElementById('hv-email').value.trim(),
+    source:     document.getElementById('hv-source').value || 'Home Value Form',
+    type:       'seller',
+    temp:       'warm',
+    prop:       address,
+    smsConsent: document.getElementById('hv-sms-consent').checked,
+    timeline:   document.getElementById('hv-timeline').value,
     notes: [
-      `Address: ${address}`,
       `Type: ${document.getElementById('hv-type').value}`,
       `Condition: ${selectedCondition}`,
       `Mortgage: ${document.getElementById('hv-mortgage').value || 'Not provided'}`,
       `Timeline: ${document.getElementById('hv-timeline').value}`,
       `Reason: ${document.getElementById('hv-reason').value}`,
       `Prior agent: ${document.getElementById('hv-agent').value}`,
-      `Source: ${document.getElementById('hv-source').value}`,
       document.getElementById('hv-notes').value ? `Notes: ${document.getElementById('hv-notes').value}` : ''
     ].filter(Boolean).join(' · ')
   };
