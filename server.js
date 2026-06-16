@@ -5333,6 +5333,84 @@ Caption: ${caption}`;
   }
 });
 
+// ── Vapi Call Screener Webhook ────────────────────────────────
+// Receives end-of-call report from Vapi, logs lead in CRM, texts Matt
+app.post('/api/vapi-webhook', async (req, res) => {
+  try {
+    const body = req.body;
+    // Vapi sends different event types — we only care about end-of-call-report
+    const type = body?.message?.type || body?.type;
+    if (type !== 'end-of-call-report') return res.json({ ok: true, ignored: true });
+
+    const call   = body?.message?.call || body?.call || {};
+    const analysis = body?.message?.analysis || body?.analysis || {};
+    const structured = analysis?.structuredData || {};
+    const summary    = analysis?.summary || body?.message?.summary || '';
+    const transcript = body?.message?.transcript || '';
+
+    const callerNumber = call?.customer?.number || 'unknown';
+    const callerName   = structured?.callerName   || 'Unknown';
+    const callerType   = structured?.callerType   || 'unknown';  // buyer | seller | agent | other
+    const neighborhood = structured?.neighborhood  || '';
+    const timeline     = structured?.timeline      || '';
+    const urgency      = structured?.urgency       || 'normal';  // high | normal
+    const message      = structured?.message       || summary;
+    const callbackNum  = structured?.callbackNumber || callerNumber;
+
+    // ── Save to CRM as a new lead ─────────────────────────────
+    const crm = await readCRM();
+    const leadId = 'lead_' + Date.now();
+    const newLead = {
+      id:         leadId,
+      first:      callerName.split(' ')[0] || callerName,
+      last:       callerName.split(' ').slice(1).join(' ') || '',
+      phone:      callbackNum,
+      source:     'Phone — Ace Screener',
+      type:       callerType === 'seller' ? 'Seller' : callerType === 'agent' ? 'Agent' : 'Buyer',
+      status:     urgency === 'high' ? 'Hot' : 'New',
+      notes:      `📞 Call screened by Ace\n\n${message}${neighborhood ? '\nNeighborhood: ' + neighborhood : ''}${timeline ? '\nTimeline: ' + timeline : ''}\n\nTranscript excerpt: ${transcript.slice(0, 400)}`,
+      createdAt:  new Date().toISOString(),
+      neighborhood,
+      timeline
+    };
+    crm.leads.push(newLead);
+
+    // Log activity
+    crm.activities = crm.activities || [];
+    crm.activities.unshift({
+      id:        'act_' + Date.now(),
+      leadId,
+      type:      'call',
+      note:      `Inbound call screened by Ace. Caller: ${callerName} (${callerType}). Urgency: ${urgency}.`,
+      createdAt: new Date().toISOString()
+    });
+
+    await writeCRM(crm);
+
+    // ── Text Matt a summary ───────────────────────────────────
+    const urgencyFlag = urgency === 'high' ? '🔥 HOT LEAD' : '📞 New Call';
+    const smsBody = `${urgencyFlag} — Ace screened a call\n\n👤 ${callerName}\n📱 ${callbackNum}\n🏷️ ${callerType.charAt(0).toUpperCase() + callerType.slice(1)}${neighborhood ? '\n📍 ' + neighborhood : ''}${timeline ? '\n⏱️ ' + timeline : ''}\n\n💬 "${message.slice(0, 200)}"\n\nLead saved in CRM ✓`;
+
+    await fetch('https://api.twilio.com/2010-04-01/Accounts/' + process.env.TWILIO_ACCOUNT_SID + '/Messages.json', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(process.env.TWILIO_ACCOUNT_SID + ':' + process.env.TWILIO_AUTH_TOKEN).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        To:   process.env.OWNER_PHONE,
+        From: process.env.TWILIO_FROM,
+        Body: smsBody
+      })
+    });
+
+    res.json({ ok: true, leadId });
+  } catch(e) {
+    console.error('VAPI WEBHOOK ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Public Transaction Tracker ────────────────────────────────
 // GET /api/tracker-data/:token  → JSON milestone data for public page
 app.get('/api/tracker-data/:token', async (req, res) => {
