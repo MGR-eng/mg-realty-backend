@@ -3170,6 +3170,9 @@ ADD NOTE: {"action":"add_note","lead":"Name","note":"..."}
 CREATE TASK: {"action":"create_task","title":"...","leadName":"...","due":"YYYY-MM-DD","notes":"..."}
 SCHEDULE APPOINTMENT: {"action":"create_appointment","leadName":"...","type":"showing|call|meeting|offer","date":"YYYY-MM-DD","time":"HH:MM","address":"..."}
 GOOGLE CALENDAR EVENT: {"action":"create_calendar_event","title":"...","start":"YYYY-MM-DDTHH:MM:SS","end":"YYYY-MM-DDTHH:MM:SS","location":"...","description":"...","leadName":"...","apptType":"showing"}
+→ Use this when Matt says "add to my calendar", "put this on my calendar", or pastes a block of text containing meeting/appointment details. Parse the date, time, location, and who it's with from the pasted text. If the end time isn't specified, default to 1 hour after start. Always set a 30-min popup reminder.
+→ Also use this when Matt says "remind me to X at Y time" or "remind me to X tomorrow/Friday/etc." — create a 15-minute calendar event titled "📌 [reminder text]" at the specified time. If no time is given, reply asking what time.
+
 SEND EMAIL: {"action":"send_email_template","leadName":"...","email":"...","subject":"...","body":"..."}
 SEND DIGEST: {"action":"send_digest"}
 NO ACTION: {"action":"none"}
