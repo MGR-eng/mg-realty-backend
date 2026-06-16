@@ -1642,6 +1642,32 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
 
     <!-- SCRIPT GENERATOR VIEW -->
     <div id="ce-scriptgen-view" style="display:none">
+
+      <!-- POSTING CONSISTENCY TRACKER -->
+      <div class="tw" style="padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div style="font-size:20px">📅</div>
+        <div style="flex:1;min-width:160px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">This Week's Posting</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden">
+              <div id="sg-post-count-fill" style="height:100%;background:var(--accent);border-radius:4px;transition:width .4s;width:0%"></div>
+            </div>
+            <div id="sg-post-count-label" style="font-size:13px;font-weight:700;color:var(--text1);white-space:nowrap">0 / 5</div>
+          </div>
+        </div>
+        <div style="text-align:center;border-left:1px solid var(--border);padding-left:20px">
+          <div id="sg-streak-count" style="font-size:24px;font-weight:800;color:var(--accent)">0</div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:1px">Week Streak 🔥</div>
+        </div>
+        <div style="border-left:1px solid var(--border);padding-left:20px">
+          <label style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px">Weekly Goal</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" id="sg-goal-input" min="1" max="21" value="5" onchange="updatePostingGoal()" style="width:54px;padding:4px 6px;font-size:14px;font-weight:700;text-align:center">
+            <span style="font-size:11px;color:var(--text3)">posts</span>
+          </div>
+        </div>
+      </div>
+
       <div style="display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start">
 
         <!-- LEFT: Controls -->
@@ -1675,6 +1701,9 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
           </div>
           <button class="btn btn-gold" id="sg-btn" onclick="generateScript()" style="width:100%;justify-content:center;padding:10px">
             <i class="ti ti-sparkles"></i> Generate Script
+          </button>
+          <button class="btn" onclick="sgNeighborhoodMonth()" style="width:100%;justify-content:center;padding:8px;background:rgba(167,139,250,0.1);color:#A78BFA;border-color:rgba(167,139,250,0.3);font-size:12px">
+            <i class="ti ti-map-pin"></i> Neighborhood of the Month
           </button>
           <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.6">AI-generated in ~10 seconds · Ready to film or post</div>
         </div>
@@ -1716,6 +1745,19 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
             </div>
             <div id="sg-hashtags" style="font-size:12px;color:var(--text2);line-height:1.8"></div>
           </div>
+          <!-- REPURPOSE BUTTON CARD (shown after generation) -->
+          <div class="tw" id="sg-repurpose-btn-card" style="padding:14px;display:none;background:linear-gradient(135deg,rgba(232,104,26,0.07),rgba(251,191,36,0.07));border-color:rgba(232,104,26,0.25)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="flex:1">
+                <div style="font-size:12px;font-weight:700;color:var(--text1);margin-bottom:3px">🔄 Repurpose This</div>
+                <div style="font-size:11px;color:var(--text3)">Carousel · LinkedIn · Email · Stories — all from this one script</div>
+              </div>
+              <button class="btn btn-gold" id="sg-repurpose-btn" onclick="repurposeScript()" style="white-space:nowrap;padding:8px 14px;font-size:12px">
+                <i class="ti ti-copy-plus"></i> Repurpose
+              </button>
+            </div>
+          </div>
+
           <div id="sg-placeholder" class="tw" style="padding:36px;text-align:center;color:var(--text3)">
             <div style="font-size:32px;margin-bottom:12px">🎬</div>
             <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">Ready to create content</div>
@@ -1723,6 +1765,42 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
           </div>
         </div>
       </div>
+
+      <!-- REPURPOSE OUTPUT PANEL (full-width, below the grid) -->
+      <div id="sg-repurpose-panel" style="display:none;margin-top:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">🔄 Repurposed Formats — Ready to Copy & Post</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="tw" style="padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div style="font-size:11px;font-weight:700;color:#FBBF24;text-transform:uppercase;letter-spacing:.06em">🖼️ Instagram Carousel</div>
+              <button onclick="sgCopyRepurpose('carousel')" class="btn btn-sm" style="background:rgba(251,191,36,0.1);color:#FBBF24;border-color:rgba(251,191,36,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-r-carousel" style="font-size:12px;color:var(--text1);line-height:1.8;white-space:pre-wrap"></div>
+          </div>
+          <div class="tw" style="padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div style="font-size:11px;font-weight:700;color:#60A5FA;text-transform:uppercase;letter-spacing:.06em">💼 LinkedIn Post</div>
+              <button onclick="sgCopyRepurpose('linkedin')" class="btn btn-sm" style="background:rgba(96,165,250,0.1);color:#60A5FA;border-color:rgba(96,165,250,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-r-linkedin" style="font-size:12px;color:var(--text1);line-height:1.8;white-space:pre-wrap"></div>
+          </div>
+          <div class="tw" style="padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div style="font-size:11px;font-weight:700;color:#4ADE80;text-transform:uppercase;letter-spacing:.06em">📧 Email Newsletter</div>
+              <button onclick="sgCopyRepurpose('email')" class="btn btn-sm" style="background:rgba(74,222,128,0.1);color:#4ADE80;border-color:rgba(74,222,128,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-r-email" style="font-size:12px;color:var(--text1);line-height:1.8;white-space:pre-wrap"></div>
+          </div>
+          <div class="tw" style="padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div style="font-size:11px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.06em">📱 Story Sequence</div>
+              <button onclick="sgCopyRepurpose('story')" class="btn btn-sm" style="background:rgba(167,139,250,0.1);color:#A78BFA;border-color:rgba(167,139,250,0.3);font-size:10px"><i class="ti ti-copy" style="font-size:10px"></i> Copy</button>
+            </div>
+            <div id="sg-r-story" style="font-size:12px;color:var(--text1);line-height:1.8;white-space:pre-wrap"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -6082,6 +6160,7 @@ function showCeTab(tab) {
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
   if (tab === 'pulse')       { showCePulseTab(); }
+  if (tab === 'scriptgen')   { renderConsistencyTracker(); }
   if (tab === 'sellers') { if(typeof renderSellers==="function") renderSellers(); }
   if (tab === 'transactions') { if(typeof renderTransactions==="function") renderTransactions(); }
   if (tab === 'buyers') { if(typeof renderBuyers==="function") renderBuyers(); }
@@ -6103,9 +6182,10 @@ async function generateScript() {
   btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Generating…';
 
   // Hide output cards, show placeholder
-  ['sg-hook-card','sg-script-card','sg-cta-card','sg-caption-card','sg-hashtag-card'].forEach(function(id){
+  ['sg-hook-card','sg-script-card','sg-cta-card','sg-caption-card','sg-hashtag-card','sg-repurpose-btn-card'].forEach(function(id){
     document.getElementById(id).style.display = 'none';
   });
+  document.getElementById('sg-repurpose-panel').style.display = 'none';
   document.getElementById('sg-placeholder').style.display = '';
   document.getElementById('sg-placeholder').innerHTML = '<div style="font-size:28px;margin-bottom:12px">⏳</div><div style="font-size:13px;color:var(--text2)">Writing your script…</div>';
 
@@ -6132,6 +6212,8 @@ async function generateScript() {
     if (d.caption)  { document.getElementById('sg-caption').textContent  = d.caption;  document.getElementById('sg-caption-card').style.display  = ''; }
     if (d.hashtags) { document.getElementById('sg-hashtags').textContent = d.hashtags; document.getElementById('sg-hashtag-card').style.display  = ''; }
 
+    // Show repurpose button now that we have a script
+    document.getElementById('sg-repurpose-btn-card').style.display = '';
     if (typeof toast === 'function') toast('Script generated ✓');
   } catch(e) {
     document.getElementById('sg-placeholder').innerHTML = '<div style="font-size:28px;margin-bottom:12px">❌</div><div style="font-size:13px;color:var(--red)">Error: ' + e.message + '</div>';
@@ -6152,6 +6234,121 @@ function sgCopy(field) {
     ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
     if (typeof toast === 'function') toast('Copied!');
   });
+}
+
+// ── Neighborhood of the Month ─────────────────────────────────
+function sgNeighborhoodMonth() {
+  var hood = prompt('Which neighborhood are you spotlighting this month?', document.getElementById('sg-neighborhood').value || 'Silver Lake');
+  if (!hood) return;
+  document.getElementById('sg-neighborhood').value = hood;
+  document.getElementById('sg-topic').value = 'market';
+  document.getElementById('sg-format').value = 'reel';
+  document.getElementById('sg-angle').value = 'Neighborhood spotlight series: give viewers an insider look at ' + hood + ' — the vibe, what homes cost right now, who\'s moving there, and why it\'s worth paying attention to. Make it feel like a local guide, not a sales pitch.';
+  if (typeof toast === 'function') toast(hood + ' spotlight loaded — hit Generate ✓');
+}
+
+// ── Repurpose Script ──────────────────────────────────────────
+var _sgRepurposeData = {};
+
+async function repurposeScript() {
+  if (!_sgData.script) return;
+  var btn = document.getElementById('sg-repurpose-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Repurposing…';
+  document.getElementById('sg-repurpose-panel').style.display = 'none';
+
+  try {
+    var r = await fetch(BACKEND + '/api/repurpose-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        hook:         _sgData.hook     || '',
+        script:       _sgData.script   || '',
+        cta:          _sgData.cta      || '',
+        caption:      _sgData.caption  || '',
+        neighborhood: document.getElementById('sg-neighborhood').value.trim(),
+        topic:        document.getElementById('sg-topic').value
+      })
+    });
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Repurpose failed');
+    _sgRepurposeData = d;
+
+    document.getElementById('sg-r-carousel').textContent = d.carousel || '';
+    document.getElementById('sg-r-linkedin').textContent  = d.linkedin  || '';
+    document.getElementById('sg-r-email').textContent    = d.email    || '';
+    document.getElementById('sg-r-story').textContent    = d.story    || '';
+
+    document.getElementById('sg-repurpose-panel').style.display = '';
+    document.getElementById('sg-repurpose-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (typeof toast === 'function') toast('Repurposed into 4 formats ✓');
+  } catch(e) {
+    if (typeof toast === 'function') toast('Repurpose failed: ' + e.message, 'err');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-copy-plus"></i> Repurpose';
+}
+
+function sgCopyRepurpose(field) {
+  var text = _sgRepurposeData[field] || '';
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(function(){
+    if (typeof toast === 'function') toast('Copied to clipboard ✓');
+  }).catch(function(){
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    if (typeof toast === 'function') toast('Copied!');
+  });
+}
+
+// ── Posting Consistency Tracker ───────────────────────────────
+function updatePostingGoal() {
+  var goal = parseInt(document.getElementById('sg-goal-input').value) || 5;
+  localStorage.setItem('mg_posting_goal', goal);
+  renderConsistencyTracker();
+}
+
+function renderConsistencyTracker() {
+  var goal = parseInt(localStorage.getItem('mg_posting_goal') || '5');
+  var goalInput = document.getElementById('sg-goal-input');
+  if (goalInput) goalInput.value = goal;
+
+  // Count posts in current Mon–Sun week
+  var today = new Date(); today.setHours(0,0,0,0);
+  var dow = today.getDay() || 7; // 1=Mon, 7=Sun
+  var weekStart = new Date(today); weekStart.setDate(today.getDate() - (dow - 1));
+  var weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+  function toDS(d) { return d.toISOString().slice(0,10); }
+  var ws = toDS(weekStart), we = toDS(weekEnd);
+
+  var posts = (typeof calPosts !== 'undefined' ? calPosts : []);
+  var count = posts.filter(function(p){ return p.date >= ws && p.date <= we; }).length;
+
+  var pct = Math.min(100, Math.round((count / goal) * 100));
+  var fill = document.getElementById('sg-post-count-fill');
+  var lbl  = document.getElementById('sg-post-count-label');
+  if (fill) { fill.style.width = pct + '%'; fill.style.background = count >= goal ? '#4ADE80' : 'var(--accent)'; }
+  if (lbl)  { lbl.textContent = count + ' / ' + goal; lbl.style.color = count >= goal ? '#4ADE80' : 'var(--text1)'; }
+
+  // Streak logic (localStorage-based)
+  var streak = parseInt(localStorage.getItem('mg_post_streak') || '0');
+  var lastWeekStr = localStorage.getItem('mg_post_last_week');
+  if (lastWeekStr && lastWeekStr !== ws) {
+    var prevCount = parseInt(localStorage.getItem('mg_post_prev_count') || '0');
+    streak = prevCount >= goal ? streak + 1 : 0;
+    localStorage.setItem('mg_post_streak', streak);
+    localStorage.setItem('mg_post_last_week', ws);
+  } else if (!lastWeekStr) {
+    localStorage.setItem('mg_post_last_week', ws);
+  }
+  localStorage.setItem('mg_post_prev_count', count);
+
+  var streakEl = document.getElementById('sg-streak-count');
+  if (streakEl) {
+    streakEl.textContent = streak;
+    streakEl.style.color = streak >= 4 ? '#4ADE80' : streak >= 2 ? 'var(--accent)' : 'var(--text2)';
+  }
 }
 
 function renderCalendar() {

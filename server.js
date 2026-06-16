@@ -5290,6 +5290,49 @@ Return ONLY a JSON object with these fields (no markdown, no explanation):
   }
 });
 
+// ── Repurpose Script ────────────────────────────────────────────
+app.post('/api/repurpose-script', async (req, res) => {
+  try {
+    const { hook, script, cta, caption, neighborhood, topic } = req.body;
+    if (!script) return res.status(400).json({ ok: false, error: 'script is required' });
+
+    const systemPrompt = `You are a social media content repurposer for Matt Golden, a real estate agent in Los Angeles (Rare Properties Inc). Matt's voice: confident, conversational, knowledgeable, slightly witty, never salesy. His audience: motivated buyers and sellers in LA (Silver Lake, Los Feliz, Echo Park, West Hollywood, Beverly Hills, etc.).
+
+You will receive an original piece of content and reformat it into 4 platform-native versions. Each should feel native to its platform — not a copy-paste.
+
+Return ONLY a JSON object with these exact fields (no markdown fences, no explanation):
+{
+  "carousel": "5–7 slide Instagram carousel. Format as:\\nSlide 1: [headline]\\nSlide 2: [short punchy point]\\nSlide 3: [short punchy point]\\n...\\nSlide 7 (or last): [CTA slide]",
+  "linkedin": "Professional LinkedIn post (150–250 words). Data-driven, thought-leadership tone. Personal opener, insight, takeaway. Max 3 hashtags at the end. No bullet overload.",
+  "email": "Short email newsletter section. Format as:\\nSubject: [subject line]\\n\\n[150–200 word body — warm, personal, value-packed, ends with CTA to reply or book a call]",
+  "story": "3-frame Instagram/TikTok story sequence. Format as:\\nFrame 1: [text overlay — hook question or bold statement] + [action: poll/tap/swipe]\\nFrame 2: [text overlay — answer or value] + [action]\\nFrame 3: [text overlay — CTA] + [action: DM/link/reply]"
+}`;
+
+    const userMsg = `Repurpose this real estate content for Matt Golden${neighborhood ? ' (neighborhood: ' + neighborhood + ')' : ''}:
+
+Hook: ${hook}
+Script/Body: ${script}
+CTA: ${cta}
+Caption: ${caption}`;
+
+    const completion = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2400,
+      messages: [{ role: 'user', content: userMsg }],
+      system: systemPrompt
+    });
+
+    let raw = completion.content[0].text.trim();
+    raw = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/, '').trim();
+    const result = JSON.parse(raw);
+    res.json({ ok: true, ...result });
+
+  } catch(e) {
+    console.error('REPURPOSE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Public Transaction Tracker ────────────────────────────────
 // GET /api/tracker-data/:token  → JSON milestone data for public page
 app.get('/api/tracker-data/:token', async (req, res) => {
