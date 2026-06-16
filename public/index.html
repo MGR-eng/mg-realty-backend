@@ -10163,6 +10163,20 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="fg"><label>Agent Name</label><select id="tx-coop-agent"><option value="">— none —</option></select></div>
         <div class="fg"><label>Brokerage</label><input id="tx-coop-brokerage" placeholder="Compass"></div>
       </div>
+      <!-- Tracker Link -->
+      <div id="tx-tracker-box" style="display:none;margin:14px 0 4px;padding:10px 12px;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.25);border-radius:8px">
+        <div style="font-size:10px;font-weight:700;color:#4ADE80;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🔗 Client Tracker Link — Share with your client</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="tx-tracker-url" type="text" readonly style="flex:1;font-size:11px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text2);cursor:text" onclick="this.select()">
+          <button onclick="copyTrackerLink()" style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.35);color:#4ADE80;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;white-space:nowrap;font-weight:600">Copy Link</button>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:5px">No login required · Updates when you save milestones · Share via email or text</div>
+      </div>
+
+      <!-- Escrow Milestones -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:14px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Escrow Milestones <span style="font-weight:400;font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0">— check off as completed, then notify your client</span></div>
+      <div id="tx-milestones" style="margin-bottom:12px"></div>
+
       <!-- Checklist -->
       <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Document Checklist</div>
       <div id="tx-checklist" style="margin-bottom:12px"></div>
@@ -10172,6 +10186,39 @@ document.addEventListener('DOMContentLoaded', function() {
         <button class="btn btn-gold" style="flex:1" onclick="saveTx()"><i class="ti ti-check"></i> Save</button>
         <button class="btn btn-red btn-sm" onclick="deleteTx()" id="tx-delete-btn"><i class="ti ti-trash"></i></button>
         <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)" onclick="document.getElementById('mTransaction').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Notify Client Modal ─────────────────────────────────────── -->
+<div id="mNotifyClient" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <div class="mhead"><span id="notify-modal-title">📣 Notify Client</span><button class="close-btn" onclick="document.getElementById('mNotifyClient').style.display='none'"><i class="ti ti-x"></i></button></div>
+    <div class="mbody" style="max-height:70vh;overflow-y:auto">
+      <p style="font-size:12px;color:var(--text2);margin:0 0 14px">Review and copy — then send it yourself from Gmail or iMessage. Nothing sends automatically.</p>
+
+      <!-- Email -->
+      <div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:#60A5FA;margin-bottom:8px">📧 EMAIL</div>
+        <div style="margin-bottom:6px"><label style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Subject</label>
+          <input id="notify-email-subject" type="text" style="width:100%;margin-top:3px;font-size:12px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text1)">
+        </div>
+        <div><label style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Body</label>
+          <textarea id="notify-email-body" rows="10" style="width:100%;margin-top:3px;font-size:12px;line-height:1.6;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text1);resize:vertical"></textarea>
+        </div>
+        <button onclick="copyNotifyText('email')" class="btn btn-sm" style="margin-top:8px;background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.3);color:#60A5FA;width:100%">📋 Copy Email (Subject + Body)</button>
+      </div>
+
+      <!-- SMS -->
+      <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#4ADE80;margin-bottom:8px">📱 SMS / TEXT</div>
+        <textarea id="notify-sms-body" rows="4" style="width:100%;font-size:12px;line-height:1.6;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:8px;color:var(--text1);resize:vertical"></textarea>
+        <button onclick="copyNotifyText('sms')" class="btn btn-sm" style="margin-top:8px;background:rgba(74,222,128,0.15);border-color:rgba(74,222,128,0.3);color:#4ADE80;width:100%">📋 Copy SMS Text</button>
+      </div>
+
+      <div style="margin-top:12px;text-align:right">
+        <button class="btn" onclick="document.getElementById('mNotifyClient').style.display='none'" style="background:rgba(255,255,255,0.05);border:1px solid var(--border)">Close</button>
       </div>
     </div>
   </div>

@@ -5168,7 +5168,180 @@ Rules:
   }
 });
 
-// Debug: show current leads in Supabase
+// ── Public Transaction Tracker ────────────────────────────────
+// GET /api/tracker-data/:token  → JSON milestone data for public page
+app.get('/api/tracker-data/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const crm = await readCRM();
+    const deal = (crm.deals || []).find(d => d.trackerToken === token);
+    if (!deal) return res.status(404).json({ ok: false, error: 'Tracker not found' });
+    const lead = (crm.leads || []).find(l => l.id === deal.leadId);
+    const clientName = lead ? (lead.first + ' ' + (lead.last || '')).trim() : '';
+    const doneCount = Object.values(deal.milestones || {}).filter(v => v && v.done).length;
+    res.json({
+      ok: true,
+      address: deal.address || '',
+      stage: deal.txStage || 'Offer Submitted',
+      side: deal.side || '',
+      clientName,
+      closeDate: deal.closeDate || '',
+      milestones: deal.milestones || {},
+      doneCount,
+      totalCount: 20
+    });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /tracker/:token → public client-facing tracker page (no login)
+app.get('/tracker/:token', async (req, res) => {
+  const { token } = req.params;
+  const TX_MILESTONES_DEF = [
+    { key:'offer_submitted',    name:'Offer Submitted',                      cat:'Contract'    },
+    { key:'offer_accepted',     name:'Offer Accepted — Under Contract! 🎉',   cat:'Contract'    },
+    { key:'earnest_money',      name:'Earnest Money Deposited',               cat:'Contract'    },
+    { key:'escrow_opened',      name:'Escrow Opened',                         cat:'Contract'    },
+    { key:'tds_spq',            name:'Seller Disclosures Delivered (TDS/SPQ)', cat:'Disclosure' },
+    { key:'nhd',                name:'Natural Hazard Disclosure (NHD) Received', cat:'Disclosure'},
+    { key:'home_inspection',    name:'Home Inspection Completed',              cat:'Inspection'  },
+    { key:'pest_inspection',    name:'Pest Inspection Completed',              cat:'Inspection'  },
+    { key:'inspection_cr',      name:'Inspection Contingency Removed',         cat:'Contingency' },
+    { key:'title_report',       name:'Preliminary Title Report Received',      cat:'Title'       },
+    { key:'hoa_docs',           name:'HOA Documents Received',                 cat:'HOA'         },
+    { key:'appraisal_ordered',  name:'Appraisal Ordered',                      cat:'Appraisal'   },
+    { key:'appraisal_complete', name:'Appraisal Completed — Value Confirmed',  cat:'Appraisal'   },
+    { key:'appraisal_cr',       name:'Appraisal Contingency Removed',          cat:'Contingency' },
+    { key:'loan_approval',      name:'Loan Approval Received',                 cat:'Loan'        },
+    { key:'loan_cr',            name:'Loan Contingency Removed',               cat:'Contingency' },
+    { key:'demand_ordered',     name:'Demand / Payoff Ordered',                cat:'Closing'     },
+    { key:'final_walkthrough',  name:'Final Walk-Through Completed',           cat:'Closing'     },
+    { key:'deed_recorded',      name:'Grant Deed Recorded',                    cat:'Closing'     },
+    { key:'keys_delivered',     name:'Keys Delivered — CLOSED! 🎉🏡',          cat:'Closing'     }
+  ];
+
+  const CAT_COLORS = {
+    Contract:'#60A5FA', Disclosure:'#FBBF24', Inspection:'#F97316',
+    Contingency:'#FB923C', Title:'#C084FC', HOA:'#94A3B8',
+    Appraisal:'#E8681A', Loan:'#4ADE80', Closing:'#34D399'
+  };
+
+  try {
+    const crm = await readCRM();
+    const deal = (crm.deals || []).find(d => d.trackerToken === token);
+    if (!deal) {
+      return res.status(404).send(`<!DOCTYPE html><html><head><title>Not Found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px;background:#0f0f0f;color:#888"><h2>Tracker not found</h2><p>This link may be invalid or the transaction may have been removed.</p></body></html>`);
+    }
+    const lead = (crm.leads || []).find(l => l.id === deal.leadId);
+    const clientName = lead ? (lead.first + ' ' + (lead.last || '')).trim() : '';
+    const milestones = deal.milestones || {};
+    const doneCount = TX_MILESTONES_DEF.filter(m => milestones[m.key]?.done).length;
+    const pct = Math.round(doneCount / TX_MILESTONES_DEF.length * 100);
+
+    // Group milestones by category
+    const cats = {};
+    TX_MILESTONES_DEF.forEach(m => { if(!cats[m.cat]) cats[m.cat]=[]; cats[m.cat].push(m); });
+
+    let milestonesHtml = '';
+    Object.keys(cats).forEach(cat => {
+      const color = CAT_COLORS[cat] || '#888';
+      milestonesHtml += `<div class="cat-group">
+        <div class="cat-label" style="color:${color}">${cat}</div>`;
+      cats[cat].forEach(m => {
+        const state = milestones[m.key] || {};
+        const done = !!state.done;
+        const doneAt = state.doneAt ? new Date(state.doneAt).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '';
+        milestonesHtml += `<div class="milestone ${done ? 'done' : ''}">
+          <span class="check">${done ? '✅' : '⬜'}</span>
+          <span class="ms-name">${m.name}</span>
+          ${doneAt ? `<span class="ms-date">${doneAt}</span>` : ''}
+        </div>`;
+      });
+      milestonesHtml += `</div>`;
+    });
+
+    const closeDateTxt = deal.closeDate
+      ? new Date(deal.closeDate + 'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})
+      : null;
+
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transaction Tracker — ${deal.address || 'Your Home'}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0f0f0f; color:#e5e5e5; min-height:100vh; }
+  .header { background:#111; border-bottom:1px solid #222; padding:20px 24px; }
+  .header-inner { max-width:640px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .brand { font-size:13px; font-weight:700; color:#888; letter-spacing:.08em; text-transform:uppercase; }
+  .agent-contact { font-size:12px; color:#666; }
+  .agent-contact a { color:#E8681A; text-decoration:none; }
+  .main { max-width:640px; margin:0 auto; padding:28px 20px 60px; }
+  .address { font-size:22px; font-weight:700; color:#fff; margin-bottom:4px; line-height:1.3; }
+  .meta { font-size:13px; color:#888; margin-bottom:24px; }
+  .meta span { margin-right:12px; }
+  .progress-wrap { margin-bottom:28px; }
+  .progress-label { display:flex; justify-content:space-between; font-size:12px; color:#888; margin-bottom:8px; }
+  .progress-bar { height:8px; background:#222; border-radius:99px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#E8681A,#4ADE80); transition:width .5s; }
+  .progress-pct { font-size:28px; font-weight:800; color:#fff; margin-bottom:4px; }
+  .progress-sub { font-size:13px; color:#888; }
+  .cat-group { margin-bottom:24px; }
+  .cat-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #222; }
+  .milestone { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #1a1a1a; }
+  .milestone.done .ms-name { color:#4ADE80; }
+  .check { font-size:16px; flex-shrink:0; }
+  .ms-name { flex:1; font-size:14px; color:#aaa; line-height:1.4; }
+  .milestone.done .ms-name { color:#e5e5e5; }
+  .ms-date { font-size:11px; color:#555; white-space:nowrap; }
+  .close-date-box { background:rgba(232,104,26,0.08); border:1px solid rgba(232,104,26,0.25); border-radius:10px; padding:14px 18px; margin-bottom:24px; }
+  .close-date-box .label { font-size:10px; font-weight:700; color:#E8681A; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+  .close-date-box .date { font-size:16px; font-weight:700; color:#fff; }
+  .footer { max-width:640px; margin:0 auto; padding:0 20px 40px; text-align:center; color:#444; font-size:12px; }
+  .footer a { color:#E8681A; text-decoration:none; }
+  @media(max-width:480px){ .address{font-size:18px;} .progress-pct{font-size:22px;} }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <div class="brand">MG Realty · Transaction Tracker</div>
+    <div class="agent-contact">Matt Golden &nbsp;·&nbsp; <a href="tel:+13239197539">(323) 919-7539</a></div>
+  </div>
+</div>
+<div class="main">
+  <div class="address">${deal.address || 'Your Property'}</div>
+  <div class="meta">
+    ${clientName ? `<span>👤 ${clientName}</span>` : ''}
+    ${deal.txStage ? `<span>📍 ${deal.txStage}</span>` : ''}
+    ${deal.side ? `<span>${deal.side}</span>` : ''}
+  </div>
+
+  ${closeDateTxt ? `<div class="close-date-box"><div class="label">📅 Target Close Date</div><div class="date">${closeDateTxt}</div></div>` : ''}
+
+  <div class="progress-wrap">
+    <div class="progress-pct">${pct}% Complete</div>
+    <div class="progress-sub" style="margin-bottom:12px">${doneCount} of ${TX_MILESTONES_DEF.length} milestones completed</div>
+    <div class="progress-label"><span>Offer Submitted</span><span>Closed</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+  </div>
+
+  ${milestonesHtml}
+</div>
+<div class="footer">
+  <p>This page is maintained by Matt Golden, your real estate agent.</p>
+  <p style="margin-top:6px">Questions? <a href="tel:+13239197539">(323) 919-7539</a> · <a href="mailto:matt@mgoldenrealty.com">matt@mgoldenrealty.com</a></p>
+  <p style="margin-top:6px"><a href="https://mgoldenrealty.com">mgoldenrealty.com</a> · DRE #02130422</p>
+</div>
+</body>
+</html>`);
+  } catch(e) {
+    console.error('TRACKER ERROR:', e.message);
+    res.status(500).send('Server error');
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
