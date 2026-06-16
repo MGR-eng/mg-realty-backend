@@ -3068,6 +3068,23 @@ app.post('/sms', async (req, res) => {
     const from = req.body.From || '';
     console.log(`SMS from ${from}: ${inboundMsg}`);
 
+    // ── ADD command: save most recent pending Ace call to CRM ─
+    if (inboundMsg.toUpperCase() === 'ADD' && from === process.env.OWNER_PHONE) {
+      if (pendingAceCalls.length === 0) {
+        res.set('Content-Type', 'text/xml');
+        return res.send(twiml('No pending calls to add. Call came in more than 24 hours ago, or nothing is waiting.'));
+      }
+      const pending = pendingAceCalls.pop(); // most recent
+      const crmAdd = await readCRM();
+      crmAdd.leads = crmAdd.leads || [];
+      crmAdd.activities = crmAdd.activities || [];
+      crmAdd.leads.push(pending.lead);
+      crmAdd.activities.unshift(pending.activity);
+      await writeCRM(crmAdd);
+      res.set('Content-Type', 'text/xml');
+      return res.send(twiml(`✅ ${pending.lead.first} ${pending.lead.last || ''} saved to CRM as a ${pending.lead.type} lead.`.trim()));
+    }
+
     // Load live CRM data
     const crm = await readCRM();
     const now2 = new Date();
@@ -5333,8 +5350,13 @@ Caption: ${caption}`;
   }
 });
 
+// ── Pending Ace calls (in-memory, awaiting "ADD" reply) ───────
+// Each entry: { lead, activity, timestamp }
+const pendingAceCalls = [];
+
 // ── Vapi Call Screener Webhook ────────────────────────────────
-// Receives end-of-call report from Vapi, logs lead in CRM, texts Matt
+// Receives end-of-call report from Vapi. Texts Matt a summary.
+// Lead is NOT auto-saved — Matt replies ADD to save to CRM.
 app.post('/api/vapi-webhook', async (req, res) => {
   try {
     const body = req.body;
@@ -5357,10 +5379,9 @@ app.post('/api/vapi-webhook', async (req, res) => {
     const message      = structured?.message       || summary;
     const callbackNum  = structured?.callbackNumber || callerNumber;
 
-    // ── Save to CRM as a new lead ─────────────────────────────
-    const crm = await readCRM();
+    // ── Stage lead as pending (not auto-saved) ────────────────
     const leadId = 'lead_' + Date.now();
-    const newLead = {
+    const pendingLead = {
       id:         leadId,
       first:      callerName.split(' ')[0] || callerName,
       last:       callerName.split(' ').slice(1).join(' ') || '',
@@ -5373,23 +5394,22 @@ app.post('/api/vapi-webhook', async (req, res) => {
       neighborhood,
       timeline
     };
-    crm.leads.push(newLead);
-
-    // Log activity
-    crm.activities = crm.activities || [];
-    crm.activities.unshift({
+    const pendingActivity = {
       id:        'act_' + Date.now(),
       leadId,
       type:      'call',
       note:      `Inbound call screened by Ace. Caller: ${callerName} (${callerType}). Urgency: ${urgency}.`,
       createdAt: new Date().toISOString()
-    });
+    };
 
-    await writeCRM(crm);
+    // Store in memory (expires after 24h — drop old ones)
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    while (pendingAceCalls.length > 0 && pendingAceCalls[0].timestamp < cutoff) pendingAceCalls.shift();
+    pendingAceCalls.push({ lead: pendingLead, activity: pendingActivity, timestamp: Date.now() });
 
     // ── Text Matt a summary ───────────────────────────────────
     const urgencyFlag = urgency === 'high' ? '🔥 HOT LEAD' : '📞 New Call';
-    const smsBody = `${urgencyFlag} — Ace screened a call\n\n👤 ${callerName}\n📱 ${callbackNum}\n🏷️ ${callerType.charAt(0).toUpperCase() + callerType.slice(1)}${neighborhood ? '\n📍 ' + neighborhood : ''}${timeline ? '\n⏱️ ' + timeline : ''}\n\n💬 "${message.slice(0, 200)}"\n\nLead saved in CRM ✓`;
+    const smsBody = `${urgencyFlag} — Ace screened a call\n\n👤 ${callerName}\n📱 ${callbackNum}\n🏷️ ${callerType.charAt(0).toUpperCase() + callerType.slice(1)}${neighborhood ? '\n📍 ' + neighborhood : ''}${timeline ? '\n⏱️ ' + timeline : ''}\n\n💬 "${message.slice(0, 200)}"\n\nReply ADD to save to CRM`;
 
     await fetch('https://api.twilio.com/2010-04-01/Accounts/' + process.env.TWILIO_ACCOUNT_SID + '/Messages.json', {
       method: 'POST',
