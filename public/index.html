@@ -7410,10 +7410,10 @@ function renderGcalEvents() {
     return new Date(dt).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:LA});
   };
 
-  // Deduplicate: same title + same start time = same event shown multiple times
+  // Deduplicate: same title + same start time = duplicate (handles recurring events)
   const seen = new Set();
   const dedupedEvents = gcalEvents.filter(e => {
-    const key = (e.id || '') + '|' + (e.title||'') + '|' + (e.start||'');
+    const key = (e.title||'').trim().toLowerCase() + '|' + (e.start||'').substring(0,16);
     if(seen.has(key)) return false;
     seen.add(key);
     return true;
