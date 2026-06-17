@@ -1812,16 +1812,36 @@ async function executeSmsAction(action, crmSnapshot) {
   } else if (action.action === 'create_calendar_event') {
     try {
       const token = await googleToken();
-      const calMcp = { type: 'url', url: 'https://calendarmcp.googleapis.com/mcp/v1', name: 'gcal', authorization_token: token };
-      await callClaude(`Create a Google Calendar event:
-Title: "${action.title}"
-Start: ${action.start} America/Los_Angeles
-End: ${action.end || action.start} America/Los_Angeles
-Location: ${action.location || 'TBD'}
-Description: ${action.description || ''}
-Add popup reminder 30 minutes before.
-Return only: {"ok":true}`, [calMcp]);
-      console.log('Calendar event created:', action.title);
+      const toCalDT = (dt) => {
+        if (!dt) return { dateTime: new Date().toISOString(), timeZone: 'America/Los_Angeles' };
+        if (dt.includes('Z') || dt.includes('+')) return { dateTime: dt };
+        return { dateTime: dt, timeZone: 'America/Los_Angeles' };
+      };
+      const startDT = toCalDT(action.start);
+      const endDT = action.end ? toCalDT(action.end) : { dateTime: new Date(new Date(action.start).getTime() + 60*60*1000).toISOString(), timeZone: 'America/Los_Angeles' };
+      const event = {
+        summary: action.title,
+        location: action.location || '',
+        description: action.description || '',
+        start: startDT,
+        end: endDT,
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: 30 },
+            { method: 'email', minutes: 60 }
+          ]
+        },
+        colorId: '11'
+      };
+      const r = await fetch(`${GCAL_BASE}/calendars/${GCAL_ID}/events`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(event)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error?.message || JSON.stringify(data));
+      console.log('Calendar event created:', action.title, data.id);
     } catch(e) {
       console.error('Calendar creation failed:', e.message);
     }
