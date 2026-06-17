@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MG Realty">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -39,30 +40,29 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .shell{display:grid;grid-template-columns:228px 1fr;min-height:100vh}
 
 /* ── Sidebar ── */
-.sidebar{background:#0F0F0F;border-right:none;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
-.logo{padding:20px 18px 18px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:11px}
-.logo-icon{width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0}
-.logo-text{font-size:14px;font-weight:600;color:#fff;letter-spacing:-.01em}
-.logo-sub{font-size:10px;color:rgba(255,255,255,0.35);font-family:var(--mono);margin-top:1px}
-.nav{padding:12px 8px;flex:1}
-.nav-lbl{font-size:9px;font-weight:600;color:rgba(255,255,255,0.28);letter-spacing:0.1em;text-transform:uppercase;padding:0 10px;margin:16px 0 4px}
-.nav-lbl:first-child{margin-top:0}
-.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;transition:all 0.12s;margin-bottom:1px;border:none;border-left:2px solid transparent;background:transparent;width:100%;text-align:left}
-.nav-item:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9)}
-.nav-item.active{background:rgba(255,255,255,0.1);color:#fff;font-weight:500;border-left:2px solid #fff;border-radius:0 6px 6px 0;padding-left:8px}
-.nav-item i{font-size:15px;flex-shrink:0}
-.nav-group{margin-bottom:2px}
-.nav-group-hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-radius:6px;color:rgba(255,255,255,0.28);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;background:transparent;border:none;width:100%;transition:color .12s;margin-top:4px}
-.nav-group-hdr:hover{color:rgba(255,255,255,0.55)}
-.nav-group-body{overflow:hidden;transition:height .2s ease}
-.nav-group-body.collapsed{height:0!important}
-.nav-item.nav-sub{padding-left:28px;font-size:12px}
-.ng-chevron{font-size:11px;transition:transform .2s;opacity:.3}
-.ng-chevron.collapsed{transform:rotate(-90deg)}
-.nb{margin-left:auto;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.45);font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;font-family:var(--mono);border:1px solid rgba(255,255,255,0.12)}
-.nb.red{background:rgba(220,38,38,0.25);color:#f87171;border-color:rgba(220,38,38,0.35)}
-.sidebar-foot{padding:14px;border-top:1px solid rgba(255,255,255,0.08)}
-.sync-row{display:flex;align-items:center;gap:7px;font-size:11px;color:rgba(255,255,255,0.3);font-family:var(--mono)}
+.sidebar{background:#0D0D0D;border-right:none;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;font-family:'DM Sans',sans-serif}
+.logo{padding:20px 16px 18px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:12px}
+.logo-icon{width:32px;height:32px;border-radius:7px;object-fit:cover;flex-shrink:0}
+.logo-text{font-size:16px;font-weight:700;color:#fff;letter-spacing:-.02em}
+.logo-sub{display:none}
+.nav-ace{display:flex;align-items:center;gap:12px;padding:11px 14px;color:rgba(255,255,255,0.6);font-size:15px;font-weight:400;border:none;border-bottom:1px solid rgba(255,255,255,0.06);background:transparent;width:100%;cursor:pointer;font-family:'DM Sans',sans-serif}
+.nav-ace i{font-size:17px;color:#a78bfa;flex-shrink:0}
+.nav-ace:hover{color:rgba(255,255,255,0.9)}
+.nav{padding:8px 6px;flex:1}
+.nav-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:6px;color:rgba(255,255,255,0.6);font-size:15.5px;font-weight:400;cursor:pointer;transition:color 0.1s;margin-bottom:1px;border:none;background:transparent;width:100%;text-align:left;font-family:'DM Sans',sans-serif;letter-spacing:-.01em}
+.nav-item:hover{color:#fff}
+.nav-item.active{color:#fff;font-weight:600}
+.nav-item i{font-size:20px;flex-shrink:0}
+.nav-item.nav-sub{padding-left:44px;font-size:14.5px;color:rgba(255,255,255,0.4);padding-top:7px;padding-bottom:7px}
+.nav-item.nav-sub i{display:none}
+.nav-item.nav-sub:hover{color:rgba(255,255,255,0.8)}
+.nav-sep{height:1px;background:rgba(255,255,255,0.08);margin:6px 12px}
+.nb{display:none}
+.nb.red{background:rgba(220,38,38,0.25);color:#f87171;border:1px solid rgba(220,38,38,0.35);font-size:10px;font-weight:600;padding:1px 6px;border-radius:99px;margin-left:auto;display:inline}
+.sidebar-foot{padding:8px 6px;border-top:1px solid rgba(255,255,255,0.07)}
+.nav-user{display:flex;align-items:center;gap:12px;padding:9px 12px;color:rgba(255,255,255,0.55);font-size:14.5px;font-family:'DM Sans',sans-serif;letter-spacing:-.01em}
+.nav-avatar{width:26px;height:26px;border-radius:50%;background:#E8681A;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.sync-row{display:flex;align-items:center;gap:7px;font-size:11px;color:rgba(255,255,255,0.2);padding:4px 12px 8px;font-family:'DM Sans',sans-serif}
 .sdot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
 .sdot.busy{background:var(--amber);animation:pulse 1s infinite}
 .sdot.err{background:var(--red)}
@@ -486,103 +486,51 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <aside class="sidebar">
   <div class="logo">
     <img src="/icons/mg-logo.jpg" class="logo-icon" alt="MG Realty">
-    <div><div class="logo-text">MG Realty</div><div class="logo-sub">CRM v2.0</div></div>
+    <div class="logo-text">MG Realty</div>
   </div>
+  <button class="nav-ace" onclick="openCrmSearch()"><i class="ti ti-sparkles"></i><span>Ask Ace</span></button>
   <nav class="nav">
-    <!-- Pinned -->
     <button class="nav-item active" onclick="showPane('dashboard',this)"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></button>
     <button class="nav-item" onclick="openFollowUpAlert()" id="nav-followups"><i class="ti ti-bell-ringing"></i><span>Follow-ups</span><span class="nb red" id="nb-followups" style="display:none">0</span></button>
 
-    <!-- People -->
-    <div class="nav-group" id="ng-people">
-      <button class="nav-group-hdr" onclick="toggleNavGroup('people')">
-        <span><i class="ti ti-users" style="margin-right:6px;font-size:12px"></i>People</span>
-        <i class="ti ti-chevron-down ng-chevron" id="ngc-people"></i>
-      </button>
-      <div class="nav-group-body" id="ngb-people">
-        <button class="nav-item nav-sub" onclick="showPane('leads',this)"><i class="ti ti-users"></i><span>Leads</span><span class="nb" id="nb-leads">0</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('buyers',this)"><i class="ti ti-users-group"></i><span>Buyers</span><span class="nb" id="nb-buyers" style="display:none">0</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('sellers',this)"><i class="ti ti-home-dollar"></i><span>Sellers</span><span class="nb" id="nb-sellers">0</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('agents',this)"><i class="ti ti-id-badge"></i><span>Agents</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('vendors',this)"><i class="ti ti-tools"></i><span>Vendors</span></button>
-      </div>
-    </div>
+    <button class="nav-item" onclick="showPane('leads',this)"><i class="ti ti-users"></i><span>Leads</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('buyers',this)"><span>Buyers</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('sellers',this)"><span>Sellers</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('agents',this)"><span>Agents</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('vendors',this)"><span>Vendors</span></button>
 
-    <!-- Work -->
-    <div class="nav-group" id="ng-work">
-      <button class="nav-group-hdr" onclick="toggleNavGroup('work')">
-        <span><i class="ti ti-briefcase" style="margin-right:6px;font-size:12px"></i>Work</span>
-        <i class="ti ti-chevron-down ng-chevron" id="ngc-work"></i>
-      </button>
-      <div class="nav-group-body" id="ngb-work">
-        <button class="nav-item nav-sub" onclick="showPane('transactions',this)"><i class="ti ti-home-move"></i><span>Transactions</span><span class="nb" id="nb-transactions" style="display:none">0</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('pipeline',this)"><i class="ti ti-layout-kanban"></i><span>Pipeline</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('tasks',this)"><i class="ti ti-checkbox"></i><span>Tasks</span><span class="nb" id="nb-tasks">0</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span><span class="nb" id="nb-appts">0</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('offers',this)"><i class="ti ti-file-dollar"></i><span>Offer Tracker</span><span class="nb" id="nb-offers">0</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('scheduled',this)"><i class="ti ti-clock-send"></i><span>Scheduled</span><span class="nb" id="nb-scheduled" style="display:none">0</span></button>
-      </div>
-    </div>
+    <button class="nav-item" onclick="showPane('transactions',this)"><i class="ti ti-home-move"></i><span>Transactions</span></button>
+    <button class="nav-item" onclick="showPane('pipeline',this)"><i class="ti ti-layout-kanban"></i><span>Pipeline</span></button>
+    <button class="nav-item" onclick="showPane('tasks',this)"><i class="ti ti-checkbox"></i><span>Tasks</span><span class="nb red" id="nb-tasks" style="display:none">0</span></button>
+    <button class="nav-item" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span></button>
+    <button class="nav-item" onclick="showPane('offers',this)"><i class="ti ti-file-dollar"></i><span>Offer Tracker</span></button>
+    <button class="nav-item" onclick="showPane('scheduled',this)"><i class="ti ti-clock-send"></i><span>Scheduled</span></button>
 
-    <!-- Finance -->
-    <div class="nav-group" id="ng-finance">
-      <button class="nav-group-hdr" onclick="toggleNavGroup('finance')">
-        <span><i class="ti ti-coin" style="margin-right:6px;font-size:12px"></i>Finance</span>
-        <i class="ti ti-chevron-down ng-chevron" id="ngc-finance"></i>
-      </button>
-      <div class="nav-group-body" id="ngb-finance">
-        <button class="nav-item nav-sub" onclick="showPane('finance',this)"><i class="ti ti-receipt"></i><span>Expenses &amp; Invoices</span><span class="nb" id="nb-finance" style="display:none">0</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('commission',this)"><i class="ti ti-chart-bar"></i><span>Commission</span></button>
-        <button class="nav-item nav-sub" onclick="openCommCalc()"><i class="ti ti-calculator"></i><span>Comm. Calc</span></button>
-      </div>
-    </div>
+    <button class="nav-item" onclick="showPane('finance',this)"><i class="ti ti-receipt"></i><span>Finance</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('commission',this)"><span>Commission</span></button>
+    <button class="nav-item nav-sub" onclick="openCommCalc()"><span>Comm. Calc</span></button>
 
-    <!-- Properties -->
-    <div class="nav-group" id="ng-properties">
-      <button class="nav-group-hdr" onclick="toggleNavGroup('properties')">
-        <span><i class="ti ti-building" style="margin-right:6px;font-size:12px"></i>Properties</span>
-        <i class="ti ti-chevron-down ng-chevron" id="ngc-properties"></i>
-      </button>
-      <div class="nav-group-body" id="ngb-properties">
-        <button class="nav-item nav-sub" onclick="showPane('properties',this)"><i class="ti ti-building"></i><span>Properties</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('leases',this)"><i class="ti ti-home-check"></i><span>Leases</span><span class="nb" id="nb-leases">0</span></button>
-      </div>
-    </div>
+    <button class="nav-item" onclick="showPane('properties',this)"><i class="ti ti-building"></i><span>Properties</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('leases',this)"><span>Leases</span></button>
 
-    <!-- Marketing -->
-    <div class="nav-group" id="ng-marketing">
-      <button class="nav-group-hdr" onclick="toggleNavGroup('marketing')">
-        <span><i class="ti ti-speakerphone" style="margin-right:6px;font-size:12px"></i>Marketing</span>
-        <i class="ti ti-chevron-down ng-chevron" id="ngc-marketing"></i>
-      </button>
-      <div class="nav-group-body" id="ngb-marketing">
-        <button class="nav-item nav-sub" onclick="showPane('content',this)"><i class="ti ti-brand-instagram"></i><span>Content</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('dm-import',this)"><i class="ti ti-message-bolt"></i><span>DM Importer</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('textblast',this)"><i class="ti ti-send"></i><span>Text Blast</span></button>
-        <a class="nav-item nav-sub" href="/open-house" target="_blank"><i class="ti ti-qrcode"></i><span>Open House Sign</span></a>
-        <button class="nav-item nav-sub" onclick="showPane('snapshots',this)"><i class="ti ti-map-pin"></i><span>Neighborhood Snapshots</span></button>
-      </div>
-    </div>
+    <button class="nav-item" onclick="showPane('content',this)"><i class="ti ti-speakerphone"></i><span>Marketing</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('content',this)"><span>Content</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('dm-import',this)"><span>DM Importer</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('textblast',this)"><span>Text Blast</span></button>
+    <a class="nav-item nav-sub" href="/open-house" target="_blank"><span>Open House Sign</span></a>
+    <button class="nav-item nav-sub" onclick="showPane('snapshots',this)"><span>Neighborhood Snapshots</span></button>
 
-    <!-- Tools -->
-    <div class="nav-group" id="ng-tools">
-      <button class="nav-group-hdr" onclick="toggleNavGroup('tools')">
-        <span><i class="ti ti-tool" style="margin-right:6px;font-size:12px"></i>Tools</span>
-        <i class="ti ti-chevron-down ng-chevron" id="ngc-tools"></i>
-      </button>
-      <div class="nav-group-body" id="ngb-tools">
-        <button class="nav-item nav-sub" onclick="showPane('activity',this)"><i class="ti ti-activity"></i><span>Activity log</span></button>
-        <button class="nav-item nav-sub" onclick="showPane('deals',this)"><i class="ti ti-analyze"></i><span>Deal Analyzer</span></button>
-        <button class="nav-item nav-sub" onclick="openMarketReport()"><i class="ti ti-chart-bar"></i><span>Market Report</span></button>
-        <button class="nav-item nav-sub" onclick="sendDigest()"><i class="ti ti-mail"></i><span>Send digest</span></button>
-        <button class="nav-item nav-sub" onclick="sendAllClientReports()"><i class="ti ti-mail-forward"></i><span>Client Reports</span></button>
-        <button class="nav-item nav-sub" onclick="syncGmailSent(false)"><i class="ti ti-mail-forward"></i><span>Sync Gmail</span></button>
-        <button class="nav-item nav-sub" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
-      </div>
-    </div>
+    <button class="nav-item" onclick="showPane('activity',this)"><i class="ti ti-tool"></i><span>Tools</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('activity',this)"><span>Activity log</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('deals',this)"><span>Deal Analyzer</span></button>
+    <button class="nav-item nav-sub" onclick="openMarketReport()"><span>Market Report</span></button>
+    <button class="nav-item nav-sub" onclick="backupToSheet()"><span>Backup to Sheet</span></button>
+
+    <div class="nav-sep"></div>
   </nav>
   <div class="sidebar-foot">
     <div class="sync-row"><div class="sdot" id="sdot"></div><span id="slbl">Ready</span></div>
+    <div class="nav-user"><div class="nav-avatar">MG</div><span>Matt Golden</span></div>
   </div>
 </aside>
 
