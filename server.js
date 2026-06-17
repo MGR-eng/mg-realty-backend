@@ -3105,13 +3105,13 @@ app.post('/sms', async (req, res) => {
     }));
 
     const recentActs = crm.activities
-      .sort((a, b) => b.date.localeCompare(a.date))
+      .sort((a, b) => (b.date || b.createdAt || '').localeCompare(a.date || a.createdAt || ''))
       .slice(0, 8)
-      .map(a => ({ lead: a.leadName, type: a.type, outcome: a.outcome, date: a.date, notes: a.notes }));
+      .map(a => ({ lead: a.leadName, type: a.type, outcome: a.outcome, date: a.date || a.createdAt, notes: a.notes }));
 
     const upcomingAppts = crm.appointments
-      .filter(a => a.date >= today2 && a.status !== 'cancelled')
-      .sort((a, b) => a.date.localeCompare(b.date))
+      .filter(a => (a.date || '') >= today2 && a.status !== 'cancelled')
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
       .slice(0, 5)
       .map(a => ({ lead: a.leadName, type: a.type, date: a.date, time: a.time, address: a.address }));
 
