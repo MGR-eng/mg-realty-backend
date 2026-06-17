@@ -7410,19 +7410,20 @@ function renderGcalEvents() {
     return new Date(dt).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:LA});
   };
 
-  // Group by day
-  const groups = {};
-  gcalEvents.forEach(e => {
-    const key = e.start ? laDateStr(new Date(e.start)) : 'Unknown';
-    if(!groups[key]) groups[key]=[];
-    groups[key].push(e);
+  // Deduplicate: same title + same start time = same event shown multiple times
+  const seen = new Set();
+  const dedupedEvents = gcalEvents.filter(e => {
+    const key = (e.id || '') + '|' + (e.title||'') + '|' + (e.start||'');
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 
   // Check if an event is a CRM appointment
   const isCrmEvent = e => e.description && e.description.includes('[mgr_appt_id:');
 
   body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:12px">` +
-    gcalEvents.slice(0,12).map(e => {
+    dedupedEvents.slice(0,12).map(e => {
       const crm = isCrmEvent(e);
       return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;border-left:3px solid ${crm?'var(--purple)':'#4285F4'}">
         <div style="font-size:11px;font-weight:700;color:${crm?'var(--purple)':'#4285F4'};margin-bottom:4px">${fmtDay(e.start)} ${e.allDay?'':fmtTime(e.start)}</div>
