@@ -39,30 +39,30 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .shell{display:grid;grid-template-columns:228px 1fr;min-height:100vh}
 
 /* ── Sidebar ── */
-.sidebar{background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
-.logo{padding:20px 18px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:11px}
+.sidebar{background:#0F0F0F;border-right:none;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:20px 18px 18px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:11px}
 .logo-icon{width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0}
-.logo-text{font-size:14px;font-weight:600;color:var(--text);letter-spacing:-.01em}
-.logo-sub{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:1px}
+.logo-text{font-size:14px;font-weight:600;color:#fff;letter-spacing:-.01em}
+.logo-sub{font-size:10px;color:rgba(255,255,255,0.35);font-family:var(--mono);margin-top:1px}
 .nav{padding:12px 8px;flex:1}
-.nav-lbl{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;padding:0 10px;margin:16px 0 4px}
+.nav-lbl{font-size:9px;font-weight:600;color:rgba(255,255,255,0.28);letter-spacing:0.1em;text-transform:uppercase;padding:0 10px;margin:16px 0 4px}
 .nav-lbl:first-child{margin-top:0}
-.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;color:var(--text2);font-size:13px;cursor:pointer;transition:all 0.12s;margin-bottom:1px;border:none;border-left:2px solid transparent;background:transparent;width:100%;text-align:left}
-.nav-item:hover{background:var(--surface2);color:var(--text)}
-.nav-item.active{background:var(--surface2);color:var(--text);font-weight:500;border-left:2px solid var(--accent);border-radius:0 6px 6px 0;padding-left:8px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;transition:all 0.12s;margin-bottom:1px;border:none;border-left:2px solid transparent;background:transparent;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9)}
+.nav-item.active{background:rgba(255,255,255,0.1);color:#fff;font-weight:500;border-left:2px solid #fff;border-radius:0 6px 6px 0;padding-left:8px}
 .nav-item i{font-size:15px;flex-shrink:0}
 .nav-group{margin-bottom:2px}
-.nav-group-hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-radius:6px;color:var(--text3);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;background:transparent;border:none;width:100%;transition:color .12s;margin-top:4px}
-.nav-group-hdr:hover{color:var(--text2)}
+.nav-group-hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-radius:6px;color:rgba(255,255,255,0.28);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;background:transparent;border:none;width:100%;transition:color .12s;margin-top:4px}
+.nav-group-hdr:hover{color:rgba(255,255,255,0.55)}
 .nav-group-body{overflow:hidden;transition:height .2s ease}
 .nav-group-body.collapsed{height:0!important}
 .nav-item.nav-sub{padding-left:28px;font-size:12px}
-.ng-chevron{font-size:11px;transition:transform .2s;opacity:.4}
+.ng-chevron{font-size:11px;transition:transform .2s;opacity:.3}
 .ng-chevron.collapsed{transform:rotate(-90deg)}
-.nb{margin-left:auto;background:var(--surface2);color:var(--text2);font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;font-family:var(--mono);border:1px solid var(--border)}
-.nb.red{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
-.sidebar-foot{padding:14px;border-top:1px solid var(--border)}
-.sync-row{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text3);font-family:var(--mono)}
+.nb{margin-left:auto;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.45);font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;font-family:var(--mono);border:1px solid rgba(255,255,255,0.12)}
+.nb.red{background:rgba(220,38,38,0.25);color:#f87171;border-color:rgba(220,38,38,0.35)}
+.sidebar-foot{padding:14px;border-top:1px solid rgba(255,255,255,0.08)}
+.sync-row{display:flex;align-items:center;gap:7px;font-size:11px;color:rgba(255,255,255,0.3);font-family:var(--mono)}
 .sdot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
 .sdot.busy{background:var(--amber);animation:pulse 1s infinite}
 .sdot.err{background:var(--red)}
@@ -599,23 +599,53 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="content">
 
     <!-- STATS STRIP -->
-    <div class="stats-grid" id="statsGrid" style="margin-bottom:20px"></div>
+    <div class="stats-grid" id="statsGrid" style="margin-bottom:14px"></div>
 
-    <!-- COMMAND CENTER: 3-column priority layout -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:16px;margin-bottom:20px;align-items:start">
+    <!-- COMMAND CENTER: Priority layout -->
 
-      <!-- COL 1: NEEDS ATTENTION -->
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">🔴 Needs Attention</div>
+    <!-- ROW 1: Follow-ups + Appointments (top priority) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;align-items:start">
 
-        <div class="tw">
-          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
-            Follow-ups due
-            <a href="#" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));return false" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:400">All leads →</a>
-          </div>
-          <div id="dashDue" style="padding:0 14px 12px"></div>
+      <div class="tw">
+        <div style="font-size:12px;font-weight:600;padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
+          Follow-ups due
+          <a href="#" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));return false" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:400">All leads →</a>
         </div>
+        <div id="dashDue" style="padding:0 14px 12px"></div>
+      </div>
 
+      <div class="tw">
+        <div style="font-size:12px;font-weight:600;padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
+          Upcoming appointments
+          <a href="#" onclick="showPane('appointments',document.querySelector('[onclick*=appointments]'));return false" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:400">All →</a>
+        </div>
+        <div id="dashAppts" style="padding:0 14px 4px"></div>
+        <div style="font-size:11px;font-weight:600;padding:6px 14px 4px;color:var(--text2);border-top:1px solid var(--border)">Scheduled tours</div>
+        <div id="dashTours" style="padding:0 14px 10px"></div>
+      </div>
+    </div>
+
+    <!-- ROW 2: Google Calendar (compact list) + Recent Activity & Invoices -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;align-items:start">
+
+      <div class="tw" id="gcal-widget">
+        <div class="cl-hd">
+          <div style="font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px">
+            <i class="ti ti-calendar-event" style="color:#4285F4;font-size:14px"></i> Google Calendar
+            <span id="gcal-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
+          </div>
+          <button class="btn btn-sm btn-primary" id="gcal-refresh-btn" onclick="fetchGcalEvents()"><i class="ti ti-refresh" style="font-size:11px"></i></button>
+        </div>
+        <div id="gcal-body">
+          <div class="cl-loading"><div class="ce-spinner"></div><span>Loading calendar…</span></div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="tw">
+          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px">Recent activity</div>
+          <div id="dashActs" style="padding:0 14px 12px"></div>
+        </div>
         <div class="tw">
           <div style="font-size:12px;font-weight:600;padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between">
             Unpaid invoices
@@ -623,49 +653,16 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
           </div>
           <div id="dashOverdueInvoices" style="padding:0 14px 12px"></div>
         </div>
-
-        <div class="tw">
-          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px">Recent activity</div>
-          <div id="dashActs" style="padding:0 14px 12px"></div>
-        </div>
       </div>
+    </div>
 
-      <!-- COL 2: TODAY'S SCHEDULE -->
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em">📅 Today's Schedule</div>
-
-        <div class="tw" id="gcal-widget">
-          <div class="cl-hd">
-            <div style="font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px">
-              <i class="ti ti-calendar-event" style="color:#4285F4;font-size:14px"></i> Google Calendar
-              <span id="gcal-updated" style="font-size:10px;font-weight:400;color:var(--text3)"></span>
-            </div>
-            <button class="btn btn-sm btn-primary" id="gcal-refresh-btn" onclick="fetchGcalEvents()"><i class="ti ti-refresh" style="font-size:11px"></i></button>
-          </div>
-          <div id="gcal-body">
-            <div class="cl-loading"><div class="ce-spinner"></div><span>Loading calendar…</span></div>
-          </div>
-        </div>
-
-        <div class="tw">
-          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px">Upcoming appointments</div>
-          <div id="dashAppts" style="padding:0 14px 12px"></div>
-        </div>
-
-        <div class="tw">
-          <div style="font-size:12px;font-weight:600;padding:10px 14px 6px">🏠 Scheduled tours</div>
-          <div id="dashTours" style="padding:0 14px 12px"></div>
-        </div>
+    <!-- ROW 3: Active Transactions (full width) -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span>Active Transactions <span id="dash-tx-count" style="font-weight:400;text-transform:none;font-size:10px"></span></span>
+        <button class="btn btn-sm" onclick="showPane('transactions',document.querySelector('[onclick*=transactions]'))" style="background:var(--surface2);border-color:var(--border);font-size:10px;padding:2px 8px;text-transform:none">All →</button>
       </div>
-
-      <!-- COL 3: ACTIVE TRANSACTIONS -->
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;justify-content:space-between">
-          <span>🏠 Active Transactions <span id="dash-tx-count" style="font-weight:400;text-transform:none;font-size:10px"></span></span>
-          <button class="btn btn-sm" onclick="showPane('transactions',document.querySelector('[onclick*=transactions]'))" style="background:var(--surface2);border-color:var(--border);font-size:10px;padding:2px 8px;text-transform:none">All →</button>
-        </div>
-        <div id="dash-tx-grid" style="display:flex;flex-direction:column;gap:10px"></div>
-      </div>
+      <div id="dash-tx-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px"></div>
     </div>
 
     <!-- COMMUNICATIONS: SMS + Email side by side -->
@@ -7422,14 +7419,20 @@ function renderGcalEvents() {
   // Check if an event is a CRM appointment
   const isCrmEvent = e => e.description && e.description.includes('[mgr_appt_id:');
 
-  body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:12px">` +
-    dedupedEvents.slice(0,12).map(e => {
+  const colors = ['#4285F4','#E8681A','#15803D','#7C3AED','#B45309','#DC2626','#0891B2','#059669'];
+  body.innerHTML = `<div style="padding:6px 14px 10px">` +
+    dedupedEvents.slice(0,10).map((e, i) => {
       const crm = isCrmEvent(e);
-      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;border-left:3px solid ${crm?'var(--purple)':'#4285F4'}">
-        <div style="font-size:11px;font-weight:700;color:${crm?'var(--purple)':'#4285F4'};margin-bottom:4px">${fmtDay(e.start)} ${e.allDay?'':fmtTime(e.start)}</div>
-        <div style="font-size:13px;font-weight:600;line-height:1.3;margin-bottom:${e.location?'4px':'0'}">${e.title}</div>
-        ${e.location?`<div style="font-size:11px;color:var(--text2)"><i class="ti ti-map-pin" style="font-size:10px"></i> ${e.location}</div>`:''}
-        ${crm?`<div style="font-size:10px;color:var(--purple);margin-top:4px">📋 CRM appointment</div>`:''}
+      const color = crm ? 'var(--purple)' : colors[i % colors.length];
+      const dayLabel = fmtDay(e.start);
+      const timeLabel = e.allDay ? 'All day' : fmtTime(e.start);
+      return `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);align-items:flex-start">
+        <div style="width:3px;border-radius:2px;background:${color};align-self:stretch;min-height:24px;flex-shrink:0;margin-top:2px"></div>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px">${dayLabel}${timeLabel?' · '+timeLabel:''}</div>
+          <div style="font-size:12px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.title}</div>
+          ${e.location?`<div style="font-size:10px;color:var(--text2);margin-top:1px"><i class="ti ti-map-pin" style="font-size:9px"></i> ${e.location}</div>`:''}
+        </div>
       </div>`;
     }).join('') + `</div>`;
 }
