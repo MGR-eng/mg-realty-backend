@@ -82,6 +82,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .sc-val{font-size:28px;font-weight:300;line-height:1;letter-spacing:-.02em}
 .sc-sub{font-size:11px;color:var(--text3);margin-top:4px}
 .sc.alert .sc-val{color:var(--red)}.sc.warn .sc-val{color:var(--amber)}
+.stat-card{background:var(--surface);border-radius:var(--rl);padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid var(--border)}
+.stat-val{font-size:24px;font-weight:300;line-height:1;letter-spacing:-.02em;color:var(--text)}
+.stat-lbl{font-size:11px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px}
 
 /* ── Panes ── */
 .pane{display:none}.pane.active{display:block}
@@ -365,7 +368,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 .ce-spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--text2);border-radius:50%;animation:ce-spin 0.7s linear infinite;flex-shrink:0}
 @media(max-width:900px){#pane-content .content>div{grid-template-columns:1fr!important}}
 .tone-btn{flex:1;padding:7px 10px;font-size:12px;font-family:var(--font);font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--text2);transition:all 0.15s;line-height:1}
-.tone-btn.active{background:#1A1914;color:#fff}
+.tone-btn.active{background:var(--text);color:var(--surface)}
 .ce-hist-item{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
 .ce-hist-item:last-child{border-bottom:none}
 /* ── SMS Inbox Widget ── */
@@ -3622,7 +3625,7 @@ function renderLeads(){
     const lcText=l.lastcontact?(()=>{const days=Math.floor((new Date()-new Date(l.lastcontact))/86400000);const col=days<=3?'var(--green)':days<=7?'var(--amber)':'var(--red)';return`<span style="color:${col}">●</span> ${rel(l.lastcontact)}${l.lcmethod?' · '+l.lcmethod:''}`})():'<span style="color:var(--text3)">Never</span>';
     const docCount=(l.docs||[]).length+(l.sellerDocs||[]).length;
 
-    return `<div style="background:${tc.bg};border:1px solid ${tc.border};border-radius:var(--rl);padding:16px;transition:transform 0.15s,box-shadow 0.15s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+    return `<div style="background:${tc.bg};border:1px solid ${tc.border};border-radius:var(--rl);padding:16px;transition:transform 0.15s,box-shadow 0.15s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.10)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
         <div style="cursor:pointer;flex:1;min-width:0" onclick="openLeadDetail('${l.id}')">
           <div style="font-size:15px;font-weight:700;color:var(--text)">${l.first} ${l.last}</div>
@@ -4783,7 +4786,7 @@ function renderVendors(){
   }).sort((a,b)=>(a.category||'').localeCompare(b.category||'')||(a.name||'').localeCompare(b.name||''));
   if(!f.length){grid.innerHTML=`<div class="empty">${vendors.length?'No vendors match your search':'No vendors yet. Add inspectors, pool techs, landscapers, contractors — your go-to people for getting properties ready.'}</div>`;return;}
   const ratingColor={'⭐⭐⭐ Preferred':'var(--green)','⭐⭐ Good':'var(--blue)','⭐ Neutral':'var(--text2)','⚠️ Avoid':'var(--red)'};
-  grid.innerHTML=f.map(v=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px;transition:transform 0.15s,box-shadow 0.15s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+  grid.innerHTML=f.map(v=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px;transition:transform 0.15s,box-shadow 0.15s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.10)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
       <div>
         <div style="font-size:15px;font-weight:700">${v.name}</div>
