@@ -171,10 +171,10 @@ function openNotifyModal(key) {
   var emailBody = 'Hi '+clientName+',\n\n'
     + ms.emailMsg.replace(/{ADDRESS}/g, address) + '\n\n'
     + '📌 What\'s next: ' + ms.nextStep.replace(/{ADDRESS}/g, address) + '\n\n'
-    + 'Questions? Reply to this email or call/text me at (323) 919-7539 — I\'m always available.\n\n'
+    + 'Questions? Reply to this email or call/text me at (323) 688-3855 — I\'m always available.\n\n'
     + 'Talk soon,\nMatt Golden\n'
     + 'Estates Director · Rare Properties Inc.\n'
-    + '(323) 919-7539 | matt@mgoldenrealty.com\n'
+    + '(323) 688-3855 | matt@mgoldenrealty.com\n'
     + 'mgoldenrealty.com | DRE #02130422';
 
   var smsBody = ms.sms.replace(/{ADDRESS}/g, address).replace(/{CLIENT}/g, clientName);

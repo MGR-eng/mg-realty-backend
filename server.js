@@ -937,7 +937,7 @@ footer a{color:rgba(255,255,255,0.35);text-decoration:none}
   <div class="cta">
     <h3>Ready to explore ${snap.neighborhood}?</h3>
     <p>I'd love to show you what's available. Let's find the right home for you.</p>
-    <a href="tel:+13239197539" class="cta-btn">Call Matt · (323) 919-7539</a>
+    <a href="tel:+13236883855" class="cta-btn">Call Matt · (323) 688-3855</a>
   </div>
 </div>
 
@@ -972,10 +972,10 @@ app.post('/api/send-snapshot-email', async (req, res) => {
     </div>
     <a href="${link}" style="display:block;background:#e8681a;color:#fff;text-align:center;font-weight:700;font-size:16px;padding:16px 24px;border-radius:99px;text-decoration:none;margin-bottom:28px">View Full Snapshot →</a>
     ${snap.note ? `<div style="background:rgba(232,104,26,0.08);border-left:3px solid #e8681a;padding:14px 18px;border-radius:0 10px 10px 0;font-size:14px;color:rgba(255,255,255,0.65);line-height:1.7;margin-bottom:24px"><strong style="color:#e8681a">A note from me:</strong> ${snap.note}</div>` : ''}
-    <p style="font-size:14px;color:rgba(255,255,255,0.45);line-height:1.7;margin:0">Any questions — just reply to this email or call/text me at (323) 919-7539. Happy to chat.</p>
+    <p style="font-size:14px;color:rgba(255,255,255,0.45);line-height:1.7;margin:0">Any questions — just reply to this email or call/text me at (323) 688-3855. Happy to chat.</p>
   </div>
   <div style="padding:20px 36px;border-top:1px solid rgba(255,255,255,0.07);text-align:center">
-    <p style="font-size:12px;color:rgba(255,255,255,0.25);margin:0"><strong style="color:rgba(255,255,255,0.4)">Matt Golden · MG Realty</strong> · (323) 919-7539 · <a href="https://mgoldenrealty.com" style="color:rgba(255,255,255,0.35)">mgoldenrealty.com</a></p>
+    <p style="font-size:12px;color:rgba(255,255,255,0.25);margin:0"><strong style="color:rgba(255,255,255,0.4)">Matt Golden · MG Realty</strong> · (323) 688-3855 · <a href="https://mgoldenrealty.com" style="color:rgba(255,255,255,0.35)">mgoldenrealty.com</a></p>
   </div>
 </div>`;
 
@@ -2313,7 +2313,7 @@ async function processPostCloseEmails(crm, today) {
           <div style="padding:28px;background:#ffffff;border:1px solid #e0e0e0;border-radius:0 0 8px 8px">
             ${bodyHtml}
             <p style="margin-top:28px;color:#111;font-size:13px">— Matt Golden<br>
-            <span style="color:#555">MG Realty · Los Angeles · (323) 919-7539<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
+            <span style="color:#555">MG Realty · Los Angeles · (323) 688-3855<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
           </div>
         </div>`;
 
@@ -2816,7 +2816,7 @@ app.post('/leads/capture', async (req, res) => {
         to:        email,
         toName:    first + (last ? ' ' + last : ''),
         subject:   `Quick update on your home valuation, ${first}`,
-        body:      `Hi ${first},\n\nI wanted to follow up on the home valuation request you submitted${prop ? ' for ' + prop : ''}.\n\nI've been pulling comps and researching recent sales in your area. A few things worth knowing right now:\n\n• The LA market is moving fast in certain price bands — knowing your home's value gives you serious negotiating power\n• Sellers who price strategically (not too high, not too low) are getting strong offers\n• I'd love to connect for a quick 15-minute call to walk you through what I'm seeing\n\nWhen works best for you? You can reply to this email or call/text me directly:\n📱 (323) 919-7539\n\nTalk soon,\nMatt Golden\nEstates Director · Rare Properties Inc.\nmgoldenrealty.com | DRE #02130422`,
+        body:      `Hi ${first},\n\nI wanted to follow up on the home valuation request you submitted${prop ? ' for ' + prop : ''}.\n\nI've been pulling comps and researching recent sales in your area. A few things worth knowing right now:\n\n• The LA market is moving fast in certain price bands — knowing your home's value gives you serious negotiating power\n• Sellers who price strategically (not too high, not too low) are getting strong offers\n• I'd love to connect for a quick 15-minute call to walk you through what I'm seeing\n\nWhen works best for you? You can reply to this email or call/text me directly:\n📱 (323) 688-3855\n\nTalk soon,\nMatt Golden\nEstates Director · Rare Properties Inc.\nmgoldenrealty.com | DRE #02130422`,
         sendAt:    day2Date,
         status:    'pending',
         leadId:    lead.id,
@@ -2862,7 +2862,7 @@ app.post('/leads/capture', async (req, res) => {
     <p style="font-size:14px;color:#555;margin:0 0 20px">In the meantime, feel free to reach out directly:</p>
     <table cellpadding="0" cellspacing="0" border="0">
       <tr><td style="padding:10px 20px;background:#E8681A;border-radius:6px">
-        <a href="tel:+13239197539" style="color:#fff;font-size:14px;font-weight:700;text-decoration:none">📞 Call or text: (323) 919-7539</a>
+        <a href="tel:+13236883855" style="color:#fff;font-size:14px;font-weight:700;text-decoration:none">📞 Call or text: (323) 688-3855</a>
       </td></tr>
     </table>
     <p style="margin:24px 0 4px;font-size:13px;color:#555">Talk soon,</p>
@@ -2875,7 +2875,7 @@ app.post('/leads/capture', async (req, res) => {
 
     // ── 2. Instant confirmation SMS to SELLER ────────────────
     if (twilioReady && smsConsent && phone) {
-      const sellerSms = `Hi ${first}! This is Matt Golden with MG Realty. I just received your home valuation request${prop ? ' for ' + prop : ''} and I'm already on it. I'll reach out within 24 hours with my analysis. Questions? Reply anytime! 🏡 (323) 919-7539`;
+      const sellerSms = `Hi ${first}! This is Matt Golden with MG Realty. I just received your home valuation request${prop ? ' for ' + prop : ''} and I'm already on it. I'll reach out within 24 hours with my analysis. Questions? Reply anytime! 🏡 (323) 688-3855`;
       sendSMS(phone, sellerSms)
         .catch(e => console.error('Seller confirmation SMS failed:', e.message));
     }
@@ -4512,7 +4512,7 @@ app.post('/api/book-tour', async (req, res) => {
   <div style="background:#F9F7F3;border-radius:10px;padding:20px;margin-bottom:24px">
     <div style="margin-bottom:12px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#666">Property</strong><div style="font-size:16px;font-weight:700;color:#0D0D0D;margin-top:3px">${address || 'Address to be confirmed'}</div></div>
     <div style="margin-bottom:12px"><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#666">Date & Time</strong><div style="font-size:16px;font-weight:700;color:#C8973A;margin-top:3px">${friendly} PT</div></div>
-    <div><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#666">Your Agent</strong><div style="font-size:15px;font-weight:600;color:#0D0D0D;margin-top:3px">Matt Golden · (323) 919-7539</div></div>
+    <div><strong style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#666">Your Agent</strong><div style="font-size:15px;font-weight:600;color:#0D0D0D;margin-top:3px">Matt Golden · (323) 688-3855</div></div>
   </div>
   <p style="font-size:14px;color:#444;line-height:1.6;margin:0 0 16px">I'll meet you at the property. If anything comes up or you need to reschedule, just text or call me directly.</p>
   <p style="font-size:13px;color:#666;margin:0">Matt Golden · MG Realty · DRE #02130422</p>
@@ -4621,7 +4621,7 @@ async function processLeaseReminders(crm, today) {
         <p style="color:#111;font-size:14px;line-height:1.6">Just a heads-up — your lease at <strong>${lease.address}</strong> expires on <strong>${fmtDate(lease.endDate)}</strong>, which is <strong>${daysLeft} days away</strong>.</p>
         <p style="color:#111;font-size:14px;line-height:1.6">If you'd like to renew or discuss your options, I'm here to help. Let's connect before the deadline approaches.</p>
         <p style="margin-top:24px;color:#111;font-size:13px">— Matt Golden<br>
-        <span style="color:#555">MG Realty · Los Angeles · (323) 919-7539<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
+        <span style="color:#555">MG Realty · Los Angeles · (323) 688-3855<br>matt@mgoldenrealty.com · DRE #02130422</span></p>
       </div>
     </div>`;
 
@@ -4866,7 +4866,7 @@ Make the data realistic for ${neighborhood}, Los Angeles in ${monthYear}. Use ac
       doc.rect(0, H - 52, W, 52).fill(DARK);
       doc.rect(0, H - 52, W, 2).fill(GOLD);
       doc.fillColor('#AAAAAA').font('Helvetica').fontSize(7.5)
-        .text('Matt Golden · MG Realty · Los Angeles · matt@mgoldenrealty.com · (323) 919-7539 · DRE #02130422', 40, H - 38, { width: W - 80, align: 'center' });
+        .text('Matt Golden · MG Realty · Los Angeles · matt@mgoldenrealty.com · (323) 688-3855 · DRE #02130422', 40, H - 38, { width: W - 80, align: 'center' });
       doc.fillColor('#555').font('Helvetica').fontSize(6.5)
         .text('This report is generated for informational purposes and reflects AI-synthesized market estimates. Data should be verified with MLS sources before making real estate decisions.', 40, H - 22, { width: W - 80, align: 'center' });
 
@@ -5099,7 +5099,7 @@ app.post('/api/weekly-client-report', async (req, res) => {
 
     <div style="text-align:center;padding-top:16px;border-top:1px solid #f0f0f0">
       <p style="color:#111;font-size:14px;font-weight:600;margin:0">Matt Golden · MG Realty</p>
-      <p style="color:#555;font-size:12px;margin:4px 0">(323) 919-7539 · matt@mgoldenrealty.com</p>
+      <p style="color:#555;font-size:12px;margin:4px 0">(323) 688-3855 · matt@mgoldenrealty.com</p>
       <a href="https://mg-realty-backend.onrender.com/portal" style="display:inline-block;margin-top:10px;background:#E8681A;color:#fff;font-size:12px;font-weight:600;padding:8px 18px;border-radius:8px;text-decoration:none">View Your Client Portal →</a>
     </div>
   </div>
@@ -5625,7 +5625,7 @@ app.get('/tracker/:token', async (req, res) => {
 <div class="header">
   <div class="header-inner">
     <div class="brand">MG Realty · Transaction Tracker</div>
-    <div class="agent-contact">Matt Golden &nbsp;·&nbsp; <a href="tel:+13239197539">(323) 919-7539</a></div>
+    <div class="agent-contact">Matt Golden &nbsp;·&nbsp; <a href="tel:+13236883855">(323) 688-3855</a></div>
   </div>
 </div>
 <div class="main">
@@ -5649,7 +5649,7 @@ app.get('/tracker/:token', async (req, res) => {
 </div>
 <div class="footer">
   <p>This page is maintained by Matt Golden, your real estate agent.</p>
-  <p style="margin-top:6px">Questions? <a href="tel:+13239197539">(323) 919-7539</a> · <a href="mailto:matt@mgoldenrealty.com">matt@mgoldenrealty.com</a></p>
+  <p style="margin-top:6px">Questions? <a href="tel:+13236883855">(323) 688-3855</a> · <a href="mailto:matt@mgoldenrealty.com">matt@mgoldenrealty.com</a></p>
   <p style="margin-top:6px"><a href="https://mgoldenrealty.com">mgoldenrealty.com</a> · DRE #02130422</p>
 </div>
 </body>
