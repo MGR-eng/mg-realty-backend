@@ -5680,6 +5680,26 @@ app.get('/api/admin/find', async (req, res) => {
   }
 });
 
+// ── Admin: delete sequences by lead name ─────────────────────
+app.delete('/api/admin/sequences', async (req, res) => {
+  try {
+    const { leadName, leadId } = req.body;
+    if (!leadName && !leadId) return res.status(400).json({ ok: false, error: 'Provide leadName or leadId' });
+    const crm = await readCRM();
+    const before = (crm.sequences || []).length;
+    crm.sequences = (crm.sequences || []).filter(s => {
+      if (leadId && s.leadId === leadId) return false;
+      if (leadName && s.leadName.toLowerCase().includes(leadName.toLowerCase())) return false;
+      return true;
+    });
+    const removed = before - crm.sequences.length;
+    await writeCRM(crm);
+    res.json({ ok: true, removed, remaining: crm.sequences.length });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Admin: delete lead by name ────────────────────────────────
 app.delete('/api/admin/lead', async (req, res) => {
   try {
