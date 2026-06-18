@@ -4563,6 +4563,37 @@ app.get('/api/tours', async (req, res) => {
 async function processLeaseReminders(crm, today) {
   const leases = crm.leases || [];
   let sent = 0;
+
+  // ── 6-month check-in reminder TO MATT (not the tenant) ───────
+  for (const lease of leases) {
+    if (!lease.startDate) continue;
+    const daysSinceStart = Math.round((new Date(today) - new Date(lease.startDate+'T12:00:00')) / 86400000);
+    if (daysSinceStart !== 180) continue;
+    const sentKey = `checkin_180`;
+    if ((lease.remindersSent||[]).includes(sentKey)) continue;
+    const name = `${lease.first||''} ${lease.last||''}`.trim();
+    try {
+      const { error } = await resend.emails.send({
+        from: 'MG Realty <matt@mgoldenrealty.com>',
+        to: 'goldenmb@gmail.com',
+        subject: `📋 6-month lease check-in — ${name} @ ${lease.address}`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h2 style="margin:0 0 12px">6-Month Lease Check-In</h2>
+          <p><strong>${name}</strong> is 6 months into their lease at <strong>${lease.address}</strong>.</p>
+          <p>Good time to reach out, see how things are going, and start thinking about renewal. Lease ends: <strong>${lease.endDate || 'unknown'}</strong>.</p>
+          <p style="margin-top:20px;color:#555;font-size:12px">— MG Realty automated reminder</p>
+        </div>`
+      });
+      if (!error) {
+        if (!lease.remindersSent) lease.remindersSent = [];
+        lease.remindersSent.push(sentKey);
+        sent++;
+        console.log(`6-month check-in reminder sent for ${name}`);
+      }
+    } catch(e) { console.error('6-month check-in email failed:', e.message); }
+  }
+
+  // ── Renewal reminders TO TENANT ──────────────────────────────
   for (const lease of leases) {
     if (!lease.endDate || !lease.email) continue;
     const daysLeft = Math.round((new Date(lease.endDate+'T12:00:00') - new Date(today)) / 86400000);
@@ -5626,6 +5657,27 @@ app.get('/tracker/:token', async (req, res) => {
   } catch(e) {
     console.error('TRACKER ERROR:', e.message);
     res.status(500).send('Server error');
+  }
+});
+
+// ── Admin: delete lead by name ────────────────────────────────
+app.delete('/api/admin/lead', async (req, res) => {
+  try {
+    const { first, last } = req.body;
+    if (!first && !last) return res.status(400).json({ ok: false, error: 'Provide first and/or last name' });
+    const crm = await readCRM();
+    const before = crm.leads.length;
+    crm.leads = crm.leads.filter(l => {
+      const nameMatch = `${l.first||''} ${l.last||''}`.toLowerCase();
+      const search = `${first||''} ${last||''}`.toLowerCase().trim();
+      return !nameMatch.includes(search);
+    });
+    const removed = before - crm.leads.length;
+    if (!removed) return res.status(404).json({ ok: false, error: 'No matching lead found' });
+    await writeCRM(crm);
+    res.json({ ok: true, removed, remaining: crm.leads.length });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
