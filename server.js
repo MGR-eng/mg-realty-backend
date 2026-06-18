@@ -5660,6 +5660,26 @@ app.get('/tracker/:token', async (req, res) => {
   }
 });
 
+// ── Admin: find name anywhere in CRM ─────────────────────────
+app.get('/api/admin/find', async (req, res) => {
+  try {
+    const q = (req.query.q || '').toLowerCase();
+    if (!q) return res.status(400).json({ ok: false, error: 'Provide ?q=name' });
+    const crm = await readCRM();
+    const results = {};
+    const arrays = ['leads','appointments','acts','tasks','sequences','vendors','agents','leases','deals'];
+    for (const arr of arrays) {
+      const matches = (crm[arr] || []).filter(item =>
+        JSON.stringify(item).toLowerCase().includes(q)
+      );
+      if (matches.length) results[arr] = matches.map(m => ({ id: m.id, name: `${m.first||''} ${m.last||m.leadName||m.name||''}`.trim(), raw: m }));
+    }
+    res.json({ ok: true, query: q, results });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Admin: delete lead by name ────────────────────────────────
 app.delete('/api/admin/lead', async (req, res) => {
   try {
