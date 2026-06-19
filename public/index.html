@@ -11069,19 +11069,71 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── Newsletter Builder ─────────────────────────────────────────
 var nlListingCount = 0;
 
+var NL_HOODS_DEFAULT = ['Silver Lake','Los Feliz','Echo Park','Highland Park','Atwater Village','West Hollywood','Brentwood','Santa Monica','Venice','Culver City','Pacific Palisades','Beverly Hills'];
+var nlSelectedHoods = [];
+
+function nlToggleHood(name, el) {
+  var idx = nlSelectedHoods.indexOf(name);
+  if (idx > -1) {
+    nlSelectedHoods.splice(idx, 1);
+    el.style.background = 'transparent';
+    el.style.color = 'var(--text2)';
+    el.style.borderColor = 'var(--border)';
+  } else {
+    nlSelectedHoods.push(name);
+    el.style.background = 'var(--accent)';
+    el.style.color = '#fff';
+    el.style.borderColor = 'var(--accent)';
+  }
+}
+
+function nlAddCustomHood() {
+  var input = document.getElementById('nl-custom-hood');
+  if (!input || !input.value.trim()) return;
+  var name = input.value.trim();
+  input.value = '';
+  if (nlSelectedHoods.includes(name)) return;
+  // Add chip dynamically
+  var container = document.getElementById('nl-hood-chips');
+  if (!container) return;
+  var chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'btn';
+  chip.style.cssText = 'font-size:12px;padding:4px 10px;background:var(--accent);color:#fff;border-color:var(--accent)';
+  chip.innerText = name;
+  chip.onclick = function() { nlToggleHood(name, chip); };
+  container.appendChild(chip);
+  nlToggleHood(name, chip);
+}
+
+function nlRenderHoodPicker() {
+  nlSelectedHoods = [];
+  return '<div class="tw" style="padding:14px;margin-bottom:14px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Neighborhoods to pull data for</div>' +
+      '<button class="btn" id="nl-pull-btn" onclick="nlPullLiveData()" style="font-size:13px;color:var(--accent);border-color:var(--accent)"><i class="ti ti-refresh"></i> Pull Live Data</button>' +
+    '</div>' +
+    '<div id="nl-hood-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">' +
+      NL_HOODS_DEFAULT.map(function(n) {
+        return '<button type="button" class="btn" onclick="nlToggleHood(\'' + n + '\', this)" style="font-size:12px;padding:4px 10px;background:transparent;color:var(--text2);border:1px solid var(--border)">' + n + '</button>';
+      }).join('') +
+    '</div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<input id="nl-custom-hood" placeholder="Add custom neighborhood..." style="flex:1" onkeydown="if(event.key===\'Enter\'){nlAddCustomHood();event.preventDefault();}">' +
+      '<button class="btn" onclick="nlAddCustomHood()" style="font-size:12px;white-space:nowrap"><i class="ti ti-plus"></i> Add</button>' +
+    '</div>' +
+  '</div>';
+}
+
 function nlPullLiveData() {
   var type = document.getElementById('nl-type').value;
   var btn = document.getElementById('nl-pull-btn');
   if (!btn) return;
-  btn.innerHTML = '<i class="ti ti-loader-2"></i> Pulling live data...';
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Pulling...';
   btn.disabled = true;
 
-  // Collect any neighborhoods already entered for westside type
-  var neighborhoods = [];
-  ['ws-n1','ws-n2','ws-n3'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el && el.value) neighborhoods.push(el.value);
-  });
+  // Use selected chips, fall back to default list if none chosen
+  var neighborhoods = nlSelectedHoods.length ? nlSelectedHoods.slice() : NL_HOODS_DEFAULT.slice(0, 6);
 
   fetch('/api/newsletter-market-data', {
     method: 'POST',
@@ -11105,9 +11157,7 @@ function nlPullLiveData() {
       if (d.marketTemp && document.getElementById('nl-market-temp')) {
         var sel = document.getElementById('nl-market-temp');
         for (var i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].text.toLowerCase().includes(d.marketTemp.toLowerCase().split(' ')[0])) {
-            sel.selectedIndex = i; break;
-          }
+          if (sel.options[i].text.toLowerCase().includes(d.marketTemp.toLowerCase().split(' ')[0])) { sel.selectedIndex = i; break; }
         }
       }
     } else if (type === 'westside') {
@@ -11117,7 +11167,6 @@ function nlPullLiveData() {
       if (d.priceChange && document.getElementById('ws-stat-meaning')) {
         document.getElementById('ws-stat-meaning').value = document.getElementById('ws-stat-meaning').value || ('Prices are ' + d.priceChange + ' vs last month with ' + (d.daysOnMarket || '') + ' average days on market.');
       }
-      // Fill neighborhood updates
       if (d.neighborhoods && d.neighborhoods.length) {
         d.neighborhoods.forEach(function(n, i) {
           var nameEl = document.getElementById('ws-n' + (i+1));
@@ -11127,14 +11176,12 @@ function nlPullLiveData() {
         });
       }
     }
-
-    var src = d.source ? ' · Source: ' + d.source : '';
-    toast('Live data pulled!' + src);
+    toast('Live data pulled!' + (d.source ? ' · ' + d.source : ''));
   })
   .catch(function() {
     btn.innerHTML = '<i class="ti ti-refresh"></i> Pull Live Data';
     btn.disabled = false;
-    toast('Failed to pull data — check connection and try again');
+    toast('Failed to pull data — try again');
   });
 }
 
@@ -11157,10 +11204,8 @@ function nlSwitchType(type) {
 
   if (type === 'monthly') {
     fields.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
-        '<div><label style="margin:0">Month &amp; year</label><input id="nl-month" placeholder="e.g. June 2026" style="margin-top:4px"></div>' +
-        '<button class="btn" id="nl-pull-btn" onclick="nlPullLiveData()" style="font-size:13px;color:var(--accent);border-color:var(--accent);white-space:nowrap"><i class="ti ti-refresh"></i> Pull Live Data</button>' +
-      '</div>' +
+      nlRenderHoodPicker() +
+      '<div style="margin-bottom:16px"><label>Month &amp; year</label><input id="nl-month" placeholder="e.g. June 2026"></div>' +
       '<div class="tw" style="padding:16px;margin-bottom:14px">' +
         '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Market Stats</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">' +
@@ -11199,10 +11244,7 @@ function nlSwitchType(type) {
 
   } else if (type === 'westside') {
     fields.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
-        '<div style="font-size:13px;color:var(--text2)">Enter your neighborhoods first, then pull live data to auto-fill stats.</div>' +
-        '<button class="btn" id="nl-pull-btn" onclick="nlPullLiveData()" style="font-size:13px;color:var(--accent);border-color:var(--accent);white-space:nowrap"><i class="ti ti-refresh"></i> Pull Live Data</button>' +
-      '</div>' +
+      nlRenderHoodPicker() +
       '<div class="tw" style="padding:16px;margin-bottom:14px">' +
         '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Lead Stat</div>' +
         '<div style="margin-bottom:8px"><label>The one stat that matters this week</label><input id="ws-stat" placeholder="e.g. WeHo inventory just hit a 6-month low"></div>' +
