@@ -6061,52 +6061,61 @@ app.post('/api/scan-tx-doc', async (req, res) => {
     const { data: b64, mimeType = 'application/pdf', filename = '' } = req.body;
     if (!b64) return res.status(400).json({ ok: false, error: 'No file data' });
 
-    // Use Claude vision to extract transaction fields
-    const prompt = `You are reviewing a California real estate transaction document (${filename || 'contract/agreement'}).
-Extract all of the following fields you can find. Return ONLY a JSON object — no extra text, no markdown.
+    const prompt = `You are reviewing a California real estate transaction document: "${filename || 'contract'}".
+Extract every field you can find. Return ONLY a valid JSON object with no extra text, no markdown fences.
 
-Fields to extract:
 {
   "address": "full property address",
-  "salePrice": "numeric sale price as number, no $ sign",
-  "commissionPct": "buyer or listing agent commission % as number e.g. 2.5",
-  "closeDate": "YYYY-MM-DD escrow close / closing date",
-  "offerDate": "YYYY-MM-DD date offer was made",
-  "inspectionDeadline": "YYYY-MM-DD inspection contingency deadline",
-  "contingencyRemoval": "YYYY-MM-DD all contingencies removal date",
-  "loanApprovalDeadline": "YYYY-MM-DD loan approval deadline",
+  "salePrice": numeric sale price as a plain number (no $ or commas),
+  "commissionPct": commission % as a plain number e.g. 2.5,
+  "closeDate": "YYYY-MM-DD",
+  "offerDate": "YYYY-MM-DD",
+  "inspectionDeadline": "YYYY-MM-DD",
+  "contingencyRemoval": "YYYY-MM-DD",
+  "loanApprovalDeadline": "YYYY-MM-DD",
   "buyerName": "full buyer name(s)",
   "sellerName": "full seller name(s)",
-  "coopBrokerage": "cooperating brokerage name if visible",
-  "earnestMoney": "earnest money deposit amount as number",
-  "notes": "any other important notes, conditions, or contingencies in 1-2 sentences"
+  "escrowName": "escrow officer name",
+  "escrowCompany": "escrow company name",
+  "escrowPhone": "escrow phone",
+  "escrowEmail": "escrow email",
+  "escrowNum": "escrow number / file number",
+  "lenderName": "loan officer name",
+  "lenderCompany": "lender / mortgage company",
+  "coopBrokerage": "cooperating brokerage",
+  "earnestMoney": earnest money deposit as plain number,
+  "notes": "any important conditions or contingencies in 1-2 sentences"
 }
 
-If a field is not found in the document, omit it from the JSON. Only include fields you actually see.`;
+Omit any field not found in the document. Return only what you can actually read.`;
 
-    const msgContent = [
-      {
-        type: 'image',
-        source: { type: 'base64', media_type: mimeType, data: b64 }
-      },
-      { type: 'text', text: prompt }
-    ];
-
-    // For PDFs, Claude can't read them as images — send as text hint
     const isPdf = mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');
-    const messages = isPdf
-      ? [{ role: 'user', content: [{ type: 'text', text: `[PDF document: ${filename}]\n\n${prompt}\n\nNote: the base64 document is provided but may not be directly readable as an image. Do your best with what you can extract. If you cannot read the document, return: {"error":"Unable to read PDF — please use an image or text-based document"}` }] }]
-      : [{ role: 'user', content: msgContent }];
+
+    // Build the content block — PDFs use 'document', images use 'image'
+    const docBlock = isPdf
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
+      : { type: 'image',    source: { type: 'base64', media_type: mimeType,           data: b64 } };
 
     const result = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      messages
+      max_tokens: 1200,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          docBlock
+        ]
+      }],
+      ...(isPdf ? { betas: ['pdfs-2024-09-25'] } : {})
     });
 
-    const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('');
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return res.json({ ok: false, error: 'Could not parse document fields', raw });
+    const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    console.log('SCAN TX DOC raw:', raw.substring(0, 300));
+
+    // Strip any accidental markdown fences
+    const cleaned = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) return res.json({ ok: false, error: 'No JSON found in response. Is the document readable?', raw: raw.substring(0,400) });
     const fields = JSON.parse(match[0]);
     res.json({ ok: true, fields });
   } catch (e) {

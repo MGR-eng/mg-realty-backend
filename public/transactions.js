@@ -721,32 +721,43 @@ async function scanTxDoc(file) {
     var f = d.fields;
 
     // Auto-fill form fields
-    var setVal = function(id, val) { if (val !== undefined && val !== null && val !== '') { var el = document.getElementById(id); if(el) el.value = val; } };
-    setVal('tx-address', f.address);
-    setVal('tx-price', f.salePrice ? '$' + Number(f.salePrice).toLocaleString() : null);
-    setVal('tx-commission', f.commissionPct);
-    setVal('tx-closingdate', f.closeDate);
-    setVal('tx-offer-date', f.offerDate);
-    setVal('tx-inspection-date', f.inspectionDeadline);
+    var setVal = function(id, val) {
+      if (val === undefined || val === null || val === '') return;
+      var el = document.getElementById(id); if(el) el.value = val;
+    };
+    setVal('tx-address',          f.address);
+    setVal('tx-price',            f.salePrice ? '$' + Number(f.salePrice).toLocaleString() : null);
+    setVal('tx-commission',       f.commissionPct);
+    setVal('tx-closingdate',      f.closeDate);
+    setVal('tx-offer-date',       f.offerDate);
+    setVal('tx-inspection-date',  f.inspectionDeadline);
     setVal('tx-contingency-date', f.contingencyRemoval);
-    setVal('tx-loan-date', f.loanApprovalDeadline);
-    setVal('tx-coop-brokerage', f.coopBrokerage);
+    setVal('tx-loan-date',        f.loanApprovalDeadline);
+    setVal('tx-coop-brokerage',   f.coopBrokerage);
+    // Escrow
+    setVal('tx-escrow-name',      f.escrowName);
+    setVal('tx-escrow-company',   f.escrowCompany);
+    setVal('tx-escrow-phone',     f.escrowPhone);
+    setVal('tx-escrow-email',     f.escrowEmail);
+    setVal('tx-escrow-num',       f.escrowNum);
+    // Lender
+    setVal('tx-lender-name',      f.lenderName);
+    setVal('tx-lender-company',   f.lenderCompany);
+    setVal('tx-lender-phone',     f.lenderPhone);
+    setVal('tx-lender-email',     f.lenderEmail);
+    // Notes
     if (f.notes) {
       var notesEl = document.getElementById('tx-notes');
       if (notesEl) notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + f.notes;
     }
-
     // Try to match buyer/seller to a lead
-    if (f.buyerName || f.sellerName) {
-      var nameToSearch = f.buyerName || f.sellerName;
+    var nameToSearch = f.buyerName || f.sellerName || '';
+    if (nameToSearch) {
       var parts = nameToSearch.split(' ');
-      var matched = (leads||[]).find(function(l) {
+      var matched = (typeof leads !== 'undefined' ? leads : []).find(function(l) {
         return parts.some(function(p) { return p.length > 2 && (l.first+' '+l.last).toLowerCase().includes(p.toLowerCase()); });
       });
-      if (matched) {
-        var ldEl = document.getElementById('tx-lead');
-        if (ldEl) ldEl.value = matched.id;
-      }
+      if (matched) { var ldEl = document.getElementById('tx-lead'); if(ldEl) ldEl.value = matched.id; }
     }
 
     if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✓ Fields auto-filled from ' + file.name; }
