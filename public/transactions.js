@@ -595,7 +595,6 @@ function saveTx() {
     hoaDues:           g('tx-hoa-dues'),
     // Financials
     earnestMoney:      g('tx-earnest'),
-    earnestDue:        g('tx-earnest-due'),
     earnestDeposited:  !!(document.getElementById('tx-earnest-deposited')?.checked),
     loanType:          document.getElementById('tx-loan-type')?.value || '',
     loanAmount:        g('tx-loan-amount'),
