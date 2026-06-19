@@ -371,6 +371,7 @@ function openEditTx(id) {
   var fmap = {
     'tx-address':d.address,'tx-price':d.salePrice?'$'+Number(d.salePrice).toLocaleString():'',
     'tx-commission':d.commissionPct,'tx-closingdate':d.closeDate,'tx-offer-date':d.offerDate,
+    'tx-earnest-due-date':d.earnestDue,'tx-seller-docs-date':d.sellerDocsDue,
     'tx-inspection-date':d.inspectionDeadline,'tx-contingency-date':d.contingencyRemoval,
     'tx-loan-date':d.loanApprovalDeadline,'tx-coop-brokerage':d.coopBrokerage,'tx-notes':d.notes,
     'tx-escrow-name':d.escrowName,'tx-escrow-company':d.escrowCompany,
@@ -549,8 +550,10 @@ function saveTx() {
     address:           g('tx-address'),
     salePrice:         rawPrice,
     commissionPct:     g('tx-commission'),
-    closeDate:         g('tx-closingdate'),
-    offerDate:         g('tx-offer-date'),
+    closeDate:          g('tx-closingdate'),
+    offerDate:          g('tx-offer-date'),
+    earnestDue:         g('tx-earnest-due-date'),
+    sellerDocsDue:      g('tx-seller-docs-date'),
     inspectionDeadline: g('tx-inspection-date'),
     contingencyRemoval: g('tx-contingency-date'),
     loanApprovalDeadline: g('tx-loan-date'),
@@ -769,11 +772,13 @@ async function scanTxDoc(file) {
     setVal('tx-address',          f.address);
     setVal('tx-price',            f.salePrice ? '$' + Number(f.salePrice).toLocaleString() : null);
     setVal('tx-commission',       f.commissionPct);
-    setVal('tx-closingdate',      f.closeDate);
-    setVal('tx-offer-date',       f.offerDate);
-    setVal('tx-inspection-date',  f.inspectionDeadline);
-    setVal('tx-contingency-date', f.contingencyRemoval);
-    setVal('tx-loan-date',        f.loanApprovalDeadline);
+    setVal('tx-closingdate',       f.closeDate);
+    setVal('tx-offer-date',        f.offerDate);
+    setVal('tx-earnest-due-date',  f.earnestDue);
+    setVal('tx-seller-docs-date',  f.sellerDocsDue);
+    setVal('tx-inspection-date',   f.inspectionDeadline);
+    setVal('tx-contingency-date',  f.contingencyRemoval);
+    setVal('tx-loan-date',         f.loanApprovalDeadline);
     setVal('tx-coop-brokerage',   f.coopBrokerage);
     // Escrow
     setVal('tx-escrow-name',      f.escrowName);
@@ -994,28 +999,11 @@ function renderTxDetail(d) {
     '</div>';
   };
 
-  // Key dates timeline
-  var keyDates = [
-    ['Offer Date', d.offerDate],
-    ['Earnest Money Due', d.earnestDue],
-    ['Inspection Deadline', d.inspectionDeadline],
-    ['Contingency Removal', d.contingencyRemoval],
-    ['Loan Approval', d.loanApprovalDeadline],
-    ['Close Date', d.closeDate]
-  ];
+  // Escrow calendar view
   var timelineHtml = '<div class="tw" style="padding:16px 18px;margin-bottom:14px">' +
-    '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Key Dates</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">' +
-    keyDates.map(function(kd) {
-      var today = new Date(); today.setHours(0,0,0,0);
-      var past = kd[1] && new Date(kd[1]+'T00:00:00') < today;
-      return '<div style="padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid '+(past?'rgba(74,222,128,0.25)':'var(--border)')+'">' +
-        '<div style="font-size:10px;color:var(--text3);margin-bottom:3px">'+kd[0]+'</div>' +
-        '<div style="font-size:12px;font-weight:600">'+(kd[1] ? fmtDate(kd[1]) : '<span style="color:var(--text3)">—</span>')+'</div>' +
-        (past && kd[1] ? '<div style="font-size:9px;color:var(--green);margin-top:2px">✓ Done</div>' : '') +
-      '</div>';
-    }).join('') +
-    '</div></div>';
+    '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">Escrow Calendar</div>' +
+    renderTxCalendar(d) +
+    '</div>';
 
   // Stat bar
   var commission = d.salePrice && d.commissionPct ? (Number(d.salePrice)*Number(d.commissionPct)/100) : 0;
@@ -1090,11 +1078,12 @@ function renderTxDetail(d) {
   var notesHtml = d.notes ? '<div class="tw" style="padding:14px 18px;margin-bottom:14px"><div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Notes</div><div style="font-size:13px;color:var(--text);line-height:1.6">'+d.notes.replace(/\n/g,'<br>')+'</div></div>' : '';
 
   // Client tracker link
-  var trackerHtml = d.trackerToken ? '<div class="tw" style="padding:14px 18px;margin-bottom:14px">' +
+  var trackerUrl = d.trackerToken ? 'https://mg-realty-backend.onrender.com/tracker/' + d.trackerToken : '';
+  var trackerHtml = trackerUrl ? '<div class="tw" style="padding:14px 18px;margin-bottom:14px">' +
     '<div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">🔗 Client Tracker</div>' +
     '<div style="display:flex;gap:8px;align-items:center">' +
-    '<input type="text" readonly value="https://mg-realty-backend.onrender.com/tracker/'+d.trackerToken+'" style="flex:1;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text2)" onclick="this.select()">' +
-    '<button onclick="navigator.clipboard.writeText(\'https://mg-realty-backend.onrender.com/tracker/'+d.trackerToken+'\')" class="btn btn-sm" style="background:rgba(74,222,128,0.12);color:var(--green);border-color:rgba(74,222,128,0.3)">Copy</button>' +
+    '<input id="tx-tracker-url" type="text" readonly value="' + trackerUrl + '" style="flex:1;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text2)" onclick="this.select()">' +
+    '<button onclick="txCopyTracker()" class="btn btn-sm" style="background:rgba(74,222,128,0.12);color:var(--green);border-color:rgba(74,222,128,0.3)">Copy</button>' +
     '</div></div>' : '';
 
   return '<div style="max-width:900px;margin:0 auto">' +
@@ -1136,4 +1125,112 @@ function renderTxChecklistCompact(checklist) {
   return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px 24px">' +
     blocks.join('') +
   '</div>';
+}
+
+// ── Copy tracker URL ─────────────────────────────────────────
+function txCopyTracker() {
+  var inp = document.getElementById('tx-tracker-url');
+  if (!inp) return;
+  var url = inp.value;
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(url).then(function() {
+      if (typeof toast === 'function') toast('Link copied!');
+    }).catch(function() { txCopyFallback(inp); });
+  } else {
+    txCopyFallback(inp);
+  }
+}
+function txCopyFallback(inp) {
+  inp.select(); inp.setSelectionRange(0, 99999);
+  try { document.execCommand('copy'); if (typeof toast === 'function') toast('Link copied!'); }
+  catch(e) { if (typeof toast === 'function') toast('Select & copy manually'); }
+}
+
+// ── Transaction deadline calendar ────────────────────────────
+var TX_CAL_EVENTS = [
+  { field:'offerDate',           label:'Date of Acceptance',  color:'#60A5FA' },
+  { field:'earnestDue',          label:'Earnest Money Due',   color:'#FBBF24' },
+  { field:'sellerDocsDue',       label:'Seller Docs Due',     color:'#A78BFA' },
+  { field:'inspectionDeadline',  label:'Inspection',          color:'#F97316' },
+  { field:'contingencyRemoval',  label:'Full Contingency',    color:'#FB923C' },
+  { field:'loanApprovalDeadline',label:'Loan Approval',       color:'#EF4444' },
+  { field:'closeDate',           label:'Closing Day!',        color:'#4ADE80' }
+];
+
+function renderTxCalendar(d) {
+  var events = {};
+  TX_CAL_EVENTS.forEach(function(ev) {
+    if (d[ev.field]) {
+      if (!events[d[ev.field]]) events[d[ev.field]] = [];
+      events[d[ev.field]].push(ev);
+    }
+  });
+  var dateKeys = Object.keys(events).sort();
+  if (!dateKeys.length) return '<div style="font-size:12px;color:var(--text3);padding:8px 0">No dates set — edit the transaction to add key dates.</div>';
+
+  var startDate = new Date(dateKeys[0] + 'T00:00:00');
+  var endDate   = new Date(dateKeys[dateKeys.length-1] + 'T00:00:00');
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  // Build months to render
+  var months = [];
+  var cur = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  var end = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+  while (cur <= end) { months.push(new Date(cur)); cur.setMonth(cur.getMonth()+1); }
+
+  var today = new Date(); today.setHours(0,0,0,0);
+
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:20px">';
+  months.forEach(function(month) {
+    var yr  = month.getFullYear();
+    var mo  = month.getMonth();
+    var dim = new Date(yr, mo+1, 0).getDate();
+    var fd  = new Date(yr, mo, 1).getDay();
+
+    html += '<div style="flex:1;min-width:260px;max-width:320px">';
+    html += '<div style="text-align:center;font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">' + MONTHS[mo] + ' ' + yr + '</div>';
+
+    // Day headers
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px">';
+    DAYS.forEach(function(day){ html += '<div style="text-align:center;font-size:9px;font-weight:700;color:var(--text3);padding:2px 0">' + day + '</div>'; });
+    html += '</div>';
+
+    // Calendar grid
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+    for (var i = 0; i < fd; i++) html += '<div></div>';
+    for (var day = 1; day <= dim; day++) {
+      var ds = yr + '-' + String(mo+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+      var evs = events[ds] || [];
+      var thisDay = new Date(yr, mo, day);
+      var isToday = thisDay.getTime() === today.getTime();
+      var isPast  = thisDay < today;
+      var hasEv   = evs.length > 0;
+      var mainColor = hasEv ? evs[0].color : (isToday ? 'var(--accent)' : 'transparent');
+
+      html += '<div style="min-height:' + (hasEv?'56':'32') + 'px;background:' + (hasEv ? evs[0].color+'18' : (isToday?'var(--accent)0d':'transparent')) + ';border-radius:6px;border:1px solid ' + (hasEv ? evs[0].color+'55' : (isToday?'var(--accent)':'transparent')) + ';padding:3px 2px;text-align:center">';
+      html += '<div style="font-size:11px;font-weight:' + (hasEv||isToday?'700':'400') + ';color:' + (hasEv ? evs[0].color : (isToday?'var(--accent)':(isPast?'var(--text3)':'var(--text)'))) + '">' + day + '</div>';
+      evs.forEach(function(ev){
+        html += '<div style="font-size:8px;font-weight:600;color:' + ev.color + ';line-height:1.2;word-break:break-word;margin-top:2px">' + ev.label + '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div>';
+
+  // Legend
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">';
+  TX_CAL_EVENTS.forEach(function(ev) {
+    if (!d[ev.field]) return;
+    var dt = new Date(d[ev.field]+'T00:00:00');
+    var label = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    html += '<div style="display:flex;align-items:center;gap:4px;font-size:11px;background:'+ev.color+'15;border:1px solid '+ev.color+'44;border-radius:6px;padding:3px 8px">';
+    html += '<span style="width:8px;height:8px;border-radius:50%;background:'+ev.color+';flex-shrink:0;display:inline-block"></span>';
+    html += '<span style="color:'+ev.color+';font-weight:600">'+label+'</span>';
+    html += '<span style="color:var(--text2)">'+ev.label+'</span></div>';
+  });
+  html += '</div>';
+
+  return html;
 }

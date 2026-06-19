@@ -3212,6 +3212,8 @@ SEND EMAIL: {"action":"send_email_template","leadName":"...","email":"...","subj
 SEND DIGEST: {"action":"send_digest"}
 MARKET REPORT: {"action":"market_report","neighborhood":"Silver Lake"}
 → Use when Matt asks "what's the market like in [area]?", "pull a market report for [neighborhood]", "what's the current data on [area]", "how's the market in [area]", "what are homes selling for in [area]", etc. Pull neighborhood name from his message.
+CRM QUERY: {"action":"crm_query","question":"when does Alsace close","topic":"transaction"}
+→ Use when Matt asks a specific question about a deal, lead, or contact from his CRM. Examples: "when does Alsace close", "what's my commission on Tocco", "who's the escrow officer on Alsace", "what stage is Kim in", "what's Sarah's phone number", "how many active deals do I have". Always use this — never guess from memory.
 NO ACTION: {"action":"none"}
 
 === RESPONSE RULES ===
@@ -3243,7 +3245,65 @@ NO ACTION: {"action":"none"}
         console.log('SMS action:', JSON.stringify(action));
         reply = lines.filter(l => !l.startsWith('{')).join('\n').trim() || raw;
 
-        if (action.action === 'market_report') {
+        if (action.action === 'crm_query') {
+          try {
+            const freshCrm = await readCRM();
+            const deals = (freshCrm.deals || []).filter(d => d.txStage);
+            const leads = freshCrm.leads || [];
+            const vendors = freshCrm.vendors || [];
+            const crmContext = `
+ACTIVE TRANSACTIONS:
+${JSON.stringify(deals.map(d => ({
+  address: d.address,
+  stage: d.txStage,
+  side: d.side,
+  salePrice: d.salePrice,
+  listPrice: d.listPrice,
+  commissionPct: d.commissionPct,
+  closeDate: d.closeDate,
+  offerDate: d.offerDate,
+  earnestDue: d.earnestDue,
+  contingencyRemoval: d.contingencyRemoval,
+  loanApprovalDeadline: d.loanApprovalDeadline,
+  sellerDocsDue: d.sellerDocsDue,
+  buyerName: d.buyerName,
+  sellerName: d.sellerName,
+  escrowName: d.escrowName,
+  escrowCompany: d.escrowCompany,
+  escrowPhone: d.escrowPhone,
+  escrowEmail: d.escrowEmail,
+  tcName: d.tcName,
+  lenderName: d.lenderName,
+  coopAgent: d.coopAgent,
+  coopBrokerage: d.coopBrokerage,
+  mlsNum: d.mlsNum,
+  notes: d.notes
+})))}
+
+LEADS (active):
+${JSON.stringify(leads.filter(l => l.temp !== 'done').slice(0, 30).map(l => ({
+  name: l.first + ' ' + l.last,
+  phone: l.phone,
+  email: l.email,
+  stage: l.stage,
+  temp: l.temp,
+  budget: l.budget,
+  notes: l.notes,
+  followup: l.followup
+})))}`;
+
+            const qResult = await anthropic.messages.create({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 300,
+              system: `You are Matt's real estate assistant. Answer his CRM question directly and concisely using the data below. Be specific — give exact dates, names, numbers. Under 160 chars if possible, 280 max.\n\n${crmContext}`,
+              messages: [{ role: 'user', content: action.question || inboundMsg }]
+            });
+            reply = qResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+          } catch(e) {
+            console.error('CRM query error:', e.message);
+            reply = `⚠️ Couldn't query CRM right now: ${e.message}`;
+          }
+        } else if (action.action === 'market_report') {
           const hood = action.neighborhood || 'Los Angeles';
           reply = `🏠 Pulling live market data for ${hood}... texting you the report in a moment!`;
           // Fire and forget — web search takes a few seconds
@@ -6061,32 +6121,39 @@ app.post('/api/scan-tx-doc', async (req, res) => {
     const { data: b64, mimeType = 'application/pdf', filename = '' } = req.body;
     if (!b64) return res.status(400).json({ ok: false, error: 'No file data' });
 
-    const prompt = `You are reviewing a California real estate transaction document: "${filename || 'contract'}".
+    const prompt = `You are reviewing a California real estate document: "${filename || 'document'}". This may be a purchase contract, RPA, escrow calendar, contact sheet, or closing disclosure.
 Extract every field you can find. Return ONLY a valid JSON object with no extra text, no markdown fences.
 
 {
   "address": "full property address",
-  "salePrice": numeric sale price as a plain number (no $ or commas),
-  "commissionPct": commission % as a plain number e.g. 2.5,
+  "salePrice": numeric sale price as plain number (no $ or commas),
+  "commissionPct": commission % as plain number e.g. 2.5,
   "closeDate": "YYYY-MM-DD",
-  "offerDate": "YYYY-MM-DD",
+  "offerDate": "YYYY-MM-DD or date of acceptance",
+  "earnestDue": "YYYY-MM-DD earnest money due date",
+  "sellerDocsDue": "YYYY-MM-DD seller documents due date",
   "inspectionDeadline": "YYYY-MM-DD",
-  "contingencyRemoval": "YYYY-MM-DD",
+  "contingencyRemoval": "YYYY-MM-DD full contingency removal date",
   "loanApprovalDeadline": "YYYY-MM-DD",
   "buyerName": "full buyer name(s)",
   "sellerName": "full seller name(s)",
+  "coopAgent": "buyer's agent name if present",
+  "coopBrokerage": "buyer's agent brokerage",
   "escrowName": "escrow officer name",
   "escrowCompany": "escrow company name",
   "escrowPhone": "escrow phone",
   "escrowEmail": "escrow email",
-  "escrowNum": "escrow number / file number",
+  "escrowNum": "escrow/file number",
+  "tcName": "transaction coordinator name",
+  "tcEmail": "TC email",
+  "tcPhone": "TC phone",
   "lenderName": "loan officer name",
   "lenderCompany": "lender / mortgage company",
-  "coopBrokerage": "cooperating brokerage",
-  "earnestMoney": earnest money deposit as plain number,
-  "notes": "any important conditions or contingencies in 1-2 sentences"
+  "earnestMoney": earnest money amount as plain number,
+  "notes": "any important conditions or notes in 1-2 sentences"
 }
 
+For escrow calendars: read the calendar grid carefully — look for labeled dates like "Date of Acceptance", "Earnest Money Due", "Seller Documents Due", "Full Contingency Due", "Closing Day" and extract their YYYY-MM-DD dates. Contact info sections list escrow officer, TC, buyer/seller agents — extract all of it.
 Omit any field not found in the document. Return only what you can actually read.`;
 
     const isPdf = mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');
