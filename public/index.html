@@ -2978,21 +2978,49 @@ async function syncFromBackend(){
     if(!ok||!data){console.warn('Sync returned no data');toast('Sync error: no data','err');return;}
     let changed=false;
     const deletedIds = getDeletedIds();
-    // Merge: add remote items not already in local, but never re-add deleted leads
-    const mergeIn = (local, remote) => {
+
+    // Merge: add remote items not in local (respects deletions for leads)
+    const mergeIn = (local, remote, respectDeleted) => {
       if(!Array.isArray(remote)) return local;
       const localIds = new Set(local.map(x=>x.id));
-      const toAdd = remote.filter(x => !localIds.has(x.id) && !deletedIds.has(x.id));
+      const toAdd = remote.filter(x => !localIds.has(x.id) && (!respectDeleted || !deletedIds.has(x.id)));
       return toAdd.length ? [...local, ...toAdd] : local;
     };
-    const newLeads = mergeIn(leads, data.leads);
+    // Full restore: if local is empty but remote has data, take remote wholesale
+    const restoreIfEmpty = (local, remote) => {
+      if(!Array.isArray(remote) || !remote.length) return local;
+      if(!local.length) return remote;
+      return mergeIn(local, remote, false);
+    };
+
+    // Core arrays (merge with deletion awareness)
+    const newLeads = mergeIn(leads, data.leads, true);
     if(newLeads.length !== leads.length){leads=newLeads;changed=true;}
-    const newActs = mergeIn(acts, data.activities);
+    const newActs = mergeIn(acts, data.activities, false);
     if(newActs.length !== acts.length){acts=newActs;changed=true;}
-    const newAppts = mergeIn(appts, data.appointments);
+    const newAppts = mergeIn(appts, data.appointments, false);
     if(newAppts.length !== appts.length){appts=newAppts;changed=true;}
-    const newTasks = mergeIn(tasks, data.tasks);
+    const newTasks = mergeIn(tasks, data.tasks, false);
     if(newTasks.length !== tasks.length){tasks=newTasks;changed=true;}
+
+    // Reference arrays — restore from server if locally empty (critical for agents, deals, vendors, etc.)
+    const newAgents = restoreIfEmpty(agents, data.agents);
+    if(newAgents.length !== agents.length){agents=newAgents;changed=true;}
+    const newDeals = restoreIfEmpty(deals, data.deals);
+    if(newDeals.length !== deals.length){deals=newDeals;changed=true;}
+    const newVendors = restoreIfEmpty(vendors, data.vendors);
+    if(newVendors.length !== vendors.length){vendors=newVendors;changed=true;}
+    const newLeases = restoreIfEmpty(leases, data.leases);
+    if(newLeases.length !== leases.length){leases=newLeases;changed=true;}
+    const newOffers = restoreIfEmpty(offers, data.offers);
+    if(newOffers.length !== offers.length){offers=newOffers;changed=true;}
+    const newProps = restoreIfEmpty(props, data.properties);
+    if(newProps.length !== props.length){props=newProps;changed=true;}
+    const newExpenses = restoreIfEmpty(expenses, data.expenses);
+    if(newExpenses.length !== expenses.length){expenses=newExpenses;changed=true;}
+    const newInvoices = restoreIfEmpty(invoices, data.invoices);
+    if(newInvoices.length !== invoices.length){invoices=newInvoices;changed=true;}
+
     if(changed){
       try{
         localStorage.setItem(SL,JSON.stringify(leads));
@@ -10739,6 +10767,44 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="fg"><label>Agent Name</label><select id="tx-coop-agent"><option value="">— none —</option></select></div>
         <div class="fg"><label>Brokerage</label><input id="tx-coop-brokerage" placeholder="Compass"></div>
       </div>
+
+      <!-- Escrow Officer -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Escrow Officer</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Name</label><input id="tx-escrow-name" placeholder="Jane Smith"></div>
+        <div class="fg"><label>Company</label><input id="tx-escrow-company" placeholder="First American Title"></div>
+        <div class="fg"><label>Phone</label><input id="tx-escrow-phone" placeholder="(310) 555-0100" type="tel"></div>
+        <div class="fg"><label>Email</label><input id="tx-escrow-email" placeholder="jane@firstam.com" type="email"></div>
+        <div class="fg" style="grid-column:1/-1"><label>Escrow #</label><input id="tx-escrow-num" placeholder="Escrow number / file #"></div>
+      </div>
+
+      <!-- Transaction Coordinator -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Transaction Coordinator</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Name</label><input id="tx-tc-name" placeholder="Alex Johnson"></div>
+        <div class="fg"><label>Company</label><input id="tx-tc-company" placeholder="TC Pro Services"></div>
+        <div class="fg"><label>Phone</label><input id="tx-tc-phone" placeholder="(310) 555-0101" type="tel"></div>
+        <div class="fg"><label>Email</label><input id="tx-tc-email" placeholder="alex@tcpro.com" type="email"></div>
+      </div>
+
+      <!-- Lender -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Lender / Loan Officer</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Name</label><input id="tx-lender-name" placeholder="Mike Rivera"></div>
+        <div class="fg"><label>Company</label><input id="tx-lender-company" placeholder="CrossCountry Mortgage"></div>
+        <div class="fg"><label>Phone</label><input id="tx-lender-phone" placeholder="(310) 555-0102" type="tel"></div>
+        <div class="fg"><label>Email</label><input id="tx-lender-email" placeholder="mike@ccmortgage.com" type="email"></div>
+      </div>
+
+      <!-- Transaction Contacts (Inspector, Contractor, etc.) -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">
+        Additional Contacts
+        <span style="font-weight:400;font-size:10px;color:var(--text3);text-transform:none;letter-spacing:0"> — inspector, contractor, handyman, etc. Saved to Vendors automatically.</span>
+      </div>
+      <div id="tx-contacts-list" style="margin-bottom:8px"></div>
+      <button type="button" onclick="txAddContact()" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text2);border-radius:8px;padding:8px;font-size:12px;cursor:pointer;margin-bottom:10px">
+        <i class="ti ti-plus"></i> Add Contact
+      </button>
       <!-- Tracker Link -->
       <div id="tx-tracker-box" style="display:none;margin:14px 0 4px;padding:10px 12px;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.25);border-radius:8px">
         <div style="font-size:10px;font-weight:700;color:#4ADE80;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🔗 Client Tracker Link — Share with your client</div>

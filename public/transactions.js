@@ -318,9 +318,7 @@ function openNewTx(stage) {
   _txCurrentMilestones = {};
   _txCurrentToken = generateTrackerToken();
   document.getElementById('tx-modal-title').textContent = 'New Transaction';
-  ['tx-address','tx-price','tx-commission','tx-closingdate','tx-offer-date','tx-inspection-date','tx-contingency-date','tx-loan-date','tx-coop-brokerage','tx-notes'].forEach(function(id) {
-    var el = document.getElementById(id); if(el) el.value = '';
-  });
+  txClearAllFields();
   var stageEl = document.getElementById('tx-stage'); if(stageEl) stageEl.value = stage || 'Offer Submitted';
   var sideEl = document.getElementById('tx-side'); if(sideEl) sideEl.value = 'Seller side';
   populateTxLeadDropdown('');
@@ -328,6 +326,7 @@ function openNewTx(stage) {
   renderTxChecklist({});
   renderTxMilestones({});
   renderTrackerLink(_txCurrentToken);
+  txRenderContacts([]);
   document.getElementById('tx-delete-btn').style.display = 'none';
   document.getElementById('mTransaction').style.display = 'flex';
 }
@@ -344,9 +343,7 @@ function openNewTxFromSeller(leadId) {
   _txCurrentMilestones = {};
   _txCurrentToken = generateTrackerToken();
   document.getElementById('tx-modal-title').textContent = 'New Transaction — ' + lead.first + ' ' + lead.last;
-  ['tx-address','tx-price','tx-commission','tx-closingdate','tx-offer-date','tx-inspection-date','tx-contingency-date','tx-loan-date','tx-coop-brokerage','tx-notes'].forEach(function(id) {
-    var el = document.getElementById(id); if(el) el.value = '';
-  });
+  txClearAllFields();
   // Pre-fill from seller lead
   var addrEl = document.getElementById('tx-address'); if(addrEl) addrEl.value = lead.prop || '';
   var priceEl = document.getElementById('tx-price'); if(priceEl) priceEl.value = lead.askingPrice || '';
@@ -357,6 +354,7 @@ function openNewTxFromSeller(leadId) {
   renderTxChecklist({});
   renderTxMilestones({});
   renderTrackerLink(_txCurrentToken);
+  txRenderContacts([]);
   document.getElementById('tx-delete-btn').style.display = 'none';
   document.getElementById('mTransaction').style.display = 'flex';
 }
@@ -370,7 +368,17 @@ function openEditTx(id) {
   _txCurrentMilestones = JSON.parse(JSON.stringify(d.milestones || {}));
   _txCurrentToken = d.trackerToken || generateTrackerToken();
   document.getElementById('tx-modal-title').textContent = 'Transaction — ' + (d.address || '');
-  var fmap = {'tx-address':d.address,'tx-price':d.salePrice?'$'+Number(d.salePrice).toLocaleString():'','tx-commission':d.commissionPct,'tx-closingdate':d.closeDate,'tx-offer-date':d.offerDate,'tx-inspection-date':d.inspectionDeadline,'tx-contingency-date':d.contingencyRemoval,'tx-loan-date':d.loanApprovalDeadline,'tx-coop-brokerage':d.coopBrokerage,'tx-notes':d.notes};
+  var fmap = {
+    'tx-address':d.address,'tx-price':d.salePrice?'$'+Number(d.salePrice).toLocaleString():'',
+    'tx-commission':d.commissionPct,'tx-closingdate':d.closeDate,'tx-offer-date':d.offerDate,
+    'tx-inspection-date':d.inspectionDeadline,'tx-contingency-date':d.contingencyRemoval,
+    'tx-loan-date':d.loanApprovalDeadline,'tx-coop-brokerage':d.coopBrokerage,'tx-notes':d.notes,
+    'tx-escrow-name':d.escrowName,'tx-escrow-company':d.escrowCompany,
+    'tx-escrow-phone':d.escrowPhone,'tx-escrow-email':d.escrowEmail,'tx-escrow-num':d.escrowNum,
+    'tx-tc-name':d.tcName,'tx-tc-company':d.tcCompany,'tx-tc-phone':d.tcPhone,'tx-tc-email':d.tcEmail,
+    'tx-lender-name':d.lenderName,'tx-lender-company':d.lenderCompany,
+    'tx-lender-phone':d.lenderPhone,'tx-lender-email':d.lenderEmail
+  };
   Object.keys(fmap).forEach(function(k) { var el=document.getElementById(k); if(el) el.value=fmap[k]||''; });
   var stageEl = document.getElementById('tx-stage'); if(stageEl) stageEl.value = d.txStage||'Offer Submitted';
   var sideEl = document.getElementById('tx-side'); if(sideEl) sideEl.value = d.side||'Seller side';
@@ -379,6 +387,7 @@ function openEditTx(id) {
   renderTxChecklist(_txCurrentChecklist);
   renderTxMilestones(_txCurrentMilestones);
   renderTrackerLink(_txCurrentToken);
+  txRenderContacts(d.contacts || []);
   document.getElementById('tx-delete-btn').style.display = '';
   document.getElementById('mTransaction').style.display = 'flex';
 }
@@ -526,6 +535,7 @@ function saveTx() {
   });
 
   var rawPrice = g('tx-price').replace(/[^0-9.]/g,'');
+  var txContacts = txReadContacts();
   var tx = {
     id:                editTxId || 'tx_' + Date.now(),
     address:           g('tx-address'),
@@ -539,6 +549,24 @@ function saveTx() {
     coopAgent:         g('tx-coop-agent'),
     coopBrokerage:     g('tx-coop-brokerage'),
     notes:             g('tx-notes'),
+    // Escrow
+    escrowName:        g('tx-escrow-name'),
+    escrowCompany:     g('tx-escrow-company'),
+    escrowPhone:       g('tx-escrow-phone'),
+    escrowEmail:       g('tx-escrow-email'),
+    escrowNum:         g('tx-escrow-num'),
+    // TC
+    tcName:            g('tx-tc-name'),
+    tcCompany:         g('tx-tc-company'),
+    tcPhone:           g('tx-tc-phone'),
+    tcEmail:           g('tx-tc-email'),
+    // Lender
+    lenderName:        g('tx-lender-name'),
+    lenderCompany:     g('tx-lender-company'),
+    lenderPhone:       g('tx-lender-phone'),
+    lenderEmail:       g('tx-lender-email'),
+    // Additional contacts
+    contacts:          txContacts,
     txStage:           document.getElementById('tx-stage')?.value || 'Offer Submitted',
     side:              document.getElementById('tx-side')?.value || 'Seller side',
     leadId:            document.getElementById('tx-lead')?.value || '',
@@ -546,6 +574,21 @@ function saveTx() {
     milestones:        _txCurrentMilestones,
     trackerToken:      _txCurrentToken
   };
+
+  // Auto-save additional contacts to vendors list (no duplicates by name+phone)
+  if (typeof vendors !== 'undefined' && Array.isArray(vendors)) {
+    var vendorTypes = { escrow: g('tx-escrow-name') ? { name: g('tx-escrow-name'), company: g('tx-escrow-company'), phone: g('tx-escrow-phone'), email: g('tx-escrow-email'), type: 'Escrow' } : null,
+                        tc:     g('tx-tc-name')     ? { name: g('tx-tc-name'),     company: g('tx-tc-company'),     phone: g('tx-tc-phone'),     email: g('tx-tc-email'),     type: 'Transaction Coordinator' } : null,
+                        lender: g('tx-lender-name') ? { name: g('tx-lender-name'), company: g('tx-lender-company'), phone: g('tx-lender-phone'), email: g('tx-lender-email'), type: 'Lender' } : null };
+    [vendorTypes.escrow, vendorTypes.tc, vendorTypes.lender].concat(txContacts).forEach(function(c) {
+      if (!c || !c.name) return;
+      var exists = vendors.find(function(v) { return (v.name||'').toLowerCase() === (c.name||'').toLowerCase(); });
+      if (!exists) {
+        vendors.push({ id: 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), name: c.name, company: c.company || '', phone: c.phone || '', email: c.email || '', type: c.type || c.role || 'Other', notes: 'Added from transaction: ' + g('tx-address'), createdAt: new Date().toISOString() });
+      }
+    });
+    if (typeof persist === 'function') persist();
+  }
 
   if (editTxId) {
     deals = deals.map(function(d) { return d.id === editTxId ? tx : d; });
@@ -580,6 +623,63 @@ function deleteTx() {
   if (typeof persist === 'function') persist();
   if (typeof renderAll === 'function') renderAll();
   document.getElementById('mTransaction').style.display = 'none';
+}
+
+// ── Transaction contact helpers ───────────────────────────────
+var TX_CONTACT_ROLES = ['Inspector','Contractor','Handyman','Pest Inspector','Appraiser','Title Rep','Attorney','HOA Manager','Stager','Photographer','Other'];
+
+function txClearAllFields() {
+  ['tx-address','tx-price','tx-commission','tx-closingdate','tx-offer-date','tx-inspection-date',
+   'tx-contingency-date','tx-loan-date','tx-coop-brokerage','tx-notes',
+   'tx-escrow-name','tx-escrow-company','tx-escrow-phone','tx-escrow-email','tx-escrow-num',
+   'tx-tc-name','tx-tc-company','tx-tc-phone','tx-tc-email',
+   'tx-lender-name','tx-lender-company','tx-lender-phone','tx-lender-email'
+  ].forEach(function(id) { var el=document.getElementById(id); if(el) el.value=''; });
+}
+
+function txRenderContacts(list) {
+  var el = document.getElementById('tx-contacts-list'); if(!el) return;
+  if (!list || !list.length) { el.innerHTML = ''; return; }
+  el.innerHTML = list.map(function(c, i) { return txContactRow(c, i); }).join('');
+}
+
+function txContactRow(c, i) {
+  var roleOpts = TX_CONTACT_ROLES.map(function(r) {
+    return '<option value="'+r+'"'+(c.role===r?' selected':'')+'>'+r+'</option>';
+  }).join('');
+  return '<div class="tx-contact-row" id="txcr_'+i+'" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center">' +
+    '<select class="txc-role" style="font-size:12px;padding:5px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text)">'+roleOpts+'</select>' +
+    '<input class="txc-name" placeholder="Name" value="'+(c.name||'')+'" style="font-size:12px">' +
+    '<input class="txc-phone" placeholder="Phone" value="'+(c.phone||'')+'" style="font-size:12px">' +
+    '<input class="txc-email" placeholder="Email" value="'+(c.email||'')+'" style="font-size:12px">' +
+    '<button onclick="txRemoveContact('+i+')" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 4px" title="Remove">✕</button>' +
+  '</div>';
+}
+
+function txAddContact() {
+  var el = document.getElementById('tx-contacts-list'); if(!el) return;
+  var existing = txReadContacts();
+  existing.push({ role:'Inspector', name:'', phone:'', email:'' });
+  txRenderContacts(existing);
+}
+
+function txRemoveContact(i) {
+  var existing = txReadContacts();
+  existing.splice(i, 1);
+  txRenderContacts(existing);
+}
+
+function txReadContacts() {
+  var rows = document.querySelectorAll('.tx-contact-row');
+  var out = [];
+  rows.forEach(function(row) {
+    var role  = (row.querySelector('.txc-role')?.value  || '').trim();
+    var name  = (row.querySelector('.txc-name')?.value  || '').trim();
+    var phone = (row.querySelector('.txc-phone')?.value || '').trim();
+    var email = (row.querySelector('.txc-email')?.value || '').trim();
+    if (name || phone || email) out.push({ role, name, phone, email });
+  });
+  return out;
 }
 
 // ── AI Scan & Auto-fill ───────────────────────────────────────
