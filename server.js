@@ -5721,5 +5721,101 @@ app.delete('/api/admin/lead', async (req, res) => {
   }
 });
 
+// ── Newsletter Generator ──────────────────────────────────────────────────────
+app.post('/api/newsletter-generate', async (req, res) => {
+  try {
+    const { mode, month, marketStats, listings, neighborhood, personalNote, lists, sendDate, weekOf, intro } = req.body;
+
+    let prompt;
+
+    if (mode === 'monthly') {
+      const listingBlocks = (listings || []).map((l, i) =>
+        `Listing ${i+1}: ${l.address} | ${l.price} | ${l.beds} bed/bath | ${l.sqft} sqft${l.link ? ' | ' + l.link : ''}${l.notes ? '\nHighlights: ' + l.notes : ''}`
+      ).join('\n\n');
+
+      const hoodBlock = neighborhood && neighborhood.name
+        ? `Neighborhood Spotlight: ${neighborhood.name}${neighborhood.priceRange ? ', ' + neighborhood.priceRange : ''}${neighborhood.notes ? '\nNotes: ' + neighborhood.notes : ''}`
+        : '';
+
+      prompt = `You are writing a monthly real estate newsletter for Matt Golden, a Los Angeles real estate agent with MG Realty. Matt's voice is warm, confident, and direct — he knows LA real estate deeply and speaks to his clients like a trusted friend, not a corporate agent.
+
+Write TWO things:
+1. A compelling subject line (conversational, not salesy, under 60 characters)
+2. The full newsletter body
+
+Newsletter details:
+- Month: ${month || 'this month'}
+- Market stats: Median sale price ${marketStats.medianPrice || 'N/A'}, ${marketStats.priceChange || ''} vs last month, avg ${marketStats.daysOnMarket || 'N/A'} days on market, ${marketStats.homesSold || 'N/A'} homes sold, inventory: ${marketStats.inventory || 'N/A'}, market: ${marketStats.marketTemp || 'N/A'}
+${listingBlocks ? '\nFeatured Listings:\n' + listingBlocks : ''}
+${hoodBlock ? '\n' + hoodBlock : ''}
+${personalNote ? '\nMatt\'s personal note (polish this into his voice): ' + personalNote : ''}
+
+Format the body as plain text (no HTML, no markdown headers) with clear sections:
+- Opening personal note from Matt (2-3 sentences, warm and direct)
+- Market Update section with the stats woven into a brief narrative (not a bullet list)
+${(listings||[]).length ? '- Featured Listings section with each listing formatted cleanly' : ''}
+${neighborhood && neighborhood.name ? '- Neighborhood Spotlight section' : ''}
+- Brief closing with a call to action (reply, call, or reach out)
+
+Sign off as: Matt Golden | MG Realty | (323) 688-3855 | matt@mgoldenrealty.com
+
+Return ONLY valid JSON: {"subject": "...", "body": "..."}`;
+
+    } else {
+      const listingBlocks = (listings || []).map((l, i) =>
+        `Listing ${i+1}: ${l.address} | ${l.price} | ${l.beds} bed/bath | ${l.sqft} sqft${l.link ? '\nLink: ' + l.link : ''}${l.notes ? '\nHighlights: ' + l.notes : ''}`
+      ).join('\n\n');
+
+      const weekLabel = weekOf ? new Date(weekOf + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'this week';
+
+      prompt = `You are writing a weekly featured listings email for Matt Golden, a Los Angeles real estate agent with MG Realty. His voice is warm, direct, and knowledgeable — he speaks to clients like a trusted advisor, not a mass marketer.
+
+Write TWO things:
+1. A subject line that makes people want to open it (conversational, not salesy, under 55 characters)
+2. The full email body
+
+Email details:
+- Week of: ${weekLabel}
+${intro ? '- Intro hint: ' + intro : ''}
+- Listings:
+${listingBlocks}
+
+Format the body as plain text (no HTML, no markdown). Structure:
+- Short, punchy opening (1-2 sentences, ${intro || 'highlight what\'s special about this week\'s picks'})
+- Each listing as a clean block: address as the header, then price/beds/baths/sqft on one line, then a 2-3 sentence description that highlights what makes it special, then the link if provided
+- Brief closing encouraging them to reach out or schedule a showing
+
+Sign off as: Matt Golden | MG Realty | (323) 688-3855 | matt@mgoldenrealty.com
+
+Return ONLY valid JSON: {"subject": "...", "body": "..."}`;
+    }
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const aiData = await aiRes.json();
+    const raw = aiData.content?.[0]?.text || '';
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('No JSON in AI response');
+    const parsed = JSON.parse(match[0]);
+    res.json({ subject: parsed.subject, body: parsed.body });
+
+  } catch(e) {
+    console.error('Newsletter generate error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
