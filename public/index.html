@@ -797,6 +797,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         <span id="tx-detail-stage" style="font-size:10px;font-weight:700;padding:2px 10px;border-radius:99px;white-space:nowrap;flex-shrink:0"></span>
       </div>
       <div class="tba">
+        <label class="btn" style="cursor:pointer;background:rgba(232,104,26,0.1);color:var(--accent);border-color:rgba(232,104,26,0.3)" title="Upload escrow calendar or contract PDF to auto-fill dates & contacts">
+          <i class="ti ti-file-upload"></i> Scan Doc
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="scanTxDocFromDetail(this)">
+        </label>
         <button class="btn" onclick="openEditTx(window._activeTxId)"><i class="ti ti-edit"></i> Edit</button>
         <button class="btn btn-red btn-sm" onclick="deleteTxFromDetail()"><i class="ti ti-trash"></i></button>
       </div>

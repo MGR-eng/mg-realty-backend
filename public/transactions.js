@@ -1114,17 +1114,69 @@ function renderTxChecklistCompact(checklist) {
       '<div style="font-size:10px;font-weight:700;color:'+catColor+';text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">'+cat+'</div>' +
       cats[cat].map(function(doc) {
         var val = txCheckVal(checklist[doc.name]);
-        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04)">' +
-          '<span style="font-size:14px;flex-shrink:0">'+(val.checked?'✅':'⬜')+'</span>' +
-          '<span style="font-size:12px;color:var(--text);flex:1;line-height:1.3">'+doc.name+'</span>' +
-          (val.docId ? '<a href="'+(val.viewUrl||'#')+'" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;flex-shrink:0">📎</a>' : '') +
+        var safeDoc = doc.name.replace(/'/g,"\\'");
+        return '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04)">' +
+          '<input type="checkbox" '+(val.checked?'checked':'')+' onchange="txDetailCheckToggle(this,\''+safeDoc+'\')" style="accent-color:var(--accent);width:14px;height:14px;flex-shrink:0;cursor:pointer">' +
+          '<span style="font-size:12px;color:var(--text);flex:1;line-height:1.3;min-width:0">'+doc.name+'</span>' +
+          (val.docId ? '<a href="'+(val.viewUrl||'#')+'" target="_blank" style="font-size:10px;color:var(--accent);text-decoration:none;background:rgba(232,104,26,0.1);padding:2px 5px;border-radius:4px;white-space:nowrap;flex-shrink:0">📎 View</a>' : '') +
+          '<button onclick="txDetailUpload(\''+safeDoc+'\')" style="flex-shrink:0;background:'+(val.docId?'rgba(74,222,128,0.1)':'var(--surface2)')+';border:1px solid '+(val.docId?'rgba(74,222,128,0.3)':'var(--border)')+';color:'+(val.docId?'var(--green)':'var(--text3)')+';border-radius:5px;padding:2px 6px;font-size:10px;cursor:pointer;white-space:nowrap">'+(val.docId?'✓':'⬆')+'</button>' +
         '</div>';
       }).join('') +
     '</div>';
   });
   return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px 24px">' +
     blocks.join('') +
+    '<input type="file" id="tx-detail-doc-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none" onchange="handleTxDetailDocUpload(this)">' +
   '</div>';
+}
+
+// Checklist toggle from detail view
+function txDetailCheckToggle(cb, docName) {
+  var d = (deals||[]).find(function(x){ return x.id===window._activeTxId; });
+  if (!d) return;
+  d.checklist = d.checklist || {};
+  if (!d.checklist[docName] || typeof d.checklist[docName] === 'boolean') d.checklist[docName] = { checked: cb.checked };
+  else d.checklist[docName].checked = cb.checked;
+  deals = (deals||[]).map(function(x){ return x.id===window._activeTxId ? d : x; });
+  if (typeof persist === 'function') persist();
+}
+
+var _txDetailUploadDoc = null;
+function txDetailUpload(docName) {
+  _txDetailUploadDoc = docName;
+  var inp = document.getElementById('tx-detail-doc-input');
+  if (inp) { inp.value = ''; inp.click(); }
+}
+
+async function handleTxDetailDocUpload(input) {
+  var file = input && input.files && input.files[0];
+  if (!file || !_txDetailUploadDoc || !window._activeTxId) return;
+  var d = (deals||[]).find(function(x){ return x.id===window._activeTxId; });
+  if (!d) return;
+  var docName = _txDetailUploadDoc; _txDetailUploadDoc = null;
+  if (typeof toast === 'function') toast('Uploading ' + file.name + '…');
+  try {
+    var b64 = await new Promise(function(res, rej) {
+      var r = new FileReader(); r.onload = function(e){ res(e.target.result.split(',')[1]); }; r.onerror = rej; r.readAsDataURL(file);
+    });
+    var BACKEND = window.BACKEND || '';
+    var resp = await fetch(BACKEND + '/drive/upload', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: b64, filename: file.name, mimeType: file.type, leadName: d.address || 'Transaction' })
+    });
+    var result = await resp.json();
+    if (!result.ok) throw new Error(result.error || 'Upload failed');
+    d.checklist = d.checklist || {};
+    d.checklist[docName] = { checked: true, docId: result.fileId, docName: file.name, viewUrl: result.viewUrl };
+    deals = (deals||[]).map(function(x){ return x.id===window._activeTxId ? d : x; });
+    if (typeof persist === 'function') persist();
+    // Re-render the doc section
+    var contentEl = document.getElementById('tx-detail-content');
+    if (contentEl) { try { contentEl.innerHTML = renderTxDetail(d); } catch(e){} }
+    if (typeof toast === 'function') toast('📎 ' + file.name + ' uploaded');
+  } catch(e) {
+    if (typeof toast === 'function') toast('Upload failed: ' + e.message, 'err');
+  }
 }
 
 // ── Copy tracker URL ─────────────────────────────────────────
@@ -1233,4 +1285,75 @@ function renderTxCalendar(d) {
   html += '</div>';
 
   return html;
+}
+
+// ── Scan doc directly from detail view (no modal needed) ─────
+async function scanTxDocFromDetail(input) {
+  var file = input && input.files && input.files[0];
+  if (!file || !window._activeTxId) return;
+  input.value = '';
+  var d = (deals||[]).find(function(x){ return x.id===window._activeTxId; });
+  if (!d) return;
+  if (typeof toast === 'function') toast('✦ Scanning document...');
+
+  try {
+    var b64 = await new Promise(function(res, rej) {
+      var r = new FileReader();
+      r.onload = function(e) { res(e.target.result.split(',')[1]); };
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    var BACKEND = window.BACKEND || '';
+    var resp = await fetch(BACKEND + '/api/scan-tx-doc', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, mimeType: file.type, filename: file.name })
+    });
+    var result = await resp.json();
+    if (!result.ok || !result.fields) throw new Error(result.error || 'Scan failed');
+    var f = result.fields;
+
+    // Merge extracted fields into the deal (only overwrite if non-empty)
+    var merge = function(key, val) { if (val !== undefined && val !== null && val !== '') d[key] = val; };
+    merge('address',             f.address);
+    merge('salePrice',           f.salePrice);
+    merge('commissionPct',       f.commissionPct);
+    merge('closeDate',           f.closeDate);
+    merge('offerDate',           f.offerDate);
+    merge('earnestDue',          f.earnestDue);
+    merge('sellerDocsDue',       f.sellerDocsDue);
+    merge('inspectionDeadline',  f.inspectionDeadline);
+    merge('contingencyRemoval',  f.contingencyRemoval);
+    merge('loanApprovalDeadline',f.loanApprovalDeadline);
+    merge('buyerName',           f.buyerName);
+    merge('sellerName',          f.sellerName);
+    merge('coopAgent',           f.coopAgent);
+    merge('coopBrokerage',       f.coopBrokerage);
+    merge('escrowName',          f.escrowName);
+    merge('escrowCompany',       f.escrowCompany);
+    merge('escrowPhone',         f.escrowPhone);
+    merge('escrowEmail',         f.escrowEmail);
+    merge('escrowNum',           f.escrowNum);
+    merge('tcName',              f.tcName);
+    merge('tcEmail',             f.tcEmail);
+    merge('tcPhone',             f.tcPhone);
+    merge('lenderName',          f.lenderName);
+    merge('lenderCompany',       f.lenderCompany);
+    merge('earnestMoney',        f.earnestMoney);
+
+    // Save & re-render
+    deals = (deals||[]).map(function(x){ return x.id===window._activeTxId ? d : x; });
+    if (typeof persist === 'function') persist();
+    // Re-render the detail view in place
+    var contentEl = document.getElementById('tx-detail-content');
+    if (contentEl) { try { contentEl.innerHTML = renderTxDetail(d); } catch(e){} }
+    // Update header
+    if (d.address) {
+      var titleEl = document.getElementById('tx-detail-title');
+      if (titleEl) titleEl.textContent = d.address;
+    }
+    if (typeof toast === 'function') toast('✅ Document scanned & saved!');
+  } catch(e) {
+    console.error('Detail scan error:', e);
+    if (typeof toast === 'function') toast('Scan failed: ' + e.message, 'err');
+  }
 }
