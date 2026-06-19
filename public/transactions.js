@@ -879,10 +879,19 @@ function openTxDetail(id) {
   stageEl.textContent = d.txStage || 'Offer Submitted';
   stageEl.style.cssText = 'font-size:10px;font-weight:700;padding:2px 10px;border-radius:99px;white-space:nowrap;flex-shrink:0;color:'+sc+';background:'+sc+'1a;border:1px solid '+sc+'44';
   // Render content
-  document.getElementById('tx-detail-content').innerHTML = renderTxDetail(d);
+  var contentEl = document.getElementById('tx-detail-content');
+  var listEl = document.getElementById('tx-list-view');
+  var detailEl = document.getElementById('tx-detail-view');
+  if (!contentEl || !listEl || !detailEl) { console.error('TX detail DOM elements missing'); return; }
+  try {
+    contentEl.innerHTML = renderTxDetail(d);
+  } catch(e) {
+    console.error('renderTxDetail error:', e);
+    contentEl.innerHTML = '<div style="padding:24px;color:var(--red)"><b>Error rendering detail:</b> ' + e.message + '</div>';
+  }
   // Show detail, hide list
-  document.getElementById('tx-list-view').style.display = 'none';
-  document.getElementById('tx-detail-view').style.display = 'flex';
+  listEl.style.display = 'none';
+  detailEl.style.display = 'flex';
 }
 
 function closeTxDetail() {
@@ -1055,7 +1064,7 @@ function renderTxDetail(d) {
     personCard('Buyer', d.buyerName, d.buyerPhone, d.buyerEmail, '') +
     personCard('Seller', d.sellerName, d.sellerPhone, d.sellerEmail, '') +
     personCard('Co-op Agent', d.coopAgent, '', '', d.coopBrokerage) +
-    personCard('Escrow Officer', d.escrowName, d.escrowPhone, d.escrowEmail, d.escrowCompany+(d.escrowNum?' · #'+d.escrowNum:'')) +
+    personCard('Escrow Officer', d.escrowName, d.escrowPhone, d.escrowEmail, (d.escrowCompany||'')+(d.escrowNum?' · #'+d.escrowNum:'')) +
     personCard('Transaction Coordinator', d.tcName, d.tcPhone, d.tcEmail, d.tcCompany) +
     personCard('Lender / Loan Officer', d.lenderName, d.lenderPhone, d.lenderEmail, d.lenderCompany) +
     (allContacts ? '</div><div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">' + allContacts : '') +
