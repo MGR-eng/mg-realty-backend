@@ -5721,6 +5721,27 @@ app.delete('/api/admin/lead', async (req, res) => {
   }
 });
 
+// ── Admin: delete appointment by lead name ────────────────────
+app.delete('/api/admin/appointment', async (req, res) => {
+  try {
+    const { leadName, id } = req.body;
+    if (!leadName && !id) return res.status(400).json({ ok: false, error: 'Provide leadName or id' });
+    const crm = await readCRM();
+    const before = (crm.appointments || []).length;
+    crm.appointments = (crm.appointments || []).filter(a => {
+      if (id && a.id === id) return false;
+      if (leadName && (a.leadName || '').toLowerCase().includes(leadName.toLowerCase())) return false;
+      return true;
+    });
+    const removed = before - crm.appointments.length;
+    if (!removed) return res.status(404).json({ ok: false, error: 'No matching appointment found' });
+    await writeCRM(crm);
+    res.json({ ok: true, removed, remaining: crm.appointments.length });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Newsletter Personal Note Generator ───────────────────────────────────────
 app.post('/api/newsletter-personal-note', async (req, res) => {
   try {
