@@ -3210,6 +3210,8 @@ GOOGLE CALENDAR EVENT: {"action":"create_calendar_event","title":"...","start":"
 
 SEND EMAIL: {"action":"send_email_template","leadName":"...","email":"...","subject":"...","body":"..."}
 SEND DIGEST: {"action":"send_digest"}
+MARKET REPORT: {"action":"market_report","neighborhood":"Silver Lake"}
+→ Use when Matt asks "what's the market like in [area]?", "pull a market report for [neighborhood]", "what's the current data on [area]", "how's the market in [area]", "what are homes selling for in [area]", etc. Pull neighborhood name from his message.
 NO ACTION: {"action":"none"}
 
 === RESPONSE RULES ===
@@ -3241,7 +3243,37 @@ NO ACTION: {"action":"none"}
         console.log('SMS action:', JSON.stringify(action));
         reply = lines.filter(l => !l.startsWith('{')).join('\n').trim() || raw;
 
-        if (action.action === 'send_digest') {
+        if (action.action === 'market_report') {
+          const hood = action.neighborhood || 'Los Angeles';
+          reply = `🏠 Pulling live market data for ${hood}... texting you the report in a moment!`;
+          // Fire and forget — web search takes a few seconds
+          const callerPhone = from;
+          (async () => {
+            try {
+              const monthYear = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'America/Los_Angeles' });
+              const mktPrompt = `Search for current ${monthYear} real estate market data for ${hood}, Los Angeles, CA. Find: median sale price, price change vs last year, average days on market, number of homes sold last month, and whether it's a buyer's or seller's market. Return ONLY a JSON object with no extra text: {"neighborhood":"${hood}","medianPrice":"$X,XXX,XXX","priceChange":"+X.X% YoY","daysOnMarket":X,"homesSold":X,"marketTemp":"seller's|balanced|buyer's","highlights":"2-3 key takeaways in 1-2 sentences"}`;
+              const mktMsg = await anthropic.messages.create({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 600,
+                tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+                messages: [{ role: 'user', content: mktPrompt }]
+              }, { headers: { 'anthropic-beta': 'web-search-2025-03-05' } });
+              const textBlock = mktMsg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+              const match = textBlock.match(/\{[\s\S]*?\}/);
+              const data = match ? JSON.parse(match[0]) : null;
+              if (!data) throw new Error('No JSON in response');
+              const smsBody = `🏠 ${data.neighborhood}\n` +
+                `📈 Median: ${data.medianPrice} (${data.priceChange})\n` +
+                `📅 Avg DOM: ${data.daysOnMarket} days · ${data.homesSold} sold last mo.\n` +
+                `🌡️ ${data.marketTemp} market\n\n` +
+                `${data.highlights}`;
+              await sendSMS(callerPhone, smsBody.substring(0, 600));
+            } catch(e) {
+              console.error('Market report SMS error:', e.message);
+              try { await sendSMS(callerPhone, `⚠️ Couldn't pull live market data for ${hood} right now. Try again in a moment.`); } catch(_) {}
+            }
+          })();
+        } else if (action.action === 'send_digest') {
           const overdue = crm.leads.filter(l => l.temp !== 'done' && l.followup && l.followup < today2);
           const dueToday = crm.leads.filter(l => l.temp !== 'done' && l.followup === today2);
           await resend.emails.send({
@@ -6020,6 +6052,66 @@ Return ONLY valid JSON: {"subject":"...","body":"..."}`;
   } catch(e) {
     console.error('Newsletter generate error:', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Transaction Doc Scanner ───────────────────────────────────
+app.post('/api/scan-tx-doc', async (req, res) => {
+  try {
+    const { data: b64, mimeType = 'application/pdf', filename = '' } = req.body;
+    if (!b64) return res.status(400).json({ ok: false, error: 'No file data' });
+
+    // Use Claude vision to extract transaction fields
+    const prompt = `You are reviewing a California real estate transaction document (${filename || 'contract/agreement'}).
+Extract all of the following fields you can find. Return ONLY a JSON object — no extra text, no markdown.
+
+Fields to extract:
+{
+  "address": "full property address",
+  "salePrice": "numeric sale price as number, no $ sign",
+  "commissionPct": "buyer or listing agent commission % as number e.g. 2.5",
+  "closeDate": "YYYY-MM-DD escrow close / closing date",
+  "offerDate": "YYYY-MM-DD date offer was made",
+  "inspectionDeadline": "YYYY-MM-DD inspection contingency deadline",
+  "contingencyRemoval": "YYYY-MM-DD all contingencies removal date",
+  "loanApprovalDeadline": "YYYY-MM-DD loan approval deadline",
+  "buyerName": "full buyer name(s)",
+  "sellerName": "full seller name(s)",
+  "coopBrokerage": "cooperating brokerage name if visible",
+  "earnestMoney": "earnest money deposit amount as number",
+  "notes": "any other important notes, conditions, or contingencies in 1-2 sentences"
+}
+
+If a field is not found in the document, omit it from the JSON. Only include fields you actually see.`;
+
+    const msgContent = [
+      {
+        type: 'image',
+        source: { type: 'base64', media_type: mimeType, data: b64 }
+      },
+      { type: 'text', text: prompt }
+    ];
+
+    // For PDFs, Claude can't read them as images — send as text hint
+    const isPdf = mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');
+    const messages = isPdf
+      ? [{ role: 'user', content: [{ type: 'text', text: `[PDF document: ${filename}]\n\n${prompt}\n\nNote: the base64 document is provided but may not be directly readable as an image. Do your best with what you can extract. If you cannot read the document, return: {"error":"Unable to read PDF — please use an image or text-based document"}` }] }]
+      : [{ role: 'user', content: msgContent }];
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages
+    });
+
+    const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return res.json({ ok: false, error: 'Could not parse document fields', raw });
+    const fields = JSON.parse(match[0]);
+    res.json({ ok: true, fields });
+  } catch (e) {
+    console.error('SCAN TX DOC ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 

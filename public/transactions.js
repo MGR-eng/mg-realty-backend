@@ -582,6 +582,83 @@ function deleteTx() {
   document.getElementById('mTransaction').style.display = 'none';
 }
 
+// ── AI Scan & Auto-fill ───────────────────────────────────────
+function triggerTxScan() {
+  var inp = document.getElementById('tx-scan-file');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file';
+    inp.id = 'tx-scan-file';
+    inp.accept = '.pdf,.jpg,.jpeg,.png';
+    inp.style.display = 'none';
+    document.body.appendChild(inp);
+    inp.onchange = function() { if(this.files[0]) scanTxDoc(this.files[0]); };
+  }
+  inp.value = '';
+  inp.click();
+}
+
+async function scanTxDoc(file) {
+  var statusEl = document.getElementById('tx-scan-status');
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'var(--amber)'; statusEl.textContent = '✦ Scanning document...'; }
+  var btnEl = document.getElementById('tx-scan-btn');
+  if (btnEl) btnEl.disabled = true;
+  try {
+    var b64 = await new Promise(function(res, rej) {
+      var r = new FileReader();
+      r.onload = function(e) { res(e.target.result.split(',')[1]); };
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    var BACKEND = window.BACKEND || '';
+    var resp = await fetch(BACKEND + '/api/scan-tx-doc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, mimeType: file.type, filename: file.name })
+    });
+    var d = await resp.json();
+    if (!d.ok || !d.fields) throw new Error(d.error || 'Could not extract fields');
+    var f = d.fields;
+
+    // Auto-fill form fields
+    var setVal = function(id, val) { if (val !== undefined && val !== null && val !== '') { var el = document.getElementById(id); if(el) el.value = val; } };
+    setVal('tx-address', f.address);
+    setVal('tx-price', f.salePrice ? '$' + Number(f.salePrice).toLocaleString() : null);
+    setVal('tx-commission', f.commissionPct);
+    setVal('tx-closingdate', f.closeDate);
+    setVal('tx-offer-date', f.offerDate);
+    setVal('tx-inspection-date', f.inspectionDeadline);
+    setVal('tx-contingency-date', f.contingencyRemoval);
+    setVal('tx-loan-date', f.loanApprovalDeadline);
+    setVal('tx-coop-brokerage', f.coopBrokerage);
+    if (f.notes) {
+      var notesEl = document.getElementById('tx-notes');
+      if (notesEl) notesEl.value = (notesEl.value ? notesEl.value + '\n' : '') + f.notes;
+    }
+
+    // Try to match buyer/seller to a lead
+    if (f.buyerName || f.sellerName) {
+      var nameToSearch = f.buyerName || f.sellerName;
+      var parts = nameToSearch.split(' ');
+      var matched = (leads||[]).find(function(l) {
+        return parts.some(function(p) { return p.length > 2 && (l.first+' '+l.last).toLowerCase().includes(p.toLowerCase()); });
+      });
+      if (matched) {
+        var ldEl = document.getElementById('tx-lead');
+        if (ldEl) ldEl.value = matched.id;
+      }
+    }
+
+    if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = '✓ Fields auto-filled from ' + file.name; }
+    if (typeof toast === 'function') toast('✓ Document scanned — fields auto-filled!');
+  } catch(e) {
+    if (statusEl) { statusEl.style.color = 'var(--red)'; statusEl.textContent = 'Scan failed: ' + e.message; }
+    if (typeof toast === 'function') toast('Scan failed: ' + e.message, 'err');
+  } finally {
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+
 // ── Dropdowns ─────────────────────────────────────────────────
 function populateTxLeadDropdown(selectedId) {
   var el = document.getElementById('tx-lead'); if(!el) return;
