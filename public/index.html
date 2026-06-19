@@ -2017,6 +2017,195 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
   </div>
 </div>
 
+<!-- ── Newsletter Builder Pane ── -->
+<div id="pane-newsletter" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-mail-forward" style="margin-right:6px;color:var(--accent)"></i>Newsletter Builder</div>
+  </div>
+  <div class="content">
+    <div style="max-width:820px">
+
+      <!-- Tab switcher -->
+      <div style="display:flex;gap:8px;margin-bottom:22px">
+        <button id="nl-tab-monthly" class="btn btn-gold" onclick="nlSwitchTab('monthly')" style="font-size:13px">Monthly Newsletter</button>
+        <button id="nl-tab-featured" class="btn" onclick="nlSwitchTab('featured')" style="font-size:13px;background:transparent;color:var(--text2);border:1px solid var(--border)">Weekly Featured Listings</button>
+      </div>
+
+      <!-- ── MONTHLY NEWSLETTER ── -->
+      <div id="nl-pane-monthly">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+            <label>Send date</label>
+            <select id="nl-send-date">
+              <option value="1st">1st of the month</option>
+              <option value="15th">15th of the month</option>
+              <option value="other">Other (specify in notes)</option>
+            </select>
+          </div>
+          <div>
+            <label>Month &amp; year</label>
+            <input type="text" id="nl-month" placeholder="e.g. June 2026">
+          </div>
+        </div>
+
+        <div class="tw" style="padding:16px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Market Stats</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div><label>Median sale price</label><input id="nl-med-price" placeholder="$1,250,000"></div>
+            <div><label>vs. last month</label><input id="nl-price-chg" placeholder="+3.2%"></div>
+            <div><label>Avg days on market</label><input id="nl-dom" placeholder="18"></div>
+            <div><label>Homes sold</label><input id="nl-sold" placeholder="142"></div>
+            <div><label>Active inventory</label><input id="nl-inventory" placeholder="87 homes"></div>
+            <div>
+              <label>Market temp</label>
+              <select id="nl-market-temp">
+                <option>Hot seller's market</option>
+                <option>Balanced market</option>
+                <option>Buyer's market</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="tw" style="padding:16px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Featured Listings (up to 2)</div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px">
+            <input id="nl-l1-addr" placeholder="Address">
+            <input id="nl-l1-price" placeholder="Price">
+            <input id="nl-l1-beds" placeholder="Bed/Bath">
+            <input id="nl-l1-sqft" placeholder="Sqft">
+          </div>
+          <input id="nl-l1-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">
+          <textarea id="nl-l1-notes" placeholder="Key highlights — what makes it special?" style="height:52px;resize:none;width:100%;box-sizing:border-box;margin-bottom:14px"></textarea>
+
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px">
+            <input id="nl-l2-addr" placeholder="Address (optional)">
+            <input id="nl-l2-price" placeholder="Price">
+            <input id="nl-l2-beds" placeholder="Bed/Bath">
+            <input id="nl-l2-sqft" placeholder="Sqft">
+          </div>
+          <input id="nl-l2-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">
+          <textarea id="nl-l2-notes" placeholder="Key highlights" style="height:52px;resize:none;width:100%;box-sizing:border-box"></textarea>
+        </div>
+
+        <div class="tw" style="padding:16px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Neighborhood Spotlight</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+            <div><label>Neighborhood</label><input id="nl-hood" placeholder="e.g. Silver Lake"></div>
+            <div><label>Price range</label><input id="nl-hood-price" placeholder="e.g. $900K–$1.4M"></div>
+          </div>
+          <textarea id="nl-hood-notes" placeholder="Any notes about what's happening there — activity, vibe, notable sales..." style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <label>Personal note from Matt</label>
+          <textarea id="nl-personal-note" placeholder="A thought, tip, or short message for the month — write it rough, AI will polish it into your voice..." style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <label>Lists / tags to send to (Compass Contacts)</label>
+          <input id="nl-lists" placeholder="e.g. Past Clients, Silver Lake Farm — or type N/A">
+        </div>
+
+        <button class="btn btn-gold" onclick="nlGenerate('monthly')" style="margin-bottom:24px"><i class="ti ti-sparkles"></i> Generate Newsletter</button>
+
+        <!-- OUTPUT -->
+        <div id="nl-output-monthly" style="display:none">
+          <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Ready to copy into the RARE form</div>
+
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label style="margin:0">Subject line</label>
+              <button class="btn" onclick="nlCopy('nl-out-subject')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
+            </div>
+            <div id="nl-out-subject" class="tw" style="padding:12px;font-size:14px;line-height:1.6;min-height:36px;white-space:pre-wrap"></div>
+          </div>
+
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label style="margin:0">Newsletter body <span style="font-weight:400;color:var(--text3)">(paste into "Newsletter info" field)</span></label>
+              <button class="btn" onclick="nlCopy('nl-out-body')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
+            </div>
+            <div id="nl-out-body" class="tw" style="padding:14px;font-size:14px;line-height:1.8;min-height:120px;white-space:pre-wrap"></div>
+          </div>
+
+          <div class="tw" style="padding:12px;background:rgba(232,104,26,0.06);border-color:rgba(232,104,26,0.2)">
+            <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">Submission checklist</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.8">
+              ✓ Copy subject line above → paste into "Subject Line" field<br>
+              ✓ Copy body above → paste into "Newsletter info" field<br>
+              ✓ Select send date: <strong id="nl-remind-date"></strong><br>
+              ✓ Fill in Lists/Tags: <span id="nl-remind-lists"></span><br>
+              ✓ Upload any listing photos under "Images to use"<br>
+              <a href="https://forms.gle/aH9BPakqopEocMmQ6" target="_blank" style="color:var(--accent);font-weight:600;display:inline-block;margin-top:8px"><i class="ti ti-external-link"></i> Open RARE Newsletter Form →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── WEEKLY FEATURED LISTINGS ── -->
+      <div id="nl-pane-featured" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+            <label>Week of</label>
+            <input type="date" id="fl-week">
+          </div>
+          <div>
+            <label>Intro line (optional)</label>
+            <input id="fl-intro" placeholder="AI will write one if blank...">
+          </div>
+        </div>
+
+        <div id="fl-listing-stack"></div>
+
+        <button class="btn" onclick="flAddListing()" style="margin-bottom:16px;font-size:13px"><i class="ti ti-plus"></i> Add listing</button>
+
+        <div style="margin-bottom:16px">
+          <label>Lists / tags to send to (Compass Contacts)</label>
+          <input id="fl-lists" placeholder="e.g. All Contacts, Buyer Leads — or type N/A">
+        </div>
+
+        <button class="btn btn-gold" onclick="nlGenerate('featured')" style="margin-bottom:24px"><i class="ti ti-sparkles"></i> Generate Email</button>
+
+        <!-- OUTPUT -->
+        <div id="nl-output-featured" style="display:none">
+          <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Ready to copy into the RARE form</div>
+
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label style="margin:0">Subject line</label>
+              <button class="btn" onclick="nlCopy('fl-out-subject')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
+            </div>
+            <div id="fl-out-subject" class="tw" style="padding:12px;font-size:14px;min-height:36px;white-space:pre-wrap"></div>
+          </div>
+
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label style="margin:0">Email body <span style="font-weight:400;color:var(--text3)">(paste into "Newsletter info" field)</span></label>
+              <button class="btn" onclick="nlCopy('fl-out-body')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
+            </div>
+            <div id="fl-out-body" class="tw" style="padding:14px;font-size:14px;line-height:1.8;min-height:120px;white-space:pre-wrap"></div>
+          </div>
+
+          <div class="tw" style="padding:12px;background:rgba(232,104,26,0.06);border-color:rgba(232,104,26,0.2)">
+            <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">Submission checklist</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.8">
+              ✓ Copy subject line above → paste into "Subject Line" field<br>
+              ✓ Copy body above → paste into "Newsletter info" field<br>
+              ✓ Upload listing photos under "Images to use"<br>
+              ✓ Fill in Lists/Tags: <span id="fl-remind-lists"></span><br>
+              <a href="https://forms.gle/aH9BPakqopEocMmQ6" target="_blank" style="color:var(--accent);font-weight:600;display:inline-block;margin-top:8px"><i class="ti ti-external-link"></i> Open RARE Newsletter Form →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 </main>
 </div>
 
@@ -10983,195 +11172,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }, 1500);
 });
 </script>
-
-<!-- ── Newsletter Builder Pane ── -->
-<div id="pane-newsletter" class="pane">
-  <div class="topbar">
-    <div class="page-title"><i class="ti ti-mail-forward" style="margin-right:6px;color:var(--accent)"></i>Newsletter Builder</div>
-  </div>
-  <div class="content">
-    <div style="max-width:820px">
-
-      <!-- Tab switcher -->
-      <div style="display:flex;gap:8px;margin-bottom:22px">
-        <button id="nl-tab-monthly" class="btn btn-gold" onclick="nlSwitchTab('monthly')" style="font-size:13px">Monthly Newsletter</button>
-        <button id="nl-tab-featured" class="btn" onclick="nlSwitchTab('featured')" style="font-size:13px;background:transparent;color:var(--text2);border:1px solid var(--border)">Weekly Featured Listings</button>
-      </div>
-
-      <!-- ── MONTHLY NEWSLETTER ── -->
-      <div id="nl-pane-monthly">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-          <div>
-            <label>Send date</label>
-            <select id="nl-send-date">
-              <option value="1st">1st of the month</option>
-              <option value="15th">15th of the month</option>
-              <option value="other">Other (specify in notes)</option>
-            </select>
-          </div>
-          <div>
-            <label>Month &amp; year</label>
-            <input type="text" id="nl-month" placeholder="e.g. June 2026">
-          </div>
-        </div>
-
-        <div class="tw" style="padding:16px;margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Market Stats</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-            <div><label>Median sale price</label><input id="nl-med-price" placeholder="$1,250,000"></div>
-            <div><label>vs. last month</label><input id="nl-price-chg" placeholder="+3.2%"></div>
-            <div><label>Avg days on market</label><input id="nl-dom" placeholder="18"></div>
-            <div><label>Homes sold</label><input id="nl-sold" placeholder="142"></div>
-            <div><label>Active inventory</label><input id="nl-inventory" placeholder="87 homes"></div>
-            <div>
-              <label>Market temp</label>
-              <select id="nl-market-temp">
-                <option>Hot seller's market</option>
-                <option>Balanced market</option>
-                <option>Buyer's market</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="tw" style="padding:16px;margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Featured Listings (up to 2)</div>
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px">
-            <input id="nl-l1-addr" placeholder="Address">
-            <input id="nl-l1-price" placeholder="Price">
-            <input id="nl-l1-beds" placeholder="Bed/Bath">
-            <input id="nl-l1-sqft" placeholder="Sqft">
-          </div>
-          <input id="nl-l1-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">
-          <textarea id="nl-l1-notes" placeholder="Key highlights — what makes it special?" style="height:52px;resize:none;width:100%;box-sizing:border-box;margin-bottom:14px"></textarea>
-
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px">
-            <input id="nl-l2-addr" placeholder="Address (optional)">
-            <input id="nl-l2-price" placeholder="Price">
-            <input id="nl-l2-beds" placeholder="Bed/Bath">
-            <input id="nl-l2-sqft" placeholder="Sqft">
-          </div>
-          <input id="nl-l2-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">
-          <textarea id="nl-l2-notes" placeholder="Key highlights" style="height:52px;resize:none;width:100%;box-sizing:border-box"></textarea>
-        </div>
-
-        <div class="tw" style="padding:16px;margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Neighborhood Spotlight</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
-            <div><label>Neighborhood</label><input id="nl-hood" placeholder="e.g. Silver Lake"></div>
-            <div><label>Price range</label><input id="nl-hood-price" placeholder="e.g. $900K–$1.4M"></div>
-          </div>
-          <textarea id="nl-hood-notes" placeholder="Any notes about what's happening there — activity, vibe, notable sales..." style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea>
-        </div>
-
-        <div style="margin-bottom:16px">
-          <label>Personal note from Matt</label>
-          <textarea id="nl-personal-note" placeholder="A thought, tip, or short message for the month — write it rough, AI will polish it into your voice..." style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>
-        </div>
-
-        <div style="margin-bottom:16px">
-          <label>Lists / tags to send to (Compass Contacts)</label>
-          <input id="nl-lists" placeholder="e.g. Past Clients, Silver Lake Farm — or type N/A">
-        </div>
-
-        <button class="btn btn-gold" onclick="nlGenerate('monthly')" style="margin-bottom:24px"><i class="ti ti-sparkles"></i> Generate Newsletter</button>
-
-        <!-- OUTPUT -->
-        <div id="nl-output-monthly" style="display:none">
-          <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
-          <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Ready to copy into the RARE form</div>
-
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Subject line</label>
-              <button class="btn" onclick="nlCopy('nl-out-subject')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
-            </div>
-            <div id="nl-out-subject" class="tw" style="padding:12px;font-size:14px;line-height:1.6;min-height:36px;white-space:pre-wrap"></div>
-          </div>
-
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Newsletter body <span style="font-weight:400;color:var(--text3)">(paste into "Newsletter info" field)</span></label>
-              <button class="btn" onclick="nlCopy('nl-out-body')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
-            </div>
-            <div id="nl-out-body" class="tw" style="padding:14px;font-size:14px;line-height:1.8;min-height:120px;white-space:pre-wrap"></div>
-          </div>
-
-          <div class="tw" style="padding:12px;background:rgba(232,104,26,0.06);border-color:rgba(232,104,26,0.2)">
-            <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">Submission checklist</div>
-            <div style="font-size:13px;color:var(--text2);line-height:1.8">
-              ✓ Copy subject line above → paste into "Subject Line" field<br>
-              ✓ Copy body above → paste into "Newsletter info" field<br>
-              ✓ Select send date: <strong id="nl-remind-date"></strong><br>
-              ✓ Fill in Lists/Tags: <span id="nl-remind-lists"></span><br>
-              ✓ Upload any listing photos under "Images to use"<br>
-              <a href="https://forms.gle/aH9BPakqopEocMmQ6" target="_blank" style="color:var(--accent);font-weight:600;display:inline-block;margin-top:8px"><i class="ti ti-external-link"></i> Open RARE Newsletter Form →</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── WEEKLY FEATURED LISTINGS ── -->
-      <div id="nl-pane-featured" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-          <div>
-            <label>Week of</label>
-            <input type="date" id="fl-week">
-          </div>
-          <div>
-            <label>Intro line (optional)</label>
-            <input id="fl-intro" placeholder="AI will write one if blank...">
-          </div>
-        </div>
-
-        <div id="fl-listing-stack"></div>
-
-        <button class="btn" onclick="flAddListing()" style="margin-bottom:16px;font-size:13px"><i class="ti ti-plus"></i> Add listing</button>
-
-        <div style="margin-bottom:16px">
-          <label>Lists / tags to send to (Compass Contacts)</label>
-          <input id="fl-lists" placeholder="e.g. All Contacts, Buyer Leads — or type N/A">
-        </div>
-
-        <button class="btn btn-gold" onclick="nlGenerate('featured')" style="margin-bottom:24px"><i class="ti ti-sparkles"></i> Generate Email</button>
-
-        <!-- OUTPUT -->
-        <div id="nl-output-featured" style="display:none">
-          <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
-          <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Ready to copy into the RARE form</div>
-
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Subject line</label>
-              <button class="btn" onclick="nlCopy('fl-out-subject')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
-            </div>
-            <div id="fl-out-subject" class="tw" style="padding:12px;font-size:14px;min-height:36px;white-space:pre-wrap"></div>
-          </div>
-
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Email body <span style="font-weight:400;color:var(--text3)">(paste into "Newsletter info" field)</span></label>
-              <button class="btn" onclick="nlCopy('fl-out-body')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
-            </div>
-            <div id="fl-out-body" class="tw" style="padding:14px;font-size:14px;line-height:1.8;min-height:120px;white-space:pre-wrap"></div>
-          </div>
-
-          <div class="tw" style="padding:12px;background:rgba(232,104,26,0.06);border-color:rgba(232,104,26,0.2)">
-            <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">Submission checklist</div>
-            <div style="font-size:13px;color:var(--text2);line-height:1.8">
-              ✓ Copy subject line above → paste into "Subject Line" field<br>
-              ✓ Copy body above → paste into "Newsletter info" field<br>
-              ✓ Upload listing photos under "Images to use"<br>
-              ✓ Fill in Lists/Tags: <span id="fl-remind-lists"></span><br>
-              <a href="https://forms.gle/aH9BPakqopEocMmQ6" target="_blank" style="color:var(--accent);font-weight:600;display:inline-block;margin-top:8px"><i class="ti ti-external-link"></i> Open RARE Newsletter Form →</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
 
 <script>
 // ── Newsletter Builder ─────────────────────────────────────────
