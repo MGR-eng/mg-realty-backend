@@ -6096,18 +6096,20 @@ Omit any field not found in the document. Return only what you can actually read
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
       : { type: 'image',    source: { type: 'base64', media_type: mimeType,           data: b64 } };
 
-    const result = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1200,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          docBlock
-        ]
-      }],
-      ...(isPdf ? { betas: ['pdfs-2024-09-25'] } : {})
-    });
+    const result = await anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1200,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            docBlock
+          ]
+        }]
+      },
+      isPdf ? { headers: { 'anthropic-beta': 'pdfs-2024-09-25' } } : {}
+    );
 
     const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
     console.log('SCAN TX DOC raw:', raw.substring(0, 300));
