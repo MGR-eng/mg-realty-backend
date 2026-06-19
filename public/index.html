@@ -2098,8 +2098,11 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
         </div>
 
         <div style="margin-bottom:16px">
-          <label>Personal note from Matt</label>
-          <textarea id="nl-personal-note" placeholder="A thought, tip, or short message for the month — write it rough, AI will polish it into your voice..." style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <label style="margin:0">Personal note from Matt</label>
+            <button class="btn" id="nl-ace-btn" onclick="nlGeneratePersonalNote()" style="font-size:12px;padding:4px 10px;color:var(--accent);border-color:var(--accent)"><i class="ti ti-sparkles"></i> Ace Generate</button>
+          </div>
+          <textarea id="nl-personal-note" placeholder="Write it rough and Ace will polish it — or click Ace Generate to get a starting point..." style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>
         </div>
 
         <div style="margin-bottom:16px">
@@ -11212,6 +11215,41 @@ function flAddListing() {
     '<input id="fl-l'+n+'-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
     '<textarea id="fl-l'+n+'-notes" placeholder="Key features — paste MLS notes or bullet the highlights" style="height:64px;resize:none;width:100%;box-sizing:border-box"></textarea>';
   stack.appendChild(d);
+}
+
+function nlGeneratePersonalNote() {
+  var btn = document.getElementById('nl-ace-btn');
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Writing...';
+  btn.disabled = true;
+
+  var context = {
+    month: document.getElementById('nl-month').value,
+    medianPrice: document.getElementById('nl-med-price').value,
+    priceChange: document.getElementById('nl-price-chg').value,
+    daysOnMarket: document.getElementById('nl-dom').value,
+    marketTemp: document.getElementById('nl-market-temp').value,
+    neighborhood: document.getElementById('nl-hood').value,
+    existing: document.getElementById('nl-personal-note').value
+  };
+
+  fetch('/api/newsletter-personal-note', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(context)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Ace Generate';
+    btn.disabled = false;
+    if (data.note) {
+      document.getElementById('nl-personal-note').value = data.note;
+    }
+  })
+  .catch(function() {
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Ace Generate';
+    btn.disabled = false;
+    toast('Failed to generate — try again');
+  });
 }
 
 function nlCopy(id) {

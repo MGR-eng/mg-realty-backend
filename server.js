@@ -5721,6 +5721,54 @@ app.delete('/api/admin/lead', async (req, res) => {
   }
 });
 
+// ── Newsletter Personal Note Generator ───────────────────────────────────────
+app.post('/api/newsletter-personal-note', async (req, res) => {
+  try {
+    const { month, medianPrice, priceChange, daysOnMarket, marketTemp, neighborhood, existing } = req.body;
+
+    const prompt = `You are writing a short personal note for Matt Golden, a Los Angeles real estate agent with MG Realty. Matt's voice is warm, direct, and conversational — like a knowledgeable friend who knows LA real estate, not a corporate agent. He speaks to his clients like real people.
+
+Write a 2-3 sentence personal note for his monthly newsletter. It should feel genuine and human, not salesy. Think of it as a quick "hey, here's what I'm thinking this month" message.
+
+Context:
+- Month: ${month || 'this month'}
+- Market: ${marketTemp || 'active LA market'}
+- Median price: ${medianPrice || 'N/A'}
+- Price change: ${priceChange || 'N/A'} vs last month
+- Avg days on market: ${daysOnMarket || 'N/A'}
+${neighborhood ? '- Neighborhood focus: ' + neighborhood : ''}
+${existing ? '- Matt\'s rough draft (polish this, keep his intent): ' + existing : ''}
+
+Examples of the right tone:
+- "Summer is here, and honestly? The LA market hasn't slowed down one bit. If anything, the good stuff is moving faster than ever."
+- "Every month I say it and every month it's true — inventory is the story in LA right now. Here's what that means for you."
+- "June always brings out buyers who've been waiting on the sidelines. If you've been thinking about making a move, now's the time to have a real conversation."
+
+Write ONE note only. No greeting, no sign-off. Just the 2-3 sentences. Return only the note text, nothing else.`;
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const aiData = await aiRes.json();
+    const note = aiData.content?.[0]?.text?.trim() || '';
+    res.json({ note });
+  } catch(e) {
+    console.error('Personal note generate error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Newsletter Generator ──────────────────────────────────────────────────────
 app.post('/api/newsletter-generate', async (req, res) => {
   try {
