@@ -862,6 +862,14 @@ window._activeTxId = null;
 function openTxDetail(id) {
   var d = (deals||[]).find(function(x){ return x.id===id; });
   if (!d) return;
+  // If transactions pane isn't active, navigate there first then re-call
+  var txPane = document.getElementById('pane-transactions');
+  if (!txPane || !txPane.classList.contains('active')) {
+    var txNavBtn = document.querySelector('[onclick*="\'transactions\'"]');
+    if (typeof showPane === 'function') showPane('transactions', txNavBtn);
+    setTimeout(function(){ openTxDetail(id); }, 50);
+    return;
+  }
   window._activeTxId = id;
   // Update header
   document.getElementById('tx-detail-title').textContent = d.address || 'Transaction';
