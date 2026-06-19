@@ -5808,70 +5808,135 @@ Write ONE note only. No greeting, no sign-off. Just the 2-3 sentences. Return on
 // ── Newsletter Generator ──────────────────────────────────────────────────────
 app.post('/api/newsletter-generate', async (req, res) => {
   try {
-    const { mode, month, marketStats, listings, neighborhood, personalNote, lists, sendDate, weekOf, intro } = req.body;
+    const body = req.body;
+    const { mode } = body;
+    const SIGN = 'Matt Golden | MG Realty | (323) 688-3855 | matt@mgoldenrealty.com';
+    const VOICE = `Matt's voice is warm, confident, and direct — he knows LA real estate deeply and speaks to his clients like a trusted friend in the industry, not a corporate agent. Never salesy. Always useful.`;
+
+    const wkLabel = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : 'this week';
+    const listingBlock = (l, i) => `Listing ${i+1}: ${l.address} | ${l.price} | ${l.beds} | ${l.sqft} sqft${l.link ? '\nLink: '+l.link : ''}${l.notes ? '\nHighlights: '+l.notes : ''}`;
 
     let prompt;
 
     if (mode === 'monthly') {
-      const listingBlocks = (listings || []).map((l, i) =>
-        `Listing ${i+1}: ${l.address} | ${l.price} | ${l.beds} bed/bath | ${l.sqft} sqft${l.link ? ' | ' + l.link : ''}${l.notes ? '\nHighlights: ' + l.notes : ''}`
-      ).join('\n\n');
-
-      const hoodBlock = neighborhood && neighborhood.name
-        ? `Neighborhood Spotlight: ${neighborhood.name}${neighborhood.priceRange ? ', ' + neighborhood.priceRange : ''}${neighborhood.notes ? '\nNotes: ' + neighborhood.notes : ''}`
-        : '';
-
-      prompt = `You are writing a monthly real estate newsletter for Matt Golden, a Los Angeles real estate agent with MG Realty. Matt's voice is warm, confident, and direct — he knows LA real estate deeply and speaks to his clients like a trusted friend, not a corporate agent.
+      const ms = body.marketStats || {};
+      const nb = body.neighborhood || {};
+      prompt = `You are writing a monthly real estate newsletter for Matt Golden, a Los Angeles real estate agent with MG Realty. ${VOICE}
 
 Write TWO things:
 1. A compelling subject line (conversational, not salesy, under 60 characters)
 2. The full newsletter body
 
-Newsletter details:
-- Month: ${month || 'this month'}
-- Market stats: Median sale price ${marketStats.medianPrice || 'N/A'}, ${marketStats.priceChange || ''} vs last month, avg ${marketStats.daysOnMarket || 'N/A'} days on market, ${marketStats.homesSold || 'N/A'} homes sold, inventory: ${marketStats.inventory || 'N/A'}, market: ${marketStats.marketTemp || 'N/A'}
-${listingBlocks ? '\nFeatured Listings:\n' + listingBlocks : ''}
-${hoodBlock ? '\n' + hoodBlock : ''}
-${personalNote ? '\nMatt\'s personal note (polish this into his voice): ' + personalNote : ''}
+Details:
+- Month: ${body.month || 'this month'}
+- Market: Median price ${ms.medianPrice||'N/A'}, ${ms.priceChange||''} vs last month, avg ${ms.daysOnMarket||'N/A'} days on market, ${ms.homesSold||'N/A'} homes sold, inventory: ${ms.inventory||'N/A'}, ${ms.marketTemp||''}
+${(body.listings||[]).length ? '\nFeatured Listings:\n' + body.listings.map(listingBlock).join('\n\n') : ''}
+${nb.name ? `\nNeighborhood Spotlight: ${nb.name}${nb.priceRange ? ', '+nb.priceRange : ''}${nb.notes ? '\n'+nb.notes : ''}` : ''}
+${body.personalNote ? `\nMatt's personal note (polish into his voice): ${body.personalNote}` : ''}
 
-Format the body as plain text (no HTML, no markdown headers) with clear sections:
-- Opening personal note from Matt (2-3 sentences, warm and direct)
-- Market Update section with the stats woven into a brief narrative (not a bullet list)
-${(listings||[]).length ? '- Featured Listings section with each listing formatted cleanly' : ''}
-${neighborhood && neighborhood.name ? '- Neighborhood Spotlight section' : ''}
-- Brief closing with a call to action (reply, call, or reach out)
+Format: plain text, no HTML, no markdown headers. Sections: opening personal note → market update (narrative, not bullets) ${(body.listings||[]).length?'→ featured listings':''} ${nb.name?'→ neighborhood spotlight':''} → closing CTA.
+Sign off as: ${SIGN}
+Return ONLY valid JSON: {"subject":"...","body":"..."}`;
 
-Sign off as: Matt Golden | MG Realty | (323) 688-3855 | matt@mgoldenrealty.com
+    } else if (mode === 'westside') {
+      const hoods = (body.neighborhoods || []).map(n => `- ${n.name}: ${n.update}`).join('\n');
+      const deal = body.dealOfWeek || {};
+      prompt = `You are writing "The Westside Weekly" — a hyperlocal real estate newsletter for Matt Golden, LA real estate agent. ${VOICE}
 
-Return ONLY valid JSON: {"subject": "...", "body": "..."}`;
+Format: one punchy lead stat → what it means → 3 neighborhood bullets → deal of the week. Scannable, data-driven, under 400 words.
 
-    } else {
-      const listingBlocks = (listings || []).map((l, i) =>
-        `Listing ${i+1}: ${l.address} | ${l.price} | ${l.beds} bed/bath | ${l.sqft} sqft${l.link ? '\nLink: ' + l.link : ''}${l.notes ? '\nHighlights: ' + l.notes : ''}`
-      ).join('\n\n');
+Data:
+- Week of: ${wkLabel(body.weekOf)}
+- Lead stat: ${body.leadStat || ''}
+- What it means: ${body.statMeaning || ''}
+- Neighborhoods:
+${hoods}
+- Deal of the week: ${deal.address||''} | ${deal.price||''} | ${deal.beds||''}${deal.link ? '\n  Link: '+deal.link : ''}
+  Why: ${deal.why || ''}
 
-      const weekLabel = weekOf ? new Date(weekOf + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'this week';
+Write a compelling subject line (under 55 chars) and the full body as plain text.
+Sign off as: ${SIGN}
+Return ONLY valid JSON: {"subject":"...","body":"..."}`;
 
-      prompt = `You are writing a weekly featured listings email for Matt Golden, a Los Angeles real estate agent with MG Realty. His voice is warm, direct, and knowledgeable — he speaks to clients like a trusted advisor, not a mass marketer.
+    } else if (mode === 'insider') {
+      prompt = `You are writing "The Insider" — a narrative-first real estate newsletter for Matt Golden, LA real estate agent. ${VOICE}
 
-Write TWO things:
-1. A subject line that makes people want to open it (conversational, not salesy, under 55 characters)
-2. The full email body
+This reads like a letter from a knowledgeable friend in the industry, not a press release. Open with the observation, connect to a market trend, close with Matt's take and a CTA.
 
-Email details:
-- Week of: ${weekLabel}
-${intro ? '- Intro hint: ' + intro : ''}
+Data:
+- Week of: ${wkLabel(body.weekOf)}
+- Matt's opening observation: ${body.observation || ''}
+- Market trend it connects to: ${body.trend || ''}
+- Matt's take / CTA: ${body.take || ''}
+
+Write a subject line that creates curiosity (under 55 chars) and the full body as plain text. No bullet lists — pure prose.
+Sign off as: ${SIGN}
+Return ONLY valid JSON: {"subject":"...","body":"..."}`;
+
+    } else if (mode === 'roundup') {
+      const stories = (body.stories || []).map((s, i) => `Story ${i+1}: "${s.headline}"\nMatt's take: ${s.take}`).join('\n\n');
+      prompt = `You are writing "The Roundup" — a weekly real estate news curation email for Matt Golden, LA real estate agent. ${VOICE}
+
+Format: short opener → each story as a brief block (headline → Matt's 1-2 sentence take) → closing. Fast to read, genuinely useful.
+
+Data:
+- Week of: ${wkLabel(body.weekOf)}
+- Stories:
+${stories}
+
+Write a subject line (under 55 chars) and the full body as plain text. Keep each take sharp and opinionated.
+Sign off as: ${SIGN}
+Return ONLY valid JSON: {"subject":"...","body":"..."}`;
+
+    } else if (mode === 'featured') {
+      const listingBlocks = (body.listings || []).map(listingBlock).join('\n\n');
+      prompt = `You are writing a weekly featured listings email for Matt Golden, LA real estate agent. ${VOICE}
+
+Data:
+- Week of: ${wkLabel(body.weekOf)}
+${body.intro ? '- Intro hint: ' + body.intro : ''}
 - Listings:
 ${listingBlocks}
 
-Format the body as plain text (no HTML, no markdown). Structure:
-- Short, punchy opening (1-2 sentences, ${intro || 'highlight what\'s special about this week\'s picks'})
-- Each listing as a clean block: address as the header, then price/beds/baths/sqft on one line, then a 2-3 sentence description that highlights what makes it special, then the link if provided
-- Brief closing encouraging them to reach out or schedule a showing
+Write a subject line (under 55 chars) and the full body as plain text. Short punchy opener → each listing as a clean block → brief closing CTA.
+Sign off as: ${SIGN}
+Return ONLY valid JSON: {"subject":"...","body":"..."}`;
 
-Sign off as: Matt Golden | MG Realty | (323) 688-3855 | matt@mgoldenrealty.com
+    } else if (mode === 'just_sold') {
+      const closings = (body.closings || []).map((c, i) =>
+        `Closing ${i+1}: ${c.address} | ${c.price} | ${c.beds}\nStory: ${c.story||''}${c.meaning ? '\nSignal: '+c.meaning : ''}`
+      ).join('\n\n');
+      prompt = `You are writing a "Just Sold" newsletter for Matt Golden, LA real estate agent. ${VOICE}
 
-Return ONLY valid JSON: {"subject": "...", "body": "..."}`;
+Share the closing(s) in a way that builds credibility and trust. Make it feel real — not a brag, but a genuine look behind the curtain.
+
+Data:
+- Month: ${body.month || 'this month'}
+- Closings:
+${closings}
+
+Write a subject line (under 55 chars) and body as plain text. Opener → each closing story → what it means for the market → closing CTA.
+Sign off as: ${SIGN}
+Return ONLY valid JSON: {"subject":"...","body":"..."}`;
+
+    } else if (mode === 'tips') {
+      prompt = `You are writing a buyer/seller tips newsletter for Matt Golden, LA real estate agent. ${VOICE}
+
+This is educational content that keeps Matt top-of-mind for clients in the pipeline. Make it genuinely useful — not generic.
+
+Data:
+- Month: ${body.month || 'this month'}
+- Audience: ${body.audience || 'buyers and sellers'}
+- Topic: ${body.topic || ''}
+- Key points / notes: ${body.points || ''}
+${body.take ? '- Matt\'s personal take: ' + body.take : ''}
+
+Write a subject line (under 55 chars) and body as plain text. Opener → tips (flowing prose or numbered — your call based on topic) → Matt's personal take → CTA.
+Sign off as: ${SIGN}
+Return ONLY valid JSON: {"subject":"...","body":"..."}`;
+
+    } else {
+      return res.status(400).json({ error: 'Unknown newsletter mode: ' + mode });
     }
 
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {

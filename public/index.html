@@ -2025,185 +2025,73 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
   <div class="content">
     <div style="max-width:820px">
 
-      <!-- Tab switcher -->
-      <div style="display:flex;gap:8px;margin-bottom:22px">
-        <button id="nl-tab-monthly" class="btn btn-gold" onclick="nlSwitchTab('monthly')" style="font-size:13px">Monthly Newsletter</button>
-        <button id="nl-tab-featured" class="btn" onclick="nlSwitchTab('featured')" style="font-size:13px;background:transparent;color:var(--text2);border:1px solid var(--border)">Weekly Featured Listings</button>
+      <!-- Type selector -->
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Newsletter type</label>
+        <select id="nl-type" onchange="nlSwitchType(this.value)" style="font-size:14px;font-weight:500;margin-top:4px">
+          <option value="monthly">📊 Monthly Market Update</option>
+          <option value="westside">📍 The Westside Weekly</option>
+          <option value="insider">✍️ The Insider</option>
+          <option value="roundup">📰 The Roundup</option>
+          <option value="featured">🏠 Weekly Featured Listings</option>
+          <option value="just_sold">🔑 Just Sold</option>
+          <option value="tips">💡 Buyer / Seller Tips</option>
+        </select>
+        <div id="nl-type-desc" style="font-size:12px;color:var(--text3);margin-top:6px;line-height:1.5">Monthly stats + featured listings + neighborhood note — great for your full contact list.</div>
       </div>
 
-      <!-- ── MONTHLY NEWSLETTER ── -->
-      <div id="nl-pane-monthly">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-          <div>
-            <label>Send date</label>
-            <select id="nl-send-date">
-              <option value="1st">1st of the month</option>
-              <option value="15th">15th of the month</option>
-              <option value="other">Other (specify in notes)</option>
-            </select>
-          </div>
-          <div>
-            <label>Month &amp; year</label>
-            <input type="text" id="nl-month" placeholder="e.g. June 2026">
-          </div>
+      <!-- Dynamic fields injected here -->
+      <div id="nl-fields"></div>
+
+      <!-- Shared: send date + lists -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div>
+          <label>Send date</label>
+          <select id="nl-send-date">
+            <option value="1st">1st of the month</option>
+            <option value="15th">15th of the month</option>
+            <option value="other">Other (specify below)</option>
+          </select>
         </div>
-
-        <div class="tw" style="padding:16px;margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Market Stats</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-            <div><label>Median sale price</label><input id="nl-med-price" placeholder="$1,250,000"></div>
-            <div><label>vs. last month</label><input id="nl-price-chg" placeholder="+3.2%"></div>
-            <div><label>Avg days on market</label><input id="nl-dom" placeholder="18"></div>
-            <div><label>Homes sold</label><input id="nl-sold" placeholder="142"></div>
-            <div><label>Active inventory</label><input id="nl-inventory" placeholder="87 homes"></div>
-            <div>
-              <label>Market temp</label>
-              <select id="nl-market-temp">
-                <option>Hot seller's market</option>
-                <option>Balanced market</option>
-                <option>Buyer's market</option>
-              </select>
-            </div>
-          </div>
+        <div>
+          <label>Lists / tags (Compass Contacts)</label>
+          <input id="nl-lists" placeholder="e.g. Past Clients, Silver Lake — or N/A">
         </div>
+      </div>
 
-        <div class="tw" style="padding:16px;margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Featured Listings (up to 2)</div>
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px">
-            <input id="nl-l1-addr" placeholder="Address">
-            <input id="nl-l1-price" placeholder="Price">
-            <input id="nl-l1-beds" placeholder="Bed/Bath">
-            <input id="nl-l1-sqft" placeholder="Sqft">
-          </div>
-          <input id="nl-l1-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">
-          <textarea id="nl-l1-notes" placeholder="Key highlights — what makes it special?" style="height:52px;resize:none;width:100%;box-sizing:border-box;margin-bottom:14px"></textarea>
+      <button class="btn btn-gold" onclick="nlGenerate()" style="margin-bottom:24px"><i class="ti ti-sparkles"></i> Generate Newsletter</button>
 
-          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px">
-            <input id="nl-l2-addr" placeholder="Address (optional)">
-            <input id="nl-l2-price" placeholder="Price">
-            <input id="nl-l2-beds" placeholder="Bed/Bath">
-            <input id="nl-l2-sqft" placeholder="Sqft">
+      <!-- Output -->
+      <div id="nl-output" style="display:none">
+        <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Ready to copy into the RARE form</div>
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="margin:0">Subject line</label>
+            <button class="btn" onclick="nlCopy('nl-out-subject')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
           </div>
-          <input id="nl-l2-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">
-          <textarea id="nl-l2-notes" placeholder="Key highlights" style="height:52px;resize:none;width:100%;box-sizing:border-box"></textarea>
+          <div id="nl-out-subject" class="tw" style="padding:12px;font-size:14px;line-height:1.6;min-height:36px;white-space:pre-wrap"></div>
         </div>
-
-        <div class="tw" style="padding:16px;margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Neighborhood Spotlight</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
-            <div><label>Neighborhood</label><input id="nl-hood" placeholder="e.g. Silver Lake"></div>
-            <div><label>Price range</label><input id="nl-hood-price" placeholder="e.g. $900K–$1.4M"></div>
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="margin:0">Newsletter body <span style="font-weight:400;color:var(--text3)">(paste into "Newsletter info" field)</span></label>
+            <button class="btn" onclick="nlCopy('nl-out-body')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
           </div>
-          <textarea id="nl-hood-notes" placeholder="Any notes about what's happening there — activity, vibe, notable sales..." style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea>
+          <div id="nl-out-body" class="tw" style="padding:14px;font-size:14px;line-height:1.8;min-height:120px;white-space:pre-wrap"></div>
         </div>
-
-        <div style="margin-bottom:16px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <label style="margin:0">Personal note from Matt</label>
-            <button class="btn" id="nl-ace-btn" onclick="nlGeneratePersonalNote()" style="font-size:12px;padding:4px 10px;color:var(--accent);border-color:var(--accent)"><i class="ti ti-sparkles"></i> Ace Generate</button>
-          </div>
-          <textarea id="nl-personal-note" placeholder="Write it rough and Ace will polish it — or click Ace Generate to get a starting point..." style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>
-        </div>
-
-        <div style="margin-bottom:16px">
-          <label>Lists / tags to send to (Compass Contacts)</label>
-          <input id="nl-lists" placeholder="e.g. Past Clients, Silver Lake Farm — or type N/A">
-        </div>
-
-        <button class="btn btn-gold" onclick="nlGenerate('monthly')" style="margin-bottom:24px"><i class="ti ti-sparkles"></i> Generate Newsletter</button>
-
-        <!-- OUTPUT -->
-        <div id="nl-output-monthly" style="display:none">
-          <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
-          <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Ready to copy into the RARE form</div>
-
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Subject line</label>
-              <button class="btn" onclick="nlCopy('nl-out-subject')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
-            </div>
-            <div id="nl-out-subject" class="tw" style="padding:12px;font-size:14px;line-height:1.6;min-height:36px;white-space:pre-wrap"></div>
-          </div>
-
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Newsletter body <span style="font-weight:400;color:var(--text3)">(paste into "Newsletter info" field)</span></label>
-              <button class="btn" onclick="nlCopy('nl-out-body')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
-            </div>
-            <div id="nl-out-body" class="tw" style="padding:14px;font-size:14px;line-height:1.8;min-height:120px;white-space:pre-wrap"></div>
-          </div>
-
-          <div class="tw" style="padding:12px;background:rgba(232,104,26,0.06);border-color:rgba(232,104,26,0.2)">
-            <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">Submission checklist</div>
-            <div style="font-size:13px;color:var(--text2);line-height:1.8">
-              ✓ Copy subject line above → paste into "Subject Line" field<br>
-              ✓ Copy body above → paste into "Newsletter info" field<br>
-              ✓ Select send date: <strong id="nl-remind-date"></strong><br>
-              ✓ Fill in Lists/Tags: <span id="nl-remind-lists"></span><br>
-              ✓ Upload any listing photos under "Images to use"<br>
-              <a href="https://forms.gle/aH9BPakqopEocMmQ6" target="_blank" style="color:var(--accent);font-weight:600;display:inline-block;margin-top:8px"><i class="ti ti-external-link"></i> Open RARE Newsletter Form →</a>
-            </div>
+        <div class="tw" style="padding:12px;background:rgba(232,104,26,0.06);border-color:rgba(232,104,26,0.2)">
+          <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">Submission checklist</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.8">
+            ✓ Copy subject line → paste into "Subject Line" field<br>
+            ✓ Copy body → paste into "Newsletter info" field<br>
+            ✓ Select send date: <strong id="nl-remind-date"></strong><br>
+            ✓ Lists/Tags: <span id="nl-remind-lists"></span><br>
+            ✓ Upload any listing photos under "Images to use"<br>
+            <a href="https://forms.gle/aH9BPakqopEocMmQ6" target="_blank" style="color:var(--accent);font-weight:600;display:inline-block;margin-top:8px"><i class="ti ti-external-link"></i> Open RARE Newsletter Form →</a>
           </div>
         </div>
       </div>
 
-      <!-- ── WEEKLY FEATURED LISTINGS ── -->
-      <div id="nl-pane-featured" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-          <div>
-            <label>Week of</label>
-            <input type="date" id="fl-week">
-          </div>
-          <div>
-            <label>Intro line (optional)</label>
-            <input id="fl-intro" placeholder="AI will write one if blank...">
-          </div>
-        </div>
-
-        <div id="fl-listing-stack"></div>
-
-        <button class="btn" onclick="flAddListing()" style="margin-bottom:16px;font-size:13px"><i class="ti ti-plus"></i> Add listing</button>
-
-        <div style="margin-bottom:16px">
-          <label>Lists / tags to send to (Compass Contacts)</label>
-          <input id="fl-lists" placeholder="e.g. All Contacts, Buyer Leads — or type N/A">
-        </div>
-
-        <button class="btn btn-gold" onclick="nlGenerate('featured')" style="margin-bottom:24px"><i class="ti ti-sparkles"></i> Generate Email</button>
-
-        <!-- OUTPUT -->
-        <div id="nl-output-featured" style="display:none">
-          <div style="height:1px;background:var(--border);margin-bottom:20px"></div>
-          <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Ready to copy into the RARE form</div>
-
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Subject line</label>
-              <button class="btn" onclick="nlCopy('fl-out-subject')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
-            </div>
-            <div id="fl-out-subject" class="tw" style="padding:12px;font-size:14px;min-height:36px;white-space:pre-wrap"></div>
-          </div>
-
-          <div style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Email body <span style="font-weight:400;color:var(--text3)">(paste into "Newsletter info" field)</span></label>
-              <button class="btn" onclick="nlCopy('fl-out-body')" style="font-size:12px;padding:4px 10px"><i class="ti ti-copy"></i> Copy</button>
-            </div>
-            <div id="fl-out-body" class="tw" style="padding:14px;font-size:14px;line-height:1.8;min-height:120px;white-space:pre-wrap"></div>
-          </div>
-
-          <div class="tw" style="padding:12px;background:rgba(232,104,26,0.06);border-color:rgba(232,104,26,0.2)">
-            <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">Submission checklist</div>
-            <div style="font-size:13px;color:var(--text2);line-height:1.8">
-              ✓ Copy subject line above → paste into "Subject Line" field<br>
-              ✓ Copy body above → paste into "Newsletter info" field<br>
-              ✓ Upload listing photos under "Images to use"<br>
-              ✓ Fill in Lists/Tags: <span id="fl-remind-lists"></span><br>
-              <a href="https://forms.gle/aH9BPakqopEocMmQ6" target="_blank" style="color:var(--accent);font-weight:600;display:inline-block;margin-top:8px"><i class="ti ti-external-link"></i> Open RARE Newsletter Form →</a>
-            </div>
-          </div>
-        </div>
-      </div>
 
     </div>
   </div>
@@ -11178,186 +11066,328 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 // ── Newsletter Builder ─────────────────────────────────────────
-var flListingCount = 0;
+// ── Newsletter Builder ─────────────────────────────────────────
+var nlListingCount = 0;
 
-function nlSwitchTab(tab) {
-  document.getElementById('nl-pane-monthly').style.display = tab === 'monthly' ? 'block' : 'none';
-  document.getElementById('nl-pane-featured').style.display = tab === 'featured' ? 'block' : 'none';
-  var mBtn = document.getElementById('nl-tab-monthly');
-  var fBtn = document.getElementById('nl-tab-featured');
-  if (tab === 'monthly') {
-    mBtn.className = 'btn btn-gold'; mBtn.style.cssText = 'font-size:13px';
-    fBtn.className = 'btn'; fBtn.style.cssText = 'font-size:13px;background:transparent;color:var(--text2);border:1px solid var(--border)';
-  } else {
-    fBtn.className = 'btn btn-gold'; fBtn.style.cssText = 'font-size:13px';
-    mBtn.className = 'btn'; mBtn.style.cssText = 'font-size:13px;background:transparent;color:var(--text2);border:1px solid var(--border)';
+var NL_TYPE_META = {
+  monthly:   { label: 'Monthly Market Update',      desc: 'Monthly stats + featured listings + neighborhood note — great for your full contact list.' },
+  westside:  { label: 'The Westside Weekly',         desc: 'One hyperlocal data point + 3 neighborhood bullets + deal of the week. Positions you as the local expert.' },
+  insider:   { label: 'The Insider',                 desc: 'Personal observation from the field that connects to a market trend. Reads like intel, not a press release.' },
+  roundup:   { label: 'The Roundup',                 desc: 'Curate 3–5 industry stories with your one-sentence take on each. Lowest lift, easiest to be consistent with.' },
+  featured:  { label: 'Weekly Featured Listings',    desc: 'Showcase your active listings with highlights and links — best for buyer-heavy lists.' },
+  just_sold: { label: 'Just Sold',                   desc: 'Share a recent closing, how it went, and what it signals for the neighborhood.' },
+  tips:      { label: 'Buyer / Seller Tips',         desc: 'Educational content that keeps you top-of-mind for clients in the pipeline.' }
+};
+
+function nlSwitchType(type) {
+  var meta = NL_TYPE_META[type] || {};
+  document.getElementById('nl-type-desc').innerText = meta.desc || '';
+  document.getElementById('nl-output').style.display = 'none';
+  var fields = document.getElementById('nl-fields');
+  nlListingCount = 0;
+
+  if (type === 'monthly') {
+    fields.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">' +
+        '<div><label>Month &amp; year</label><input id="nl-month" placeholder="e.g. June 2026"></div>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Market Stats</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">' +
+          '<div><label>Median sale price</label><input id="nl-med-price" placeholder="$1,250,000"></div>' +
+          '<div><label>vs. last month</label><input id="nl-price-chg" placeholder="+3.2%"></div>' +
+          '<div><label>Avg days on market</label><input id="nl-dom" placeholder="18"></div>' +
+          '<div><label>Homes sold</label><input id="nl-sold" placeholder="142"></div>' +
+          '<div><label>Active inventory</label><input id="nl-inventory" placeholder="87 homes"></div>' +
+          '<div><label>Market temp</label><select id="nl-market-temp"><option>Hot seller\'s market</option><option>Balanced market</option><option>Buyer\'s market</option></select></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Featured Listings (up to 2)</div>' +
+        '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px"><input id="nl-l1-addr" placeholder="Address"><input id="nl-l1-price" placeholder="Price"><input id="nl-l1-beds" placeholder="Bed/Bath"><input id="nl-l1-sqft" placeholder="Sqft"></div>' +
+        '<input id="nl-l1-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
+        '<textarea id="nl-l1-notes" placeholder="Key highlights" style="height:52px;resize:none;width:100%;box-sizing:border-box;margin-bottom:14px"></textarea>' +
+        '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px"><input id="nl-l2-addr" placeholder="Address (optional)"><input id="nl-l2-price" placeholder="Price"><input id="nl-l2-beds" placeholder="Bed/Bath"><input id="nl-l2-sqft" placeholder="Sqft"></div>' +
+        '<input id="nl-l2-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
+        '<textarea id="nl-l2-notes" placeholder="Key highlights" style="height:52px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Neighborhood Spotlight</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">' +
+          '<div><label>Neighborhood</label><input id="nl-hood" placeholder="e.g. Silver Lake"></div>' +
+          '<div><label>Price range</label><input id="nl-hood-price" placeholder="e.g. $900K–$1.4M"></div>' +
+        '</div>' +
+        '<textarea id="nl-hood-notes" placeholder="What\'s happening there — activity, vibe, notable sales..." style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div style="margin-bottom:16px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+          '<label style="margin:0">Personal note from Matt</label>' +
+          '<button class="btn" id="nl-ace-btn" onclick="nlGeneratePersonalNote()" style="font-size:12px;padding:4px 10px;color:var(--accent);border-color:var(--accent)"><i class="ti ti-sparkles"></i> Ace Generate</button>' +
+        '</div>' +
+        '<textarea id="nl-personal-note" placeholder="Write it rough and Ace will polish it — or click Ace Generate..." style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>';
+
+  } else if (type === 'westside') {
+    fields.innerHTML =
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Lead Stat</div>' +
+        '<div style="margin-bottom:8px"><label>The one stat that matters this week</label><input id="ws-stat" placeholder="e.g. WeHo inventory just hit a 6-month low"></div>' +
+        '<div><label>What it means for buyers / sellers (1–2 sentences)</label><textarea id="ws-stat-meaning" placeholder="Here\'s what that means for you if you\'re looking to buy or sell right now..." style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea></div>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">3 Neighborhood Bullets</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-bottom:8px">' +
+          '<input id="ws-n1" placeholder="Neighborhood 1"><input id="ws-n1-update" placeholder="One-line update (prices, activity, trend)">' +
+          '<input id="ws-n2" placeholder="Neighborhood 2" style="margin-top:8px"><input id="ws-n2-update" placeholder="One-line update" style="margin-top:8px">' +
+          '<input id="ws-n3" placeholder="Neighborhood 3" style="margin-top:8px"><input id="ws-n3-update" placeholder="One-line update" style="margin-top:8px">' +
+        '</div>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Deal of the Week</div>' +
+        '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:6px"><input id="ws-deal-addr" placeholder="Address"><input id="ws-deal-price" placeholder="Price"><input id="ws-deal-beds" placeholder="Bed/Bath"></div>' +
+        '<input id="ws-deal-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
+        '<textarea id="ws-deal-why" placeholder="Why is this the deal of the week? What makes it interesting?" style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div style="margin-bottom:16px"><label>Week of</label><input type="date" id="ws-week"></div>';
+
+  } else if (type === 'insider') {
+    fields.innerHTML =
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Your Opening Observation</div>' +
+        '<textarea id="ins-observation" placeholder="What did you notice this week? e.g. \'I showed 4 homes in Brentwood this week and noticed something weird...\'" style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">The Market Connection</div>' +
+        '<textarea id="ins-trend" placeholder="What bigger trend does your observation connect to? e.g. \'It\'s part of a broader shift we\'re seeing across Westside...\'" style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Your Take + CTA</div>' +
+        '<textarea id="ins-take" placeholder="Bottom line — what should readers do with this intel? Reply, call you, start their search?" style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div style="margin-bottom:16px"><label>Week of</label><input type="date" id="ins-week"></div>';
+
+  } else if (type === 'roundup') {
+    fields.innerHTML =
+      '<div style="font-size:13px;color:var(--text3);margin-bottom:14px">Add 3–5 stories from the week (Urbanize LA, The Real Deal, Bisnow, etc.) with your one-sentence take on each.</div>' +
+      '<div id="nl-story-stack"></div>' +
+      '<button class="btn" onclick="nlAddStory()" style="margin-bottom:16px;font-size:13px"><i class="ti ti-plus"></i> Add story</button>' +
+      '<div style="margin-bottom:16px"><label>Week of</label><input type="date" id="ru-week"></div>';
+    nlAddStory(); nlAddStory(); nlAddStory();
+
+  } else if (type === 'featured') {
+    fields.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">' +
+        '<div><label>Week of</label><input type="date" id="fl-week"></div>' +
+        '<div><label>Intro line (optional)</label><input id="fl-intro" placeholder="AI will write one if blank..."></div>' +
+      '</div>' +
+      '<div id="fl-listing-stack"></div>' +
+      '<button class="btn" onclick="nlAddListing()" style="margin-bottom:16px;font-size:13px"><i class="ti ti-plus"></i> Add listing</button>';
+    nlAddListing();
+
+  } else if (type === 'just_sold') {
+    fields.innerHTML =
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">The Closing</div>' +
+        '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:6px"><input id="js-addr" placeholder="Address"><input id="js-price" placeholder="Sale price"><input id="js-beds" placeholder="Bed/Bath"></div>' +
+        '<textarea id="js-story" placeholder="How did it go? Multiple offers? Over asking? Days on market? Any fun details?" style="height:72px;resize:none;width:100%;box-sizing:border-box;margin-bottom:8px"></textarea>' +
+        '<textarea id="js-meaning" placeholder="What does this sale signal for the neighborhood or market?" style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Second Closing (optional)</div>' +
+        '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:6px"><input id="js2-addr" placeholder="Address"><input id="js2-price" placeholder="Sale price"><input id="js2-beds" placeholder="Bed/Bath"></div>' +
+        '<textarea id="js2-story" placeholder="Quick note on this one..." style="height:52px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div style="margin-bottom:16px"><label>Month &amp; year</label><input id="js-month" placeholder="e.g. June 2026"></div>';
+
+  } else if (type === 'tips') {
+    fields.innerHTML =
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Tip Details</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">' +
+          '<div><label>Audience</label><select id="tips-audience"><option value="buyers">Buyers</option><option value="sellers">Sellers</option><option value="both">Both</option></select></div>' +
+          '<div><label>Topic</label><input id="tips-topic" placeholder="e.g. How to win a bidding war"></div>' +
+        '</div>' +
+        '<textarea id="tips-points" placeholder="Key points, facts, or bullet notes — Ace will shape these into a full email..." style="height:80px;resize:none;width:100%;box-sizing:border-box;margin-bottom:8px"></textarea>' +
+        '<textarea id="tips-take" placeholder="Matt\'s personal take or closing line (optional)" style="height:52px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
+      '</div>' +
+      '<div style="margin-bottom:16px"><label>Month &amp; year</label><input id="tips-month" placeholder="e.g. June 2026"></div>';
   }
 }
 
-function flAddListing() {
-  flListingCount++;
-  var n = flListingCount;
+function nlAddListing() {
+  nlListingCount++;
+  var n = nlListingCount;
   var stack = document.getElementById('fl-listing-stack');
+  if (!stack) return;
   var d = document.createElement('div');
   d.className = 'tw';
-  d.id = 'fl-listing-' + n;
   d.style.cssText = 'padding:14px;margin-bottom:12px';
-  d.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
-    '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Listing ' + n + '</div>' +
-    (n > 1 ? '<button class="btn" onclick="this.closest(\'.tw\').remove()" style="font-size:11px;padding:3px 8px;color:var(--text3)"><i class="ti ti-x"></i></button>' : '') +
+  d.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Listing ' + n + '</div>' +
+      (n > 1 ? '<button class="btn" onclick="this.closest(\'.tw\').remove()" style="font-size:11px;padding:3px 8px;color:var(--text3)"><i class="ti ti-x"></i></button>' : '') +
     '</div>' +
     '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px">' +
-    '<input id="fl-l'+n+'-addr" placeholder="Address">' +
-    '<input id="fl-l'+n+'-price" placeholder="Price">' +
-    '<input id="fl-l'+n+'-beds" placeholder="Bed/Bath">' +
-    '<input id="fl-l'+n+'-sqft" placeholder="Sqft">' +
+      '<input class="fl-addr" placeholder="Address"><input class="fl-price" placeholder="Price"><input class="fl-beds" placeholder="Bed/Bath"><input class="fl-sqft" placeholder="Sqft">' +
     '</div>' +
-    '<input id="fl-l'+n+'-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
-    '<textarea id="fl-l'+n+'-notes" placeholder="Key features — paste MLS notes or bullet the highlights" style="height:64px;resize:none;width:100%;box-sizing:border-box"></textarea>';
+    '<input class="fl-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
+    '<textarea class="fl-notes" placeholder="Key features — paste MLS notes or bullet the highlights" style="height:64px;resize:none;width:100%;box-sizing:border-box"></textarea>';
+  stack.appendChild(d);
+}
+
+function nlAddStory() {
+  var stack = document.getElementById('nl-story-stack');
+  if (!stack) return;
+  var n = stack.children.length + 1;
+  if (n > 5) return;
+  var d = document.createElement('div');
+  d.className = 'tw';
+  d.style.cssText = 'padding:14px;margin-bottom:12px';
+  d.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Story ' + n + '</div>' +
+      (n > 1 ? '<button class="btn" onclick="this.closest(\'.tw\').remove()" style="font-size:11px;padding:3px 8px;color:var(--text3)"><i class="ti ti-x"></i></button>' : '') +
+    '</div>' +
+    '<input class="ru-headline" placeholder="Headline or topic (e.g. \'LA rents drop 4% YoY — Bisnow\')" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
+    '<textarea class="ru-take" placeholder="Your one-sentence take..." style="height:48px;resize:none;width:100%;box-sizing:border-box"></textarea>';
   stack.appendChild(d);
 }
 
 function nlGeneratePersonalNote() {
   var btn = document.getElementById('nl-ace-btn');
+  if (!btn) return;
   btn.innerHTML = '<i class="ti ti-loader-2"></i> Writing...';
   btn.disabled = true;
-
   var context = {
-    month: document.getElementById('nl-month').value,
-    medianPrice: document.getElementById('nl-med-price').value,
-    priceChange: document.getElementById('nl-price-chg').value,
-    daysOnMarket: document.getElementById('nl-dom').value,
-    marketTemp: document.getElementById('nl-market-temp').value,
-    neighborhood: document.getElementById('nl-hood').value,
-    existing: document.getElementById('nl-personal-note').value
+    month: (document.getElementById('nl-month') || {}).value || '',
+    medianPrice: (document.getElementById('nl-med-price') || {}).value || '',
+    priceChange: (document.getElementById('nl-price-chg') || {}).value || '',
+    daysOnMarket: (document.getElementById('nl-dom') || {}).value || '',
+    marketTemp: (document.getElementById('nl-market-temp') || {}).value || '',
+    neighborhood: (document.getElementById('nl-hood') || {}).value || '',
+    existing: (document.getElementById('nl-personal-note') || {}).value || ''
   };
-
-  fetch('/api/newsletter-personal-note', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(context)
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    btn.innerHTML = '<i class="ti ti-sparkles"></i> Ace Generate';
-    btn.disabled = false;
-    if (data.note) {
-      document.getElementById('nl-personal-note').value = data.note;
-    }
-  })
-  .catch(function() {
-    btn.innerHTML = '<i class="ti ti-sparkles"></i> Ace Generate';
-    btn.disabled = false;
-    toast('Failed to generate — try again');
-  });
+  fetch('/api/newsletter-personal-note', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(context) })
+    .then(function(r){return r.json();})
+    .then(function(data){
+      btn.innerHTML = '<i class="ti ti-sparkles"></i> Ace Generate'; btn.disabled = false;
+      if (data.note && document.getElementById('nl-personal-note')) document.getElementById('nl-personal-note').value = data.note;
+    })
+    .catch(function(){ btn.innerHTML = '<i class="ti ti-sparkles"></i> Ace Generate'; btn.disabled = false; toast('Failed to generate — try again'); });
 }
 
 function nlCopy(id) {
   var el = document.getElementById(id);
   if (!el) return;
-  navigator.clipboard.writeText(el.innerText).then(function() {
-    toast('Copied!');
-  }).catch(function() {
-    var r = document.createRange();
-    r.selectNode(el);
-    window.getSelection().removeAllRanges();
-    window.getSelection().addRange(r);
-    document.execCommand('copy');
-    toast('Copied!');
+  navigator.clipboard.writeText(el.innerText).then(function(){ toast('Copied!'); }).catch(function(){
+    var r = document.createRange(); r.selectNode(el);
+    window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+    document.execCommand('copy'); toast('Copied!');
   });
 }
 
-function nlGenerate(mode) {
+function nlGV(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+function nlGenerate() {
   var btn = event.target.closest('button');
   var origText = btn.innerHTML;
   btn.innerHTML = '<i class="ti ti-loader-2"></i> Generating...';
   btn.disabled = true;
 
-  var payload;
+  var type = document.getElementById('nl-type').value;
+  var payload = { mode: type, sendDate: nlGV('nl-send-date'), lists: nlGV('nl-lists') };
 
-  if (mode === 'monthly') {
-    payload = {
-      mode: 'monthly',
-      month: document.getElementById('nl-month').value,
-      marketStats: {
-        medianPrice: document.getElementById('nl-med-price').value,
-        priceChange: document.getElementById('nl-price-chg').value,
-        daysOnMarket: document.getElementById('nl-dom').value,
-        homesSold: document.getElementById('nl-sold').value,
-        inventory: document.getElementById('nl-inventory').value,
-        marketTemp: document.getElementById('nl-market-temp').value
-      },
-      listings: [
-        { address: document.getElementById('nl-l1-addr').value, price: document.getElementById('nl-l1-price').value, beds: document.getElementById('nl-l1-beds').value, sqft: document.getElementById('nl-l1-sqft').value, link: document.getElementById('nl-l1-link').value, notes: document.getElementById('nl-l1-notes').value },
-        { address: document.getElementById('nl-l2-addr').value, price: document.getElementById('nl-l2-price').value, beds: document.getElementById('nl-l2-beds').value, sqft: document.getElementById('nl-l2-sqft').value, link: document.getElementById('nl-l2-link').value, notes: document.getElementById('nl-l2-notes').value }
-      ].filter(function(l) { return l.address; }),
-      neighborhood: { name: document.getElementById('nl-hood').value, priceRange: document.getElementById('nl-hood-price').value, notes: document.getElementById('nl-hood-notes').value },
-      personalNote: document.getElementById('nl-personal-note').value,
-      lists: document.getElementById('nl-lists').value,
-      sendDate: document.getElementById('nl-send-date').value
-    };
-  } else {
-    var listings = [];
-    document.querySelectorAll('#fl-listing-stack .tw').forEach(function(row, i) {
-      var n = i + 1;
-      var addr = row.querySelector('[id$="-addr"]');
-      var price = row.querySelector('[id$="-price"]');
-      var beds = row.querySelector('[id$="-beds"]');
-      var sqft = row.querySelector('[id$="-sqft"]');
-      var link = row.querySelector('[id$="-link"]');
-      var notes = row.querySelector('[id$="-notes"]');
-      if (addr && addr.value) {
-        listings.push({ address: addr.value, price: price ? price.value : '', beds: beds ? beds.value : '', sqft: sqft ? sqft.value : '', link: link ? link.value : '', notes: notes ? notes.value : '' });
-      }
+  if (type === 'monthly') {
+    payload.month = nlGV('nl-month');
+    payload.marketStats = { medianPrice:nlGV('nl-med-price'), priceChange:nlGV('nl-price-chg'), daysOnMarket:nlGV('nl-dom'), homesSold:nlGV('nl-sold'), inventory:nlGV('nl-inventory'), marketTemp:nlGV('nl-market-temp') };
+    payload.listings = [
+      { address:nlGV('nl-l1-addr'), price:nlGV('nl-l1-price'), beds:nlGV('nl-l1-beds'), sqft:nlGV('nl-l1-sqft'), link:nlGV('nl-l1-link'), notes:nlGV('nl-l1-notes') },
+      { address:nlGV('nl-l2-addr'), price:nlGV('nl-l2-price'), beds:nlGV('nl-l2-beds'), sqft:nlGV('nl-l2-sqft'), link:nlGV('nl-l2-link'), notes:nlGV('nl-l2-notes') }
+    ].filter(function(l){return l.address;});
+    payload.neighborhood = { name:nlGV('nl-hood'), priceRange:nlGV('nl-hood-price'), notes:nlGV('nl-hood-notes') };
+    payload.personalNote = nlGV('nl-personal-note');
+
+  } else if (type === 'westside') {
+    payload.weekOf = nlGV('ws-week');
+    payload.leadStat = nlGV('ws-stat');
+    payload.statMeaning = nlGV('ws-stat-meaning');
+    payload.neighborhoods = [
+      { name:nlGV('ws-n1'), update:nlGV('ws-n1-update') },
+      { name:nlGV('ws-n2'), update:nlGV('ws-n2-update') },
+      { name:nlGV('ws-n3'), update:nlGV('ws-n3-update') }
+    ].filter(function(n){return n.name;});
+    payload.dealOfWeek = { address:nlGV('ws-deal-addr'), price:nlGV('ws-deal-price'), beds:nlGV('ws-deal-beds'), link:nlGV('ws-deal-link'), why:nlGV('ws-deal-why') };
+
+  } else if (type === 'insider') {
+    payload.weekOf = nlGV('ins-week');
+    payload.observation = nlGV('ins-observation');
+    payload.trend = nlGV('ins-trend');
+    payload.take = nlGV('ins-take');
+
+  } else if (type === 'roundup') {
+    payload.weekOf = nlGV('ru-week');
+    payload.stories = [];
+    document.querySelectorAll('#nl-story-stack .tw').forEach(function(row){
+      var h = row.querySelector('.ru-headline');
+      var t = row.querySelector('.ru-take');
+      if (h && h.value) payload.stories.push({ headline: h.value, take: t ? t.value : '' });
     });
-    payload = {
-      mode: 'featured',
-      weekOf: document.getElementById('fl-week').value,
-      intro: document.getElementById('fl-intro').value,
-      listings: listings,
-      lists: document.getElementById('fl-lists').value
-    };
+
+  } else if (type === 'featured') {
+    payload.weekOf = nlGV('fl-week');
+    payload.intro = nlGV('fl-intro');
+    payload.listings = [];
+    document.querySelectorAll('#fl-listing-stack .tw').forEach(function(row){
+      var addr = row.querySelector('.fl-addr');
+      if (addr && addr.value) payload.listings.push({
+        address: addr.value,
+        price: (row.querySelector('.fl-price')||{}).value||'',
+        beds: (row.querySelector('.fl-beds')||{}).value||'',
+        sqft: (row.querySelector('.fl-sqft')||{}).value||'',
+        link: (row.querySelector('.fl-link')||{}).value||'',
+        notes: (row.querySelector('.fl-notes')||{}).value||''
+      });
+    });
+
+  } else if (type === 'just_sold') {
+    payload.month = nlGV('js-month');
+    payload.closings = [
+      { address:nlGV('js-addr'), price:nlGV('js-price'), beds:nlGV('js-beds'), story:nlGV('js-story'), meaning:nlGV('js-meaning') },
+      { address:nlGV('js2-addr'), price:nlGV('js2-price'), beds:nlGV('js2-beds'), story:nlGV('js2-story') }
+    ].filter(function(c){return c.address;});
+
+  } else if (type === 'tips') {
+    payload.month = nlGV('tips-month');
+    payload.audience = nlGV('tips-audience');
+    payload.topic = nlGV('tips-topic');
+    payload.points = nlGV('tips-points');
+    payload.take = nlGV('tips-take');
   }
 
-  fetch('/api/newsletter-generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    btn.innerHTML = origText;
-    btn.disabled = false;
-    if (data.error) { toast('Error: ' + data.error); return; }
-    if (mode === 'monthly') {
-      document.getElementById('nl-out-subject').innerText = data.subject;
-      document.getElementById('nl-out-body').innerText = data.body;
-      document.getElementById('nl-remind-date').innerText = payload.sendDate;
+  fetch('/api/newsletter-generate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
+    .then(function(r){return r.json();})
+    .then(function(data){
+      btn.innerHTML = origText; btn.disabled = false;
+      if (data.error) { toast('Error: ' + data.error); return; }
+      document.getElementById('nl-out-subject').innerText = data.subject || '';
+      document.getElementById('nl-out-body').innerText = data.body || '';
+      document.getElementById('nl-remind-date').innerText = payload.sendDate || '';
       document.getElementById('nl-remind-lists').innerText = payload.lists || 'N/A';
-      document.getElementById('nl-output-monthly').style.display = 'block';
-      document.getElementById('nl-output-monthly').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      document.getElementById('fl-out-subject').innerText = data.subject;
-      document.getElementById('fl-out-body').innerText = data.body;
-      document.getElementById('fl-remind-lists').innerText = payload.lists || 'N/A';
-      document.getElementById('nl-output-featured').style.display = 'block';
-      document.getElementById('nl-output-featured').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  })
-  .catch(function(e) {
-    btn.innerHTML = origText;
-    btn.disabled = false;
-    toast('Generation failed — try again');
-  });
+      document.getElementById('nl-output').style.display = 'block';
+      document.getElementById('nl-output').scrollIntoView({ behavior:'smooth', block:'start' });
+    })
+    .catch(function(){
+      btn.innerHTML = origText; btn.disabled = false;
+      toast('Generation failed — try again');
+    });
 }
 
-// Auto-add first listing row on pane open
+// Init on load
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
-    if (document.getElementById('fl-listing-stack') && flListingCount === 0) {
-      flAddListing();
-    }
-  }, 500);
+    var sel = document.getElementById('nl-type');
+    if (sel) nlSwitchType(sel.value);
+  }, 400);
 });
 </script>
 
