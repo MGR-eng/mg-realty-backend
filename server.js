@@ -3107,8 +3107,19 @@ app.post('/sms', async (req, res) => {
 
     // Load live CRM data
     const crm = await readCRM();
-    const now2 = new Date();
-    const today2 = now2.toISOString().split('T')[0];
+    const now2 = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const today2 = [now2.getFullYear(), String(now2.getMonth()+1).padStart(2,'0'), String(now2.getDate()).padStart(2,'0')].join('-');
+
+    // Pre-compute named days so AI never miscalculates relative dates
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const dateMapLines = [];
+    for (let i = 0; i <= 14; i++) {
+      const d = new Date(now2); d.setDate(now2.getDate() + i);
+      const ds = [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+      const label = i === 0 ? 'today' : i === 1 ? 'tomorrow' : dayNames[d.getDay()];
+      dateMapLines.push(`  ${label} = ${ds}`);
+    }
+    const dateMap = dateMapLines.join('\n');
 
     const leadSummary = crm.leads.map(l => ({
       name: `${l.first} ${l.last}`,
@@ -3146,7 +3157,11 @@ app.post('/sms', async (req, res) => {
 
     const systemPrompt = `You are Matt Golden's AI assistant for MG Realty in Los Angeles. Matt texts you from his personal phone to manage his entire real estate business hands-free.
 
-TODAY: ${today2} (${now2.toLocaleDateString('en-US', { weekday: 'long' })})
+TODAY: ${today2} (${dayNames[now2.getDay()]})
+
+=== DATE REFERENCE (use these exact dates — do not calculate yourself) ===
+${dateMap}
+→ "next [weekday]" = the first occurrence of that weekday AFTER today, even if today is that weekday.
 
 === PIPELINE SNAPSHOT ===
 Active leads: ${crm.leads.filter(l => l.temp !== 'done').length}
