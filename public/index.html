@@ -775,15 +775,33 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 </div>
 
 <!-- Transactions pane -->
-<div id="pane-transactions" class="pane">
-  <div class="topbar">
-    <div class="page-title"><i class="ti ti-home-move" style="margin-right:6px;color:var(--accent)"></i>Transactions</div>
-    <div class="tba">
-      <button class="btn btn-gold" onclick="openNewTx()"><i class="ti ti-plus"></i> New Transaction</button>
+<div id="pane-transactions" class="pane" style="flex-direction:column">
+  <!-- List view -->
+  <div id="tx-list-view" style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="topbar">
+      <div class="page-title"><i class="ti ti-home-move" style="margin-right:6px;color:var(--accent)"></i>Transactions</div>
+      <div class="tba">
+        <button class="btn btn-gold" onclick="openNewTx()"><i class="ti ti-plus"></i> New Transaction</button>
+      </div>
+    </div>
+    <div class="content">
+      <div id="transactions-pipeline" style="overflow-x:auto;padding-bottom:16px"></div>
     </div>
   </div>
-  <div class="content">
-    <div id="transactions-pipeline" style="overflow-x:auto;padding-bottom:16px"></div>
+  <!-- Detail view (full page, hidden by default) -->
+  <div id="tx-detail-view" style="display:none;flex-direction:column;flex:1;min-height:0">
+    <div class="topbar" style="flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <button class="btn btn-sm" onclick="closeTxDetail()" style="flex-shrink:0"><i class="ti ti-arrow-left"></i> Back</button>
+        <div id="tx-detail-title" style="font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        <span id="tx-detail-stage" style="font-size:10px;font-weight:700;padding:2px 10px;border-radius:99px;white-space:nowrap;flex-shrink:0"></span>
+      </div>
+      <div class="tba">
+        <button class="btn" onclick="openEditTx(window._activeTxId)"><i class="ti ti-edit"></i> Edit</button>
+        <button class="btn btn-red btn-sm" onclick="deleteTxFromDetail()"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+    <div id="tx-detail-content" style="flex:1;overflow-y:auto;padding:20px 24px"></div>
   </div>
 </div>
 
@@ -10822,6 +10840,55 @@ document.addEventListener('DOMContentLoaded', function() {
       <!-- Checklist -->
       <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Document Checklist</div>
       <div id="tx-checklist" style="margin-bottom:12px"></div>
+      <!-- Buyer Info -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Buyer</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Buyer Name(s)</label><input id="tx-buyer-name" placeholder="John & Jane Smith"></div>
+        <div class="fg"><label>Phone</label><input id="tx-buyer-phone" type="tel" placeholder="(310) 555-0100"></div>
+        <div class="fg"><label>Email</label><input id="tx-buyer-email" type="email" placeholder="buyer@email.com"></div>
+      </div>
+
+      <!-- Seller Info -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Seller</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Seller Name(s)</label><input id="tx-seller-name" placeholder="Robert Johnson"></div>
+        <div class="fg"><label>Phone</label><input id="tx-seller-phone" type="tel" placeholder="(310) 555-0101"></div>
+        <div class="fg"><label>Email</label><input id="tx-seller-email" type="email" placeholder="seller@email.com"></div>
+      </div>
+
+      <!-- Property Details -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Property Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>MLS #</label><input id="tx-mls" placeholder="24-123456"></div>
+        <div class="fg"><label>List Price</label><input id="tx-list-price" placeholder="$1,250,000"></div>
+        <div class="fg"><label>Property Type</label>
+          <select id="tx-prop-type"><option value="">— select —</option><option>Single Family</option><option>Condo</option><option>Townhouse</option><option>Multi-Unit</option><option>Land</option><option>Commercial</option></select>
+        </div>
+        <div class="fg"><label>Beds</label><input id="tx-beds" type="number" placeholder="3" min="0"></div>
+        <div class="fg"><label>Baths</label><input id="tx-baths" type="number" placeholder="2" min="0" step="0.5"></div>
+        <div class="fg"><label>Sq Ft</label><input id="tx-sqft" type="number" placeholder="1850" min="0"></div>
+        <div class="fg"><label>Year Built</label><input id="tx-year-built" type="number" placeholder="1965" min="1800"></div>
+        <div class="fg"><label>HOA Name</label><input id="tx-hoa-name" placeholder="Sunset HOA"></div>
+        <div class="fg"><label>HOA Monthly</label><input id="tx-hoa-dues" type="number" placeholder="350" min="0"></div>
+      </div>
+
+      <!-- Financials -->
+      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">Financials</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg"><label>Earnest Money ($)</label><input id="tx-earnest" type="number" placeholder="25000" min="0"></div>
+        <div class="fg"><label>Earnest Due Date</label><input id="tx-earnest-due" type="date"></div>
+        <div class="fg" style="display:flex;align-items:flex-end;padding-bottom:6px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+            <input type="checkbox" id="tx-earnest-deposited" style="accent-color:var(--accent)"> Deposited
+          </label>
+        </div>
+        <div class="fg"><label>Loan Type</label>
+          <select id="tx-loan-type"><option value="">— select —</option><option>Conventional</option><option>FHA</option><option>VA</option><option>Jumbo</option><option>Cash</option><option>Hard Money</option></select>
+        </div>
+        <div class="fg"><label>Loan Amount ($)</label><input id="tx-loan-amount" type="number" placeholder="960000" min="0"></div>
+        <div class="fg"><label>Down Payment ($)</label><input id="tx-down-payment" type="number" placeholder="240000" min="0"></div>
+      </div>
+
       <!-- Notes -->
       <div class="fg" style="margin-bottom:14px"><label>Notes</label><textarea id="tx-notes" rows="2" style="width:100%;resize:none"></textarea></div>
       <div style="display:flex;gap:8px">
