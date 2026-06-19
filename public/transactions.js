@@ -1110,27 +1110,30 @@ function renderTxDetail(d) {
       '<div>' +
         peopleHtml +
         activityHtml +
-        docHtml +
       '</div>' +
     '</div>' +
+    docHtml +
   '</div>';
 }
 
 function renderTxChecklistCompact(checklist) {
   var cats = {};
   TX_DOCS.forEach(function(doc) { if(!cats[doc.cat]) cats[doc.cat]=[]; cats[doc.cat].push(doc); });
-  return Object.keys(cats).map(function(cat) {
+  var blocks = Object.keys(cats).map(function(cat) {
     var catColor = TX_CAT_COLORS[cat] || 'var(--text3)';
-    return '<div style="margin-bottom:10px">' +
-      '<div style="font-size:10px;font-weight:700;color:'+catColor+';text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">'+cat+'</div>' +
+    return '<div style="min-width:0">' +
+      '<div style="font-size:10px;font-weight:700;color:'+catColor+';text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">'+cat+'</div>' +
       cats[cat].map(function(doc) {
         var val = txCheckVal(checklist[doc.name]);
-        return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0">' +
-          '<span style="font-size:13px">'+(val.checked?'✅':'⬜')+'</span>' +
-          '<span style="font-size:12px;color:var(--text);flex:1">'+doc.name+'</span>' +
-          (val.docId ? '<a href="'+(val.viewUrl||'#')+'" target="_blank" style="font-size:10px;color:var(--accent);text-decoration:none">📎</a>' : '') +
+        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04)">' +
+          '<span style="font-size:14px;flex-shrink:0">'+(val.checked?'✅':'⬜')+'</span>' +
+          '<span style="font-size:12px;color:var(--text);flex:1;line-height:1.3">'+doc.name+'</span>' +
+          (val.docId ? '<a href="'+(val.viewUrl||'#')+'" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;flex-shrink:0">📎</a>' : '') +
         '</div>';
       }).join('') +
     '</div>';
-  }).join('');
+  });
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px 24px">' +
+    blocks.join('') +
+  '</div>';
 }
