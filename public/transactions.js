@@ -242,6 +242,13 @@ function renderDashTransactions() {
 
 // ── Transactions kanban board ──────────────────────────────────
 function renderTransactions() {
+  // Always reset view state when rendering the list
+  var listEl = document.getElementById('tx-list-view');
+  var detailEl = document.getElementById('tx-detail-view');
+  if (listEl) listEl.style.display = 'flex';
+  if (detailEl) detailEl.style.display = 'none';
+  window._activeTxId = null;
+
   var board = document.getElementById('transactions-pipeline');
   if (!board) return;
   var badge = document.getElementById('nb-transactions');
