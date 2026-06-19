@@ -295,7 +295,7 @@ function renderTxCard(d, compact) {
 
   var stageColor = {'Offer Submitted':'var(--blue)','Under Contract':'var(--purple)','Inspection':'var(--amber)','Appraisal':'var(--accent)','Loan Approval':'var(--red)','Clear to Close':'var(--green)','Closed':'var(--green)'}[stage] || 'var(--text2)';
 
-  return '<div data-txid="' + d.id + '" onclick="openEditTx(this.dataset.txid)" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:var(--rl);padding:' + (compact?'14px':'16px') + ';margin-bottom:10px;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 16px rgba(0,0,0,0.10)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">'
+  return '<div data-txid="' + d.id + '" onclick="openTxDetail(this.dataset.txid)" style="background:' + bg + ';border:1px solid ' + border + ';border-radius:var(--rl);padding:' + (compact?'14px':'16px') + ';margin-bottom:10px;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 16px rgba(0,0,0,0.10)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">'
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
     + '<div style="font-size:' + (compact?'13':'15') + 'px;font-weight:700;line-height:1.3;flex:1">' + (d.address || 'No address') + '</div>'
     + (compact ? '' : '<span style="font-size:10px;font-weight:700;color:'+stageColor+';background:'+stageColor+'1a;padding:2px 10px;border-radius:99px;border:1px solid '+stageColor+'44;white-space:nowrap;margin-left:8px">' + stage + '</span>')
@@ -377,8 +377,16 @@ function openEditTx(id) {
     'tx-escrow-phone':d.escrowPhone,'tx-escrow-email':d.escrowEmail,'tx-escrow-num':d.escrowNum,
     'tx-tc-name':d.tcName,'tx-tc-company':d.tcCompany,'tx-tc-phone':d.tcPhone,'tx-tc-email':d.tcEmail,
     'tx-lender-name':d.lenderName,'tx-lender-company':d.lenderCompany,
-    'tx-lender-phone':d.lenderPhone,'tx-lender-email':d.lenderEmail
+    'tx-lender-phone':d.lenderPhone,'tx-lender-email':d.lenderEmail,
+    'tx-buyer-name':d.buyerName,'tx-buyer-phone':d.buyerPhone,'tx-buyer-email':d.buyerEmail,
+    'tx-seller-name':d.sellerName,'tx-seller-phone':d.sellerPhone,'tx-seller-email':d.sellerEmail,
+    'tx-mls':d.mlsNum,'tx-list-price':d.listPrice?'$'+Number(d.listPrice).toLocaleString():'',
+    'tx-prop-type':d.propType,'tx-beds':d.beds,'tx-baths':d.baths,'tx-sqft':d.sqft,
+    'tx-year-built':d.yearBuilt,'tx-hoa-name':d.hoaName,'tx-hoa-dues':d.hoaDues,
+    'tx-earnest':d.earnestMoney,'tx-earnest-due':d.earnestDue,
+    'tx-loan-type':d.loanType,'tx-loan-amount':d.loanAmount,'tx-down-payment':d.downPayment
   };
+  var depEl = document.getElementById('tx-earnest-deposited'); if(depEl) depEl.checked = !!d.earnestDeposited;
   Object.keys(fmap).forEach(function(k) { var el=document.getElementById(k); if(el) el.value=fmap[k]||''; });
   var stageEl = document.getElementById('tx-stage'); if(stageEl) stageEl.value = d.txStage||'Offer Submitted';
   var sideEl = document.getElementById('tx-side'); if(sideEl) sideEl.value = d.side||'Seller side';
@@ -565,6 +573,30 @@ function saveTx() {
     lenderCompany:     g('tx-lender-company'),
     lenderPhone:       g('tx-lender-phone'),
     lenderEmail:       g('tx-lender-email'),
+    // Buyer / Seller
+    buyerName:         g('tx-buyer-name'),
+    buyerPhone:        g('tx-buyer-phone'),
+    buyerEmail:        g('tx-buyer-email'),
+    sellerName:        g('tx-seller-name'),
+    sellerPhone:       g('tx-seller-phone'),
+    sellerEmail:       g('tx-seller-email'),
+    // Property details
+    mlsNum:            g('tx-mls'),
+    listPrice:         g('tx-list-price').replace(/[^0-9.]/g,''),
+    propType:          document.getElementById('tx-prop-type')?.value || '',
+    beds:              g('tx-beds'),
+    baths:             g('tx-baths'),
+    sqft:              g('tx-sqft'),
+    yearBuilt:         g('tx-year-built'),
+    hoaName:           g('tx-hoa-name'),
+    hoaDues:           g('tx-hoa-dues'),
+    // Financials
+    earnestMoney:      g('tx-earnest'),
+    earnestDue:        g('tx-earnest-due'),
+    earnestDeposited:  !!(document.getElementById('tx-earnest-deposited')?.checked),
+    loanType:          document.getElementById('tx-loan-type')?.value || '',
+    loanAmount:        g('tx-loan-amount'),
+    downPayment:       g('tx-down-payment'),
     // Additional contacts
     contacts:          txContacts,
     txStage:           document.getElementById('tx-stage')?.value || 'Offer Submitted',
@@ -572,7 +604,8 @@ function saveTx() {
     leadId:            document.getElementById('tx-lead')?.value || '',
     checklist:         _txCurrentChecklist,
     milestones:        _txCurrentMilestones,
-    trackerToken:      _txCurrentToken
+    trackerToken:      _txCurrentToken,
+    txActivity:        (editTxId ? ((deals||[]).find(function(d){return d.id===editTxId;})||{}).txActivity : null) || []
   };
 
   // Auto-save additional contacts to vendors list (no duplicates by name+phone)
@@ -628,13 +661,21 @@ function deleteTx() {
 // ── Transaction contact helpers ───────────────────────────────
 var TX_CONTACT_ROLES = ['Inspector','Contractor','Handyman','Pest Inspector','Appraiser','Title Rep','Attorney','HOA Manager','Stager','Photographer','Other'];
 
+var TX_ALL_FIELDS = [
+  'tx-address','tx-price','tx-commission','tx-closingdate','tx-offer-date','tx-inspection-date',
+  'tx-contingency-date','tx-loan-date','tx-coop-brokerage','tx-notes',
+  'tx-escrow-name','tx-escrow-company','tx-escrow-phone','tx-escrow-email','tx-escrow-num',
+  'tx-tc-name','tx-tc-company','tx-tc-phone','tx-tc-email',
+  'tx-lender-name','tx-lender-company','tx-lender-phone','tx-lender-email',
+  'tx-buyer-name','tx-buyer-phone','tx-buyer-email',
+  'tx-seller-name','tx-seller-phone','tx-seller-email',
+  'tx-mls','tx-list-price','tx-prop-type','tx-beds','tx-baths','tx-sqft','tx-year-built',
+  'tx-hoa-name','tx-hoa-dues','tx-earnest','tx-earnest-due','tx-loan-type','tx-loan-amount','tx-down-payment'
+];
+
 function txClearAllFields() {
-  ['tx-address','tx-price','tx-commission','tx-closingdate','tx-offer-date','tx-inspection-date',
-   'tx-contingency-date','tx-loan-date','tx-coop-brokerage','tx-notes',
-   'tx-escrow-name','tx-escrow-company','tx-escrow-phone','tx-escrow-email','tx-escrow-num',
-   'tx-tc-name','tx-tc-company','tx-tc-phone','tx-tc-email',
-   'tx-lender-name','tx-lender-company','tx-lender-phone','tx-lender-email'
-  ].forEach(function(id) { var el=document.getElementById(id); if(el) el.value=''; });
+  TX_ALL_FIELDS.forEach(function(id) { var el=document.getElementById(id); if(el) el.value=''; });
+  var dep = document.getElementById('tx-earnest-deposited'); if(dep) dep.checked = false;
 }
 
 function txRenderContacts(list) {
@@ -814,3 +855,265 @@ document.addEventListener('DOMContentLoaded', function() {
     };
   }
 })();
+
+// ── Transaction Detail View ───────────────────────────────────
+window._activeTxId = null;
+
+function openTxDetail(id) {
+  var d = (deals||[]).find(function(x){ return x.id===id; });
+  if (!d) return;
+  window._activeTxId = id;
+  // Update header
+  document.getElementById('tx-detail-title').textContent = d.address || 'Transaction';
+  var stageEl = document.getElementById('tx-detail-stage');
+  var stageColors = {'Offer Submitted':'var(--blue)','Under Contract':'var(--purple)','Inspection':'var(--amber)','Appraisal':'var(--accent)','Loan Approval':'var(--red)','Clear to Close':'var(--green)','Closed':'var(--green)'};
+  var sc = stageColors[d.txStage] || 'var(--text3)';
+  stageEl.textContent = d.txStage || 'Offer Submitted';
+  stageEl.style.cssText = 'font-size:10px;font-weight:700;padding:2px 10px;border-radius:99px;white-space:nowrap;flex-shrink:0;color:'+sc+';background:'+sc+'1a;border:1px solid '+sc+'44';
+  // Render content
+  document.getElementById('tx-detail-content').innerHTML = renderTxDetail(d);
+  // Show detail, hide list
+  document.getElementById('tx-list-view').style.display = 'none';
+  document.getElementById('tx-detail-view').style.display = 'flex';
+}
+
+function closeTxDetail() {
+  window._activeTxId = null;
+  document.getElementById('tx-detail-view').style.display = 'none';
+  document.getElementById('tx-list-view').style.display = 'flex';
+}
+
+function deleteTxFromDetail() {
+  if (!window._activeTxId || !confirm('Delete this transaction?')) return;
+  var tx = (deals||[]).find(function(d){ return d.id===window._activeTxId; });
+  deals = (deals||[]).filter(function(d){ return d.id!==window._activeTxId; });
+  if (tx && tx.leadId) leads = (leads||[]).map(function(l){ return l.id===tx.leadId ? Object.assign({},l,{inTransaction:false,txId:null}) : l; });
+  if (typeof persist==='function') persist();
+  if (typeof renderAll==='function') renderAll();
+  closeTxDetail();
+  if (typeof toast==='function') toast('Transaction deleted');
+}
+
+function txAddNote() {
+  var inp = document.getElementById('tx-note-input');
+  var text = (inp ? inp.value : '').trim();
+  if (!text || !window._activeTxId) return;
+  var d = (deals||[]).find(function(x){ return x.id===window._activeTxId; });
+  if (!d) return;
+  d.txActivity = d.txActivity || [];
+  d.txActivity.unshift({ id:'ta'+Date.now(), text:text, date:new Date().toISOString() });
+  deals = (deals||[]).map(function(x){ return x.id===window._activeTxId ? d : x; });
+  if (typeof persist==='function') persist();
+  inp.value = '';
+  // Re-render just the activity log section
+  var logEl = document.getElementById('tx-activity-log');
+  if (logEl) logEl.innerHTML = renderTxActivityLog(d.txActivity);
+  if (typeof toast==='function') toast('Note added');
+}
+
+function txDeleteNote(noteId) {
+  var d = (deals||[]).find(function(x){ return x.id===window._activeTxId; });
+  if (!d) return;
+  d.txActivity = (d.txActivity||[]).filter(function(n){ return n.id!==noteId; });
+  deals = (deals||[]).map(function(x){ return x.id===window._activeTxId ? d : x; });
+  if (typeof persist==='function') persist();
+  var logEl = document.getElementById('tx-activity-log');
+  if (logEl) logEl.innerHTML = renderTxActivityLog(d.txActivity);
+}
+
+function renderTxActivityLog(activity) {
+  var items = activity || [];
+  if (!items.length) return '<div style="font-size:12px;color:var(--text3);padding:8px 0">No notes yet.</div>';
+  return items.map(function(n) {
+    var dt = new Date(n.date);
+    var dateStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' · ' + dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    return '<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">' +
+      '<div style="flex:1">' +
+        '<div style="font-size:13px;color:var(--text);line-height:1.5">' + n.text.replace(/\n/g,'<br>') + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:3px">' + dateStr + '</div>' +
+      '</div>' +
+      '<button onclick="txDeleteNote(\''+n.id+'\')" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;flex-shrink:0" title="Delete">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
+function renderTxDetail(d) {
+  var fmt = function(n) { return n ? '$'+Number(n).toLocaleString() : '—'; };
+  var fmtDate = function(s) {
+    if (!s) return '—';
+    var dt = new Date(s+'T00:00:00'); var today = new Date(); today.setHours(0,0,0,0);
+    var diff = Math.ceil((dt-today)/86400000);
+    var str = dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    if (diff < 0) return '<span style="color:var(--red)">'+str+' ('+Math.abs(diff)+'d past)</span>';
+    if (diff === 0) return '<span style="color:var(--amber)">'+str+' (TODAY)</span>';
+    if (diff <= 7) return '<span style="color:var(--amber)">'+str+' ('+diff+'d)</span>';
+    return '<span style="color:var(--text)">'+str+'</span>';
+  };
+  var card = function(title, rows) {
+    var inner = rows.filter(function(r){ return r; }).map(function(r){
+      if (r === '---') return '<div style="border-top:1px solid var(--border);margin:8px 0"></div>';
+      return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04)">' +
+        '<span style="font-size:11px;color:var(--text3);flex-shrink:0;padding-right:12px">'+r[0]+'</span>' +
+        '<span style="font-size:12px;color:var(--text);font-weight:500;text-align:right">'+r[1]+'</span>' +
+      '</div>';
+    }).join('');
+    return '<div class="tw" style="padding:16px 18px;margin-bottom:14px">' +
+      '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">'+title+'</div>' +
+      inner + '</div>';
+  };
+  var contactBlock = function(name, phone, email, company) {
+    if (!name && !phone && !email) return '<span style="color:var(--text3);font-size:12px">—</span>';
+    return (name ? '<div style="font-size:13px;font-weight:600;color:var(--text)">'+name+'</div>' : '') +
+      (company ? '<div style="font-size:11px;color:var(--text2)">'+company+'</div>' : '') +
+      '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">' +
+      (phone ? '<a href="tel:'+phone+'" style="font-size:11px;color:var(--accent);text-decoration:none">📞 '+phone+'</a>' : '') +
+      (email ? '<a href="mailto:'+email+'" style="font-size:11px;color:var(--accent);text-decoration:none">✉ '+email+'</a>' : '') +
+      '</div>';
+  };
+  var personCard = function(title, name, phone, email, company) {
+    return '<div style="margin-bottom:12px">' +
+      '<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">'+title+'</div>' +
+      contactBlock(name, phone, email, company) +
+    '</div>';
+  };
+
+  // Key dates timeline
+  var keyDates = [
+    ['Offer Date', d.offerDate],
+    ['Earnest Money Due', d.earnestDue],
+    ['Inspection Deadline', d.inspectionDeadline],
+    ['Contingency Removal', d.contingencyRemoval],
+    ['Loan Approval', d.loanApprovalDeadline],
+    ['Close Date', d.closeDate]
+  ];
+  var timelineHtml = '<div class="tw" style="padding:16px 18px;margin-bottom:14px">' +
+    '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Key Dates</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">' +
+    keyDates.map(function(kd) {
+      var today = new Date(); today.setHours(0,0,0,0);
+      var past = kd[1] && new Date(kd[1]+'T00:00:00') < today;
+      return '<div style="padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid '+(past?'rgba(74,222,128,0.25)':'var(--border)')+'">' +
+        '<div style="font-size:10px;color:var(--text3);margin-bottom:3px">'+kd[0]+'</div>' +
+        '<div style="font-size:12px;font-weight:600">'+(kd[1] ? fmtDate(kd[1]) : '<span style="color:var(--text3)">—</span>')+'</div>' +
+        (past && kd[1] ? '<div style="font-size:9px;color:var(--green);margin-top:2px">✓ Done</div>' : '') +
+      '</div>';
+    }).join('') +
+    '</div></div>';
+
+  // Stat bar
+  var commission = d.salePrice && d.commissionPct ? (Number(d.salePrice)*Number(d.commissionPct)/100) : 0;
+  var daysToClose = d.closeDate ? Math.ceil((new Date(d.closeDate+'T00:00:00')-new Date())/86400000) : null;
+  var checklist = d.checklist || {};
+  var checkCount = TX_DOCS.filter(function(doc){ var v=txCheckVal(checklist[doc.name]); return v.checked; }).length;
+  var statBar = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px">' +
+    [['Sale Price', fmt(d.salePrice), ''],
+     ['List Price', fmt(d.listPrice), ''],
+     ['Commission', commission ? fmt(commission)+' ('+d.commissionPct+'%)' : '—', ''],
+     ['Days to Close', daysToClose!==null ? (daysToClose<0?'<span style="color:var(--red)">'+Math.abs(daysToClose)+'d past</span>':daysToClose+'d') : '—', ''],
+     ['Checklist', checkCount+'/'+TX_DOCS.length+' items', ''],
+     ['Side', d.side||'—', '']
+    ].map(function(s){
+      return '<div class="tw" style="padding:12px 14px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">'+s[0]+'</div>' +
+        '<div style="font-size:16px;font-weight:700;color:var(--accent)">'+s[1]+'</div></div>';
+    }).join('') + '</div>';
+
+  // Property card
+  var propRows = [
+    d.propType ? ['Type', d.propType] : null,
+    d.mlsNum ? ['MLS #', d.mlsNum] : null,
+    (d.beds||d.baths) ? ['Beds / Baths', (d.beds||'?')+' bd / '+(d.baths||'?')+' ba'] : null,
+    d.sqft ? ['Sq Ft', Number(d.sqft).toLocaleString()+' sqft'] : null,
+    d.yearBuilt ? ['Year Built', d.yearBuilt] : null,
+    d.hoaName ? ['HOA', d.hoaName+(d.hoaDues?' · $'+Number(d.hoaDues).toLocaleString()+'/mo':'')] : null
+  ];
+
+  // Financials card
+  var finRows = [
+    d.loanType ? ['Loan Type', d.loanType] : null,
+    d.loanAmount ? ['Loan Amount', fmt(d.loanAmount)] : null,
+    d.downPayment ? ['Down Payment', fmt(d.downPayment)] : null,
+    d.earnestMoney ? ['Earnest Money', fmt(d.earnestMoney)+(d.earnestDeposited?' ✓ Deposited':' ⏳ Pending')] : null,
+    d.earnestDue ? ['Earnest Due', fmtDate(d.earnestDue)] : null
+  ];
+
+  // People section
+  var allContacts = (d.contacts||[]).map(function(c){
+    return personCard(c.role||'Contact', c.name, c.phone, c.email, '');
+  }).join('');
+
+  var peopleHtml = '<div class="tw" style="padding:16px 18px;margin-bottom:14px">' +
+    '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Key People</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
+    personCard('Buyer', d.buyerName, d.buyerPhone, d.buyerEmail, '') +
+    personCard('Seller', d.sellerName, d.sellerPhone, d.sellerEmail, '') +
+    personCard('Co-op Agent', d.coopAgent, '', '', d.coopBrokerage) +
+    personCard('Escrow Officer', d.escrowName, d.escrowPhone, d.escrowEmail, d.escrowCompany+(d.escrowNum?' · #'+d.escrowNum:'')) +
+    personCard('Transaction Coordinator', d.tcName, d.tcPhone, d.tcEmail, d.tcCompany) +
+    personCard('Lender / Loan Officer', d.lenderName, d.lenderPhone, d.lenderEmail, d.lenderCompany) +
+    (allContacts ? '</div><div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">' + allContacts : '') +
+    '</div></div>';
+
+  // Activity log
+  var activityHtml = '<div class="tw" style="padding:16px 18px;margin-bottom:14px">' +
+    '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Activity Log</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+      '<textarea id="tx-note-input" placeholder="Add a note, update, or log a call..." rows="2" style="flex:1;resize:none;font-size:12px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text)"></textarea>' +
+      '<button onclick="txAddNote()" class="btn btn-gold" style="align-self:flex-end;white-space:nowrap"><i class="ti ti-plus"></i> Add</button>' +
+    '</div>' +
+    '<div id="tx-activity-log">' + renderTxActivityLog(d.txActivity) + '</div>' +
+    '</div>';
+
+  // Documents checklist (compact)
+  var docHtml = '<div class="tw" style="padding:16px 18px;margin-bottom:14px">' +
+    '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Documents <span style="font-weight:400;color:var(--text3);text-transform:none;font-size:10px">'+checkCount+'/'+TX_DOCS.length+' complete</span></div>' +
+    renderTxChecklistCompact(d.checklist||{}) +
+    '</div>';
+
+  // Notes
+  var notesHtml = d.notes ? '<div class="tw" style="padding:14px 18px;margin-bottom:14px"><div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Notes</div><div style="font-size:13px;color:var(--text);line-height:1.6">'+d.notes.replace(/\n/g,'<br>')+'</div></div>' : '';
+
+  // Client tracker link
+  var trackerHtml = d.trackerToken ? '<div class="tw" style="padding:14px 18px;margin-bottom:14px">' +
+    '<div style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">🔗 Client Tracker</div>' +
+    '<div style="display:flex;gap:8px;align-items:center">' +
+    '<input type="text" readonly value="https://mg-realty-backend.onrender.com/tracker/'+d.trackerToken+'" style="flex:1;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text2)" onclick="this.select()">' +
+    '<button onclick="navigator.clipboard.writeText(\'https://mg-realty-backend.onrender.com/tracker/'+d.trackerToken+'\')" class="btn btn-sm" style="background:rgba(74,222,128,0.12);color:var(--green);border-color:rgba(74,222,128,0.3)">Copy</button>' +
+    '</div></div>' : '';
+
+  return '<div style="max-width:900px;margin:0 auto">' +
+    statBar +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
+      '<div>' +
+        timelineHtml +
+        card('Property Details', propRows) +
+        card('Financials', finRows) +
+        notesHtml +
+        trackerHtml +
+      '</div>' +
+      '<div>' +
+        peopleHtml +
+        activityHtml +
+        docHtml +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderTxChecklistCompact(checklist) {
+  var cats = {};
+  TX_DOCS.forEach(function(doc) { if(!cats[doc.cat]) cats[doc.cat]=[]; cats[doc.cat].push(doc); });
+  return Object.keys(cats).map(function(cat) {
+    var catColor = TX_CAT_COLORS[cat] || 'var(--text3)';
+    return '<div style="margin-bottom:10px">' +
+      '<div style="font-size:10px;font-weight:700;color:'+catColor+';text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">'+cat+'</div>' +
+      cats[cat].map(function(doc) {
+        var val = txCheckVal(checklist[doc.name]);
+        return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0">' +
+          '<span style="font-size:13px">'+(val.checked?'✅':'⬜')+'</span>' +
+          '<span style="font-size:12px;color:var(--text);flex:1">'+doc.name+'</span>' +
+          (val.docId ? '<a href="'+(val.viewUrl||'#')+'" target="_blank" style="font-size:10px;color:var(--accent);text-decoration:none">📎</a>' : '') +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }).join('');
+}
