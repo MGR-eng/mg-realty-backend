@@ -5757,6 +5757,63 @@ app.delete('/api/admin/appointment', async (req, res) => {
   }
 });
 
+// ── Live LA Market Data Pull ──────────────────────────────────────────────────
+app.post('/api/newsletter-market-data', async (req, res) => {
+  try {
+    const { neighborhoods } = req.body;
+    const hoodList = (neighborhoods && neighborhoods.length)
+      ? neighborhoods.join(', ')
+      : 'Silver Lake, Los Feliz, Echo Park, West Hollywood, Brentwood, Santa Monica, Highland Park';
+
+    const month = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    const prompt = `Search for the most current Los Angeles real estate market data available for ${month}.
+
+Find these stats for the overall LA / Westside market:
+1. Median home sale price (single family homes)
+2. Price change vs last month (%)
+3. Average days on market
+4. Number of homes sold (or closed) this month
+5. Active inventory (number of homes listed)
+6. Market temperature (hot seller's, balanced, or buyer's market)
+
+Also find a one-line market update for each of these neighborhoods: ${hoodList}
+For each neighborhood: current median price or price range, and one notable trend (inventory up/down, prices rising/falling, days on market).
+
+Return ONLY a JSON object in this exact format (no markdown, no explanation):
+{
+  "month": "${month}",
+  "medianPrice": "$X,XXX,XXX",
+  "priceChange": "+X.X% vs last month",
+  "daysOnMarket": "XX days",
+  "homesSold": "XXX",
+  "inventory": "XXX homes",
+  "marketTemp": "Hot seller's market",
+  "source": "Redfin / Zillow / [source used]",
+  "neighborhoods": [
+    { "name": "Silver Lake", "priceRange": "$X–$X", "update": "one-line trend" }
+  ]
+}`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1200,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: prompt }]
+    }, { headers: { 'anthropic-beta': 'web-search-2025-03-05' } });
+
+    // Extract the final text response (after tool use)
+    const textBlock = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = textBlock.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('No JSON in response');
+    const data = JSON.parse(match[0]);
+    res.json({ ok: true, data });
+  } catch(e) {
+    console.error('Market data pull error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Newsletter Personal Note Generator ───────────────────────────────────────
 app.post('/api/newsletter-personal-note', async (req, res) => {
   try {
