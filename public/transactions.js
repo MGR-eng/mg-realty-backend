@@ -1206,7 +1206,7 @@ async function handleTxDetailDocUpload(input) {
     var BACKEND = window.BACKEND || '';
     var resp = await fetch(BACKEND + '/drive/upload', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: b64, filename: file.name, mimeType: file.type, leadName: d.address || 'Transaction' })
+      body: JSON.stringify({ fileData: b64, fileName: file.name, mimeType: file.type, leadName: d.address || 'Transaction' })
     });
     var result = await resp.json();
     if (!result.ok) throw new Error(result.error || 'Upload failed');

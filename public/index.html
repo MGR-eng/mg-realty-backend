@@ -3324,15 +3324,16 @@ function toggleMoreSheet(){
 
 function updateBadges(){
   const ov=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0).length;
-  document.getElementById('nb-leads').textContent=ov||leads.length;
-  document.getElementById('nb-leads').className='nb'+(ov?' red':'');
-  document.getElementById('nb-appts').textContent=appts.filter(a=>du(a.date)>=0).length;
+  const nbLeads=document.getElementById('nb-leads');
+  if(nbLeads){nbLeads.textContent=ov||leads.length;nbLeads.className='nb'+(ov?' red':'');}
+  const nbAppts=document.getElementById('nb-appts');
+  if(nbAppts) nbAppts.textContent=appts.filter(a=>du(a.date)>=0).length;
   const openTasks=tasks.filter(t=>!t.done).length;
-  document.getElementById('nb-tasks').textContent=openTasks;
+  const nbTasks=document.getElementById('nb-tasks');
+  if(nbTasks){nbTasks.textContent=openTasks;nbTasks.className='nb'+(openTasks?' red':'');}
   const fuDue=leads.filter(l=>l.temp!=='done'&&l.followup&&du(l.followup)<=0).length;
   const fuBadge=document.getElementById('nb-followups');
   if(fuBadge){fuBadge.textContent=fuDue;fuBadge.style.display=fuDue?'':'none';}
-  document.getElementById('nb-tasks').className='nb'+(openTasks?' red':'');
   // Leases badge — show count expiring within 60 days
   const today=new Date().toISOString().split('T')[0];
   const exp60=new Date();exp60.setDate(exp60.getDate()+60);
