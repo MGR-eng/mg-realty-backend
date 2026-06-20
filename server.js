@@ -2209,6 +2209,54 @@ async function generatePostCloseEmail(touchKey, lead) {
   return msg.content[0].text.trim();
 }
 
+// ── AI Listing Description Writer ─────────────────────────────
+app.post('/api/listing-description', async (req, res) => {
+  try {
+    const { address, type, price, beds, baths, sqft, neighborhood, features, vibe, year, highlights } = req.body;
+    const details = [
+      address     && `Address: ${address}`,
+      type        && `Property type: ${type}`,
+      price       && `List price: ${price}`,
+      beds        && `Beds: ${beds}`,
+      baths       && `Baths: ${baths}`,
+      sqft        && `Square footage: ${sqft} sq ft`,
+      year        && `Year built: ${year}`,
+      neighborhood&& `Neighborhood: ${neighborhood}`,
+      features    && `Key features: ${features}`,
+      highlights  && `Special highlights: ${highlights}`,
+    ].filter(Boolean).join('\n');
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      messages: [{ role: 'user', content:
+        `Write a compelling MLS listing description for a real estate agent named Matt Golden (MG Realty, Los Angeles).
+
+Property details:
+${details}
+
+Vibe/tone: ${vibe || 'modern and move-in ready'}
+
+Instructions:
+- Write 3–4 punchy paragraphs, no headers, no bullet points
+- Lead with the most compelling hook — neighborhood, lifestyle, or standout feature
+- Weave in the specs naturally (don't just list them)
+- End with a short, confident call-to-action
+- Keep it under 500 characters for MLS compliance if possible, but prioritize quality
+- Do NOT include the price in the description
+- Do NOT use the phrase "nestled" or "boasting" or "meticulously"
+- Sound like a sharp LA agent, not a generic template
+- Return only the description text, nothing else` }]
+    });
+
+    const description = msg.content[0].text.trim();
+    res.json({ ok: true, description });
+  } catch(e) {
+    console.error('listing-description error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/post-close/start', async (req, res) => {
   try {
     const { leadId } = req.body;

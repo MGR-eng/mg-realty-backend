@@ -649,7 +649,10 @@ function saveTx() {
     if (typeof persist === 'function') persist();
   }
 
+  var prevStage = null;
   if (editTxId) {
+    var prevDeal = (deals||[]).find(function(d) { return d.id === editTxId; });
+    prevStage = prevDeal ? prevDeal.txStage : null;
     deals = deals.map(function(d) { return d.id === editTxId ? tx : d; });
   } else {
     deals.push(tx);
@@ -666,6 +669,24 @@ function saveTx() {
   if (typeof persist === 'function') persist();
   if (typeof renderAll === 'function') renderAll();
   if (typeof toast === 'function') toast('Transaction saved ✓');
+
+  // Auto-start post-close sequence when stage moves to Closed
+  if (tx.txStage === 'Closed' && prevStage !== 'Closed' && tx.leadId) {
+    var closedLead = (leads||[]).find(function(l){ return l.id === tx.leadId; });
+    if (closedLead && closedLead.email) {
+      fetch(BACKEND + '/api/post-close/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: tx.leadId })
+      }).then(function(r){ return r.json(); }).then(function(data){
+        if (data.ok && typeof toast === 'function') {
+          toast('🎉 Deal closed! Post-close sequence started for ' + (closedLead.first || closedLead.last || 'client'));
+        }
+      }).catch(function(e){ console.error('post-close start error:', e.message); });
+    } else if (typeof toast === 'function') {
+      toast('🎉 Deal closed! Add client email to start post-close sequence.');
+    }
+  }
 }
 
 function deleteTx() {

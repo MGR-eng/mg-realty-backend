@@ -1452,6 +1452,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <div class="ce-tab" data-tab="performance" onclick="showCeTab('performance')"><i class="ti ti-chart-bar" style="font-size:12px"></i> Performance</div>
       <div class="ce-tab" data-tab="pulse" onclick="showCeTab('pulse')"><i class="ti ti-activity" style="font-size:12px"></i> Market Pulse</div>
       <div class="ce-tab" data-tab="scriptgen" onclick="showCeTab('scriptgen')"><i class="ti ti-microphone" style="font-size:12px"></i> Script Generator</div>
+      <div class="ce-tab" data-tab="listingwriter" onclick="showCeTab('listingwriter')"><i class="ti ti-home-edit" style="font-size:12px"></i> Listing Writer</div>
     </div>
 
     <!-- GENERATE VIEW -->
@@ -1832,6 +1833,82 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
         </div>
       </div>
 
+    </div>
+
+    <!-- LISTING WRITER VIEW -->
+    <div id="ce-listingwriter-view" style="display:none;padding:20px 0">
+      <div style="display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start">
+
+        <!-- LEFT: form -->
+        <div class="tw" style="padding:18px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px">Property Details</div>
+          <div class="fg"><label>Address</label><input id="lw-address" type="text" placeholder="1234 Maple St, Los Angeles, CA 90019"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="fg"><label>Type</label>
+              <select id="lw-type">
+                <option value="Single Family Home">Single Family</option>
+                <option value="Condo">Condo</option>
+                <option value="Townhome">Townhome</option>
+                <option value="Multi-Family">Multi-Family</option>
+                <option value="Land">Land</option>
+              </select>
+            </div>
+            <div class="fg"><label>List Price</label><input id="lw-price" type="text" placeholder="$1,200,000"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div class="fg"><label>Beds</label><input id="lw-beds" type="number" placeholder="3"></div>
+            <div class="fg"><label>Baths</label><input id="lw-baths" type="number" placeholder="2"></div>
+            <div class="fg"><label>Sq Ft</label><input id="lw-sqft" type="text" placeholder="1,800"></div>
+          </div>
+          <div class="fg"><label>Neighborhood</label><input id="lw-neighborhood" type="text" placeholder="Silver Lake, Los Feliz, West Adams..."></div>
+          <div class="fg"><label>Key Features</label>
+            <textarea id="lw-features" rows="4" placeholder="Updated kitchen, hardwood floors, original details, ADU, pool, views, natural light, open floor plan..." style="resize:vertical;font-size:13px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--text1);font-family:inherit;width:100%;box-sizing:border-box"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="fg"><label>Vibe</label>
+              <select id="lw-vibe">
+                <option value="modern and move-in ready">Modern / Move-in Ready</option>
+                <option value="warm and charming">Warm &amp; Charming</option>
+                <option value="luxury and high-end">Luxury</option>
+                <option value="investment opportunity">Investment Opportunity</option>
+                <option value="family-friendly">Family-Friendly</option>
+                <option value="fixer with great bones">Fixer / Opportunity</option>
+              </select>
+            </div>
+            <div class="fg"><label>Year Built</label><input id="lw-year" type="text" placeholder="1948"></div>
+          </div>
+          <div class="fg"><label>Special Highlights <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+            <input id="lw-highlights" type="text" placeholder="Off-market, seller financing, assumable loan, dual income...">
+          </div>
+          <button class="btn btn-gold" onclick="generateListingDesc()" style="width:100%;margin-top:4px"><i class="ti ti-sparkles"></i> Generate Description</button>
+        </div>
+
+        <!-- RIGHT: output -->
+        <div>
+          <div id="lw-output-wrap" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div style="font-size:13px;font-weight:600;color:var(--text1)">MLS Description</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span id="lw-char-count" style="font-size:11px;color:var(--text3)"></span>
+                <button class="btn btn-sm" onclick="lwCopy()" style="background:rgba(232,104,26,0.1);color:var(--accent);border-color:rgba(232,104,26,0.3)"><i class="ti ti-copy"></i> Copy</button>
+                <button class="btn btn-sm" onclick="generateListingDesc()" title="Regenerate"><i class="ti ti-refresh"></i></button>
+              </div>
+            </div>
+            <div class="tw" style="padding:18px">
+              <textarea id="lw-result" rows="16" style="width:100%;border:none;background:transparent;color:var(--text1);font-size:14px;line-height:1.7;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box"></textarea>
+            </div>
+          </div>
+          <div id="lw-loading" style="display:none;padding:60px 20px;text-align:center;color:var(--text3)">
+            <i class="ti ti-loader" style="font-size:24px;animation:spin 1s linear infinite;display:block;margin-bottom:12px"></i>
+            Writing your listing description...
+          </div>
+          <div id="lw-placeholder" style="padding:60px 20px;text-align:center;color:var(--text3)">
+            <i class="ti ti-home-edit" style="font-size:32px;display:block;margin-bottom:12px;opacity:0.4"></i>
+            Fill in the property details and hit Generate
+          </div>
+        </div>
+
+      </div>
     </div>
 
   </div>
@@ -6418,7 +6495,8 @@ function showCeTab(tab) {
   document.getElementById('ce-calendar-view').style.display     = tab === 'calendar'    ? '' : 'none';
   document.getElementById('ce-performance-view').style.display  = tab === 'performance' ? '' : 'none';
   document.getElementById('ce-pulse-view').style.display        = tab === 'pulse'       ? '' : 'none';
-  document.getElementById('ce-scriptgen-view').style.display    = tab === 'scriptgen'   ? '' : 'none';
+  document.getElementById('ce-scriptgen-view').style.display     = tab === 'scriptgen'     ? '' : 'none';
+  document.getElementById('ce-listingwriter-view').style.display = tab === 'listingwriter' ? '' : 'none';
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
@@ -6429,6 +6507,56 @@ function showCeTab(tab) {
   if (tab === 'buyers') { if(typeof renderBuyers==="function") renderBuyers(); }
   if (tab === 'vendors') { if(typeof renderVendors==="function") renderVendors(); }
   if (tab === 'finance') { renderExpenses(); renderInvoices(); }
+}
+
+// ── Listing Description Writer ────────────────────────────────
+async function generateListingDesc() {
+  var address   = document.getElementById('lw-address').value.trim();
+  var type      = document.getElementById('lw-type').value;
+  var price     = document.getElementById('lw-price').value.trim();
+  var beds      = document.getElementById('lw-beds').value.trim();
+  var baths     = document.getElementById('lw-baths').value.trim();
+  var sqft      = document.getElementById('lw-sqft').value.trim();
+  var hood      = document.getElementById('lw-neighborhood').value.trim();
+  var features  = document.getElementById('lw-features').value.trim();
+  var vibe      = document.getElementById('lw-vibe').value;
+  var year      = document.getElementById('lw-year').value.trim();
+  var highlights= document.getElementById('lw-highlights').value.trim();
+
+  if (!address && !features) { if(typeof toast==='function') toast('Add at least an address or key features','err'); return; }
+
+  document.getElementById('lw-placeholder').style.display = 'none';
+  document.getElementById('lw-output-wrap').style.display = 'none';
+  document.getElementById('lw-loading').style.display = '';
+
+  try {
+    var resp = await fetch(BACKEND + '/api/listing-description', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, type, price, beds, baths, sqft, neighborhood: hood, features, vibe, year, highlights })
+    });
+    var data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Generation failed');
+    document.getElementById('lw-result').value = data.description;
+    document.getElementById('lw-char-count').textContent = data.description.length + ' chars';
+    document.getElementById('lw-loading').style.display = 'none';
+    document.getElementById('lw-output-wrap').style.display = '';
+  } catch(e) {
+    document.getElementById('lw-loading').style.display = 'none';
+    document.getElementById('lw-placeholder').style.display = '';
+    if(typeof toast==='function') toast('Error: ' + e.message, 'err');
+  }
+}
+
+function lwCopy() {
+  var ta = document.getElementById('lw-result');
+  if (!ta || !ta.value) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(ta.value).then(function(){ if(typeof toast==='function') toast('Copied!'); });
+  } else {
+    ta.select(); document.execCommand('copy');
+    if(typeof toast==='function') toast('Copied!');
+  }
 }
 
 // ── Script Generator ──────────────────────────────────────────
