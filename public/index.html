@@ -10818,10 +10818,26 @@ function renderAgentsCards() {
   if (!grid) return;
   if (!agents || !agents.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No agents yet.</div>'; return; }
   grid.innerHTML = agents.map(function(a) {
-    var linked = leads.filter(function(l) { return l.agentName === (a.first + ' ' + a.last) && l.temp !== 'done'; }).length;
-    var closed = leads.filter(function(l) { return l.agentName === (a.first + ' ' + a.last) && l.stage === 'closed'; }).length;
+    var agentName = a.first + ' ' + a.last;
+    var linked = leads.filter(function(l) { return l.agentName === agentName && l.temp !== 'done'; }).length;
+    var closed = leads.filter(function(l) { return l.agentName === agentName && l.stage === 'closed'; }).length;
+
+    // Find all transactions where this agent is the co-op agent
+    var agentDeals = (typeof deals !== 'undefined' ? deals : []).filter(function(d) {
+      return d.coopAgent && d.coopAgent.toLowerCase().trim() === agentName.toLowerCase().trim();
+    });
+
+    var txBadges = agentDeals.map(function(d) {
+      var label = (d.address || 'Transaction').replace(/, .+/, ''); // strip city/state for brevity
+      var stageColor = {'Offer Submitted':'var(--blue)','Under Contract':'var(--purple)','Inspection':'var(--amber)','Appraisal':'var(--accent)','Loan Approval':'var(--red)','Clear to Close':'var(--green)','Closed':'var(--green)'}[d.txStage] || 'var(--text3)';
+      return '<button onclick="showPane(\'transactions\',document.querySelector(\'[onclick*=\\\"transactions\\\"]\'));setTimeout(function(){openTxDetail(\'' + d.id + '\')},80)" '
+        + 'style="background:' + stageColor + '1a;border:1px solid ' + stageColor + '44;color:' + stageColor + ';border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap">'
+        + '<i class="ti ti-home-move" style="font-size:10px"></i>' + label + ' · ' + (d.txStage || 'Active')
+        + '</button>';
+    }).join('');
+
     return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px">'
-      + '<div style="font-size:16px;font-weight:700;margin-bottom:4px">' + a.first + ' ' + a.last + '</div>'
+      + '<div style="font-size:16px;font-weight:700;margin-bottom:4px">' + agentName + '</div>'
       + '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">' + (a.brokerage || '') + (a.agentType ? ' · ' + a.agentType : '') + '</div>'
       + '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'
       + (a.phone ? '&#128222; ' + formatPhone(a.phone) + ' &nbsp;' : '') + (a.email ? '&#9993; ' + a.email : '')
@@ -10831,6 +10847,7 @@ function renderAgentsCards() {
       + '<div style="background:var(--surface2);padding:8px;text-align:center"><div style="font-size:18px;font-weight:800;color:#4ADE80">' + closed + '</div><div style="font-size:9px;color:var(--text3)">CLOSED</div></div>'
       + '<div style="background:var(--surface2);padding:8px;text-align:center"><div style="font-size:18px;font-weight:800;color:var(--text)">' + (linked+closed) + '</div><div style="font-size:9px;color:var(--text3)">TOTAL</div></div>'
       + '</div>'
+      + (agentDeals.length ? '<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Transactions</div><div style="display:flex;flex-wrap:wrap;gap:6px">' + txBadges + '</div></div>' : '')
       + (a.notes ? '<div style="font-size:11px;color:var(--text2);padding:8px;background:var(--surface2);border-radius:6px;margin-bottom:10px">' + a.notes.substring(0,120) + '</div>' : '')
       + '<div style="display:flex;gap:6px">'
       + (a.phone ? '<a href="tel:' + a.phone + '" class="btn btn-sm" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)"><i class="ti ti-phone" style="font-size:11px"></i></a>' : '')
