@@ -4307,7 +4307,7 @@ async function syncAllToGoogleContacts(){
   }catch(e){toast('Contacts sync failed: '+e.message,'err');}
   finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-address-book" style="font-size:13px"></i> Sync Contacts';}}
 }
-function delLead(id){if(confirm('Delete this lead and all activity?')){trackDeletedId(id);leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();pushToBackend();renderAll();toast('Lead deleted');}}
+function delLead(id){if(confirm('Delete this lead and all activity?')){trackDeletedId(id);leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();renderAll();toast('Lead deleted');fetch(BACKEND+'/leads/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leadId:id})}).catch(e=>console.warn('Lead delete sync failed:',e.message));}}
 
 function openAct(id){
   actLeadId=id;const l=leads.find(x=>x.id===id);

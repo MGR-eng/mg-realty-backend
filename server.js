@@ -603,6 +603,24 @@ app.post('/crm/push', async (req, res) => {
   }
 });
 
+// Hard-delete a lead + all its activities from Supabase
+app.post('/leads/delete', async (req, res) => {
+  try {
+    const { leadId } = req.body;
+    if (!leadId) return res.status(400).json({ ok: false, error: 'leadId required' });
+    const crm = await readCRM();
+    const before = (crm.leads || []).length;
+    crm.leads = (crm.leads || []).filter(l => l.id !== leadId);
+    crm.activities = (crm.activities || []).filter(a => a.leadId !== leadId);
+    await writeCRM(crm);
+    console.log(`Lead ${leadId} deleted from Supabase (was ${before} leads, now ${crm.leads.length})`);
+    res.json({ ok: true, removed: before - crm.leads.length });
+  } catch(e) {
+    console.error('LEAD DELETE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Google Contacts Sync ──────────────────────────────────────
 async function getContactsAccessToken() {
   const { google } = require('googleapis');
