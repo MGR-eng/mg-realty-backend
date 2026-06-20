@@ -489,34 +489,20 @@ async function handleTxDocUpload(input) {
 
   try {
     var BACKEND = window.BACKEND || '';
-    // Step 1: get authorized upload URL from server (no file data)
-    var initR = await fetch(BACKEND + '/drive/init-upload', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName: file.name, mimeType: file.type, fileSize: file.size })
-    });
-    var init = await initR.json();
-    if (!init.ok) throw new Error(init.error || 'Init failed');
-    // Step 2: upload file bytes directly to Google Drive
-    var upRes = await fetch(init.uploadUrl, {
-      method: 'PUT', headers: { 'Content-Type': file.type, 'Content-Length': file.size },
-      body: file
-    });
-    var upData = await upRes.json();
-    if (!upData.id) throw new Error(upData.error?.message || 'Upload failed');
-    // Step 3: set public permissions via server
-    var finR = await fetch(BACKEND + '/drive/finalize', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileId: upData.id, fileName: file.name })
-    });
-    var d = await finR.json();
-    if (!d.ok) throw new Error(d.error || 'Finalize failed');
+    // Send raw binary directly to our server (no base64, no CORS issues)
+    var upRes = await fetch(
+      BACKEND + '/drive/upload-stream?fileName=' + encodeURIComponent(file.name) + '&mimeType=' + encodeURIComponent(file.type || 'application/octet-stream'),
+      { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file }
+    );
+    var d = await upRes.json();
+    if (!d.ok) throw new Error(d.error || 'Upload failed');
 
     if (!_txCurrentChecklist[docName] || typeof _txCurrentChecklist[docName] === 'boolean') _txCurrentChecklist[docName] = {};
     _txCurrentChecklist[docName] = {
       checked: true,
       docId: d.fileId,
       docName: file.name,
-      viewUrl: d.webViewLink || d.viewUrl,
+      viewUrl: d.viewUrl,
       uploadedAt: new Date().toISOString()
     };
 
@@ -1209,29 +1195,15 @@ async function handleTxDetailDocUpload(input) {
   if (typeof toast === 'function') toast('Uploading ' + file.name + '…');
   try {
     var BACKEND = window.BACKEND || '';
-    // Step 1: get authorized upload URL (no file data sent to our server)
-    var initR = await fetch(BACKEND + '/drive/init-upload', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName: file.name, mimeType: file.type, fileSize: file.size })
-    });
-    var init = await initR.json();
-    if (!init.ok) throw new Error(init.error || 'Init failed');
-    // Step 2: upload file bytes directly to Google Drive
-    var upRes = await fetch(init.uploadUrl, {
-      method: 'PUT', headers: { 'Content-Type': file.type, 'Content-Length': file.size },
-      body: file
-    });
-    var upData = await upRes.json();
-    if (!upData.id) throw new Error(upData.error?.message || 'Upload failed');
-    // Step 3: set public permissions via server
-    var finR = await fetch(BACKEND + '/drive/finalize', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileId: upData.id, fileName: file.name })
-    });
-    var result = await finR.json();
-    if (!result.ok) throw new Error(result.error || 'Finalize failed');
+    // Send raw binary directly to our server (no base64, no CORS issues)
+    var upRes = await fetch(
+      BACKEND + '/drive/upload-stream?fileName=' + encodeURIComponent(file.name) + '&mimeType=' + encodeURIComponent(file.type || 'application/octet-stream'),
+      { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file }
+    );
+    var result = await upRes.json();
+    if (!result.ok) throw new Error(result.error || 'Upload failed');
     d.checklist = d.checklist || {};
-    d.checklist[docName] = { checked: true, docId: upData.id, docName: file.name, viewUrl: result.viewUrl };
+    d.checklist[docName] = { checked: true, docId: result.fileId, docName: file.name, viewUrl: result.viewUrl };
     deals = (deals||[]).map(function(x){ return x.id===window._activeTxId ? d : x; });
     if (typeof persist === 'function') persist();
     // Re-render the doc section

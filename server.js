@@ -1508,6 +1508,75 @@ Write 3-4 short paragraphs. Be honest but optimistic. Lead with the highlights, 
   }
 });
 
+// ── Google Drive: streaming upload (raw binary from browser, no base64, no CORS) ──
+app.post('/drive/upload-stream', express.raw({ type: '*/*', limit: '500mb' }), async (req, res) => {
+  try {
+    const fileName = decodeURIComponent(req.query.fileName || 'upload');
+    const mimeType = decodeURIComponent(req.query.mimeType || 'application/octet-stream');
+    const fileBuffer = req.body;
+    if (!fileBuffer || !fileBuffer.length) return res.status(400).json({ ok: false, error: 'No file data received' });
+
+    const token = await googleToken();
+    const DRIVE_FOLDER_NAME = 'MG Realty CRM Docs';
+
+    // Find or create the CRM folder
+    let folderId = null;
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const searchData = await searchRes.json();
+    if (searchData.files?.length) {
+      folderId = searchData.files[0].id;
+    } else {
+      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+      });
+      folderId = (await createRes.json()).id;
+    }
+
+    // Initiate resumable upload session (server-side, no CORS issues)
+    const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-Upload-Content-Type': mimeType,
+        'X-Upload-Content-Length': fileBuffer.length
+      },
+      body: JSON.stringify({ name: fileName, parents: [folderId] })
+    });
+    if (!initRes.ok) throw new Error('Drive init failed: ' + await initRes.text());
+    const uploadUrl = initRes.headers.get('location');
+    if (!uploadUrl) throw new Error('No upload URL from Drive');
+
+    // Upload file buffer directly to Google Drive (server-side)
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': mimeType, 'Content-Length': fileBuffer.length },
+      body: fileBuffer
+    });
+    if (!uploadRes.ok && uploadRes.status !== 200) throw new Error('Drive upload failed: ' + await uploadRes.text());
+    const fileData = await uploadRes.json();
+    if (!fileData.id) throw new Error('No file ID returned from Drive');
+
+    // Set public read permission
+    await fetch(`https://www.googleapis.com/drive/v3/files/${fileData.id}/permissions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' })
+    });
+
+    console.log(`Drive stream upload: ${fileName} → ${fileData.id} (${fileBuffer.length} bytes)`);
+    res.json({ ok: true, fileId: fileData.id, fileName: fileData.name, viewUrl: `https://drive.google.com/file/d/${fileData.id}/view` });
+  } catch(e) {
+    console.error('DRIVE STREAM ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Google Drive: upload document ────────────────────────────
 // Step 1: browser calls this to get an authorized upload URL (no file data sent here)
 app.post('/drive/init-upload', async (req, res) => {
@@ -6280,4 +6349,7 @@ Omit any field not found in the document. Return only what you can actually read
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
+// Extend timeout for large file uploads (default is 5min, set to 10min to be safe)
+server.timeout = 600000;
+server.keepAliveTimeout = 620000;
