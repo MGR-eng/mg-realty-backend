@@ -259,13 +259,22 @@ function renderTransactions() {
     board.innerHTML = '<div class="empty" style="padding:40px 20px;text-align:center">No transactions yet.<br><br><button class="btn btn-gold" onclick="openNewTx()"><i class="ti ti-plus"></i> Start a Transaction</button></div>';
     return;
   }
+  // Find the first stage that has active deals (for auto-scroll)
+  var firstActiveStage = null;
+  TX_STAGES.forEach(function(stage) {
+    if (!firstActiveStage && (deals||[]).some(function(d) { return (d.txStage || 'Offer Submitted') === stage && d.txStage !== 'Closed'; })) {
+      firstActiveStage = stage;
+    }
+  });
+
   var html = '<div style="display:flex;gap:16px;min-width:max-content;padding:4px 20px 20px">';
   TX_STAGES.forEach(function(stage) {
     var stageTxs = (deals||[]).filter(function(d) { return (d.txStage || 'Offer Submitted') === stage; });
-    html += '<div style="width:290px;flex-shrink:0">';
-    html += '<div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'
+    var hasActive = stageTxs.length > 0;
+    html += '<div data-stage-col="' + stage.replace(/\s+/g,'-') + '" style="width:290px;flex-shrink:0">';
+    html += '<div style="font-size:11px;font-weight:700;color:' + (hasActive ? 'var(--accent)' : 'var(--text2)') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'
           + '<span>' + stage + '</span>'
-          + '<span style="background:var(--surface2);color:var(--text3);padding:1px 7px;border-radius:99px;font-size:10px">' + stageTxs.length + '</span>'
+          + '<span style="background:' + (hasActive ? 'rgba(232,104,26,0.12)' : 'var(--surface2)') + ';color:' + (hasActive ? 'var(--accent)' : 'var(--text3)') + ';padding:1px 7px;border-radius:99px;font-size:10px">' + stageTxs.length + '</span>'
           + '</div>';
     stageTxs.forEach(function(d) { html += renderTxCard(d, true); });
     html += '<button class="btn btn-sm" data-stage="' + stage + '" onclick="openNewTx(this.dataset.stage)" style="width:100%;margin-top:8px;background:var(--surface2);color:var(--text3);border:1px dashed var(--border);font-size:11px">+ Add</button>';
@@ -273,6 +282,14 @@ function renderTransactions() {
   });
   html += '</div>';
   board.innerHTML = html;
+
+  // Auto-scroll to first column with active deals
+  if (firstActiveStage) {
+    setTimeout(function() {
+      var col = board.querySelector('[data-stage-col="' + firstActiveStage.replace(/\s+/g,'-') + '"]');
+      if (col) col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    }, 50);
+  }
 }
 
 function renderTxCard(d, compact) {
