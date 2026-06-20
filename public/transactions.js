@@ -488,20 +488,28 @@ async function handleTxDocUpload(input) {
   if (statusEl) { statusEl.style.display=''; statusEl.textContent='Uploading…'; statusEl.style.color='var(--amber)'; }
 
   try {
-    var base64 = await new Promise(function(res,rej) {
-      var reader = new FileReader();
-      reader.onload = function(e) { res(e.target.result); };
-      reader.onerror = rej;
-      reader.readAsDataURL(file);
-    });
     var BACKEND = window.BACKEND || '';
-    var r = await fetch(BACKEND + '/drive/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName: file.name, fileData: base64, mimeType: file.type, leadName: 'Transaction — ' + docName })
+    // Step 1: get authorized upload URL from server (no file data)
+    var initR = await fetch(BACKEND + '/drive/init-upload', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName: file.name, mimeType: file.type, fileSize: file.size })
     });
-    var d = await r.json();
-    if (!d.ok) throw new Error(d.error || 'Upload failed');
+    var init = await initR.json();
+    if (!init.ok) throw new Error(init.error || 'Init failed');
+    // Step 2: upload file bytes directly to Google Drive
+    var upRes = await fetch(init.uploadUrl, {
+      method: 'PUT', headers: { 'Content-Type': file.type, 'Content-Length': file.size },
+      body: file
+    });
+    var upData = await upRes.json();
+    if (!upData.id) throw new Error(upData.error?.message || 'Upload failed');
+    // Step 3: set public permissions via server
+    var finR = await fetch(BACKEND + '/drive/finalize', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileId: upData.id, fileName: file.name })
+    });
+    var d = await finR.json();
+    if (!d.ok) throw new Error(d.error || 'Finalize failed');
 
     if (!_txCurrentChecklist[docName] || typeof _txCurrentChecklist[docName] === 'boolean') _txCurrentChecklist[docName] = {};
     _txCurrentChecklist[docName] = {
@@ -1200,18 +1208,30 @@ async function handleTxDetailDocUpload(input) {
   var docName = _txDetailUploadDoc; _txDetailUploadDoc = null;
   if (typeof toast === 'function') toast('Uploading ' + file.name + '…');
   try {
-    var b64 = await new Promise(function(res, rej) {
-      var r = new FileReader(); r.onload = function(e){ res(e.target.result.split(',')[1]); }; r.onerror = rej; r.readAsDataURL(file);
-    });
     var BACKEND = window.BACKEND || '';
-    var resp = await fetch(BACKEND + '/drive/upload', {
+    // Step 1: get authorized upload URL (no file data sent to our server)
+    var initR = await fetch(BACKEND + '/drive/init-upload', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileData: b64, fileName: file.name, mimeType: file.type, leadName: d.address || 'Transaction' })
+      body: JSON.stringify({ fileName: file.name, mimeType: file.type, fileSize: file.size })
     });
-    var result = await resp.json();
-    if (!result.ok) throw new Error(result.error || 'Upload failed');
+    var init = await initR.json();
+    if (!init.ok) throw new Error(init.error || 'Init failed');
+    // Step 2: upload file bytes directly to Google Drive
+    var upRes = await fetch(init.uploadUrl, {
+      method: 'PUT', headers: { 'Content-Type': file.type, 'Content-Length': file.size },
+      body: file
+    });
+    var upData = await upRes.json();
+    if (!upData.id) throw new Error(upData.error?.message || 'Upload failed');
+    // Step 3: set public permissions via server
+    var finR = await fetch(BACKEND + '/drive/finalize', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileId: upData.id, fileName: file.name })
+    });
+    var result = await finR.json();
+    if (!result.ok) throw new Error(result.error || 'Finalize failed');
     d.checklist = d.checklist || {};
-    d.checklist[docName] = { checked: true, docId: result.fileId, docName: file.name, viewUrl: result.viewUrl };
+    d.checklist[docName] = { checked: true, docId: upData.id, docName: file.name, viewUrl: result.viewUrl };
     deals = (deals||[]).map(function(x){ return x.id===window._activeTxId ? d : x; });
     if (typeof persist === 'function') persist();
     // Re-render the doc section

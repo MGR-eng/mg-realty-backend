@@ -1509,10 +1509,11 @@ Write 3-4 short paragraphs. Be honest but optimistic. Lead with the highlights, 
 });
 
 // ── Google Drive: upload document ────────────────────────────
-app.post('/drive/upload', async (req, res) => {
+// Step 1: browser calls this to get an authorized upload URL (no file data sent here)
+app.post('/drive/init-upload', async (req, res) => {
   try {
-    const { fileName, fileData, mimeType, leadName } = req.body;
-    if (!fileName || !fileData) return res.status(400).json({ ok: false, error: 'fileName and fileData required' });
+    const { fileName, mimeType, fileSize } = req.body;
+    if (!fileName) return res.status(400).json({ ok: false, error: 'fileName required' });
 
     const token = await googleToken();
     const DRIVE_FOLDER_NAME = 'MG Realty CRM Docs';
@@ -1527,63 +1528,84 @@ app.post('/drive/upload', async (req, res) => {
     if (searchData.files?.length) {
       folderId = searchData.files[0].id;
     } else {
-      // Create folder
       const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
       });
-      const createData = await createRes.json();
-      folderId = createData.id;
+      folderId = (await createRes.json()).id;
     }
 
-    // Convert base64 to buffer
-    const base64Data = fileData.includes(',') ? fileData.split(',')[1] : fileData;
-    const fileBuffer = Buffer.from(base64Data, 'base64');
     const fileMimeType = mimeType || 'application/octet-stream';
-
-    // Use resumable upload for all files (works for any size, recommended for >5MB)
-    const metadata = JSON.stringify({ name: fileName, parents: [folderId] });
-
-    // Step 1: initiate resumable session
     const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
         'X-Upload-Content-Type': fileMimeType,
-        'X-Upload-Content-Length': fileBuffer.length
+        ...(fileSize ? { 'X-Upload-Content-Length': fileSize } : {})
       },
-      body: metadata
+      body: JSON.stringify({ name: fileName, parents: [folderId] })
     });
-    if (!initRes.ok) {
-      const err = await initRes.text();
-      throw new Error('Drive resumable init failed: ' + err);
-    }
+    if (!initRes.ok) throw new Error('Drive init failed: ' + await initRes.text());
     const uploadUrl = initRes.headers.get('location');
-    if (!uploadUrl) throw new Error('No upload URL from Drive');
+    if (!uploadUrl) throw new Error('No upload URL returned');
 
-    // Step 2: upload the file bytes
-    const uploadRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': fileMimeType,
-        'Content-Length': fileBuffer.length
-      },
-      body: fileBuffer
-    });
-    const uploadData = await uploadRes.json();
-    if (!uploadData.id) throw new Error(uploadData.error?.message || 'Upload failed');
+    res.json({ ok: true, uploadUrl, token });
+  } catch(e) {
+    console.error('DRIVE INIT ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
-    // Make file readable by anyone with link
-    await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
+// Step 2: browser uploads file directly to Google Drive, then calls this to set permissions
+app.post('/drive/finalize', async (req, res) => {
+  try {
+    const { fileId, fileName } = req.body;
+    if (!fileId) return res.status(400).json({ ok: false, error: 'fileId required' });
+    const token = await googleToken();
+    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: 'reader', type: 'anyone' })
     });
+    console.log(`Drive finalize: ${fileName} → ${fileId}`);
+    res.json({ ok: true, fileId, viewUrl: `https://drive.google.com/file/d/${fileId}/view` });
+  } catch(e) {
+    console.error('DRIVE FINALIZE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
-    console.log(`Drive upload: ${fileName} → ${uploadData.id}`);
-    res.json({ ok: true, fileId: uploadData.id, fileName, webViewLink: uploadData.webViewLink, viewUrl: `https://drive.google.com/file/d/${uploadData.id}/view` });
+// Legacy endpoint kept for backwards compat (small files only)
+app.post('/drive/upload', async (req, res) => {
+  try {
+    const { fileName, fileData, mimeType } = req.body;
+    if (!fileName || !fileData) return res.status(400).json({ ok: false, error: 'fileName and fileData required' });
+    const token = await googleToken();
+    const DRIVE_FOLDER_NAME = 'MG Realty CRM Docs';
+    let folderId = null;
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const searchData = await searchRes.json();
+    if (searchData.files?.length) { folderId = searchData.files[0].id; }
+    else {
+      const cr = await fetch('https://www.googleapis.com/drive/v3/files', { method:'POST', headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({name:DRIVE_FOLDER_NAME,mimeType:'application/vnd.google-apps.folder'}) });
+      folderId = (await cr.json()).id;
+    }
+    const base64Data = fileData.includes(',') ? fileData.split(',')[1] : fileData;
+    const fileBuffer = Buffer.from(base64Data, 'base64');
+    const fileMimeType = mimeType || 'application/octet-stream';
+    const boundary = `b_${Date.now()}`;
+    const metadata = JSON.stringify({ name: fileName, parents: [folderId] });
+    const body = Buffer.concat([Buffer.from(`--${boundary}\r\nContent-Type: application/json\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${fileMimeType}\r\n\r\n`), fileBuffer, Buffer.from(`\r\n--${boundary}--`)]);
+    const upRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', { method:'POST', headers:{Authorization:`Bearer ${token}`,'Content-Type':`multipart/related; boundary=${boundary}`,'Content-Length':body.length}, body });
+    const upData = await upRes.json();
+    if (!upData.id) throw new Error(upData.error?.message || 'Upload failed');
+    await fetch(`https://www.googleapis.com/drive/v3/files/${upData.id}/permissions`, { method:'POST', headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({role:'reader',type:'anyone'}) });
+    res.json({ ok: true, fileId: upData.id, fileName, viewUrl: `https://drive.google.com/file/d/${upData.id}/view` });
   } catch(e) {
     console.error('DRIVE UPLOAD ERROR:', e.message);
     res.status(500).json({ ok: false, error: e.message });
