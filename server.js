@@ -1542,19 +1542,35 @@ app.post('/drive/upload', async (req, res) => {
     const fileBuffer = Buffer.from(base64Data, 'base64');
     const fileMimeType = mimeType || 'application/octet-stream';
 
-    // Upload file using multipart
-    const boundary = `boundary_${Date.now()}`;
+    // Use resumable upload for all files (works for any size, recommended for >5MB)
     const metadata = JSON.stringify({ name: fileName, parents: [folderId] });
-    const multipart = Buffer.concat([
-      Buffer.from(`--${boundary}\r\nContent-Type: application/json\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${fileMimeType}\r\n\r\n`),
-      fileBuffer,
-      Buffer.from(`\r\n--${boundary}--`)
-    ]);
 
-    const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+    // Step 1: initiate resumable session
+    const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}`, 'Content-Length': multipart.length },
-      body: multipart
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-Upload-Content-Type': fileMimeType,
+        'X-Upload-Content-Length': fileBuffer.length
+      },
+      body: metadata
+    });
+    if (!initRes.ok) {
+      const err = await initRes.text();
+      throw new Error('Drive resumable init failed: ' + err);
+    }
+    const uploadUrl = initRes.headers.get('location');
+    if (!uploadUrl) throw new Error('No upload URL from Drive');
+
+    // Step 2: upload the file bytes
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': fileMimeType,
+        'Content-Length': fileBuffer.length
+      },
+      body: fileBuffer
     });
     const uploadData = await uploadRes.json();
     if (!uploadData.id) throw new Error(uploadData.error?.message || 'Upload failed');
