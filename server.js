@@ -4001,57 +4001,63 @@ ${JSON.stringify(leads.filter(l => l.temp !== 'done').slice(0, 30).map(l => ({
           const callerPhone = from;
           (async () => {
             try {
-              // Step 1: search for the property
-              let topUrl = null;
+              // Step 1: Brave search for snippets + find a scrapeable URL
               let searchSnippets = '';
-              if (process.env.BRAVE_API_KEY) {
-                const sr = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQ)}&count=5`, {
-                  headers: { 'X-Subscription-Token': process.env.BRAVE_API_KEY, Accept: 'application/json' }
-                });
-                if (sr.ok) {
-                  const sd = await sr.json();
-                  const results = sd.web?.results || [];
-                  // Prefer Zillow, Redfin, Realtor
-                  const preferred = results.find(r => r.url.includes('zillow.com') || r.url.includes('redfin.com') || r.url.includes('realtor.com'));
-                  topUrl = preferred?.url || results[0]?.url;
-                  searchSnippets = results.slice(0, 4).map(r => `${r.title}: ${r.description || ''}`).join('\n');
-                }
-              }
-
-              // Step 2: fetch the listing page
               let pageText = '';
-              if (topUrl) {
-                try {
-                  const pageRes = await fetch(topUrl, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-                    signal: AbortSignal.timeout(8000)
-                  });
-                  const html = await pageRes.text();
-                  // Strip HTML tags and collapse whitespace
-                  pageText = html
-                    .replace(/<script[\s\S]*?<\/script>/gi, '')
-                    .replace(/<style[\s\S]*?<\/style>/gi, '')
-                    .replace(/<[^>]+>/g, ' ')
-                    .replace(/\s{3,}/g, '\n')
-                    .substring(0, 6000);
-                } catch(fe) {
-                  console.warn('Page fetch failed:', fe.message);
+              const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+              if (braveKey) {
+                const [r1, r2] = await Promise.all([
+                  fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQ)}&count=6`, {
+                    headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' }
+                  }).then(r => r.json()).catch(() => ({})),
+                  fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(propAddress + ' sold price beds baths sqft 2025 2026')}&count=5`, {
+                    headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' }
+                  }).then(r => r.json()).catch(() => ({}))
+                ]);
+                const results = [...(r1.web?.results || []), ...(r2.web?.results || [])];
+                searchSnippets = results.slice(0, 6).map(r => `${r.title}: ${r.description || ''}`).join('\n');
+
+                // Step 2: Try fetching a page — prefer Redfin/Realtor, skip Zillow (blocks)
+                const scrapeable = results.find(r =>
+                  r.url.includes('redfin.com') || r.url.includes('realtor.com') || r.url.includes('compass.com')
+                );
+                if (scrapeable) {
+                  try {
+                    const pageRes = await fetch(scrapeable.url, {
+                      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Accept': 'text/html' },
+                      signal: AbortSignal.timeout(7000)
+                    });
+                    if (pageRes.ok) {
+                      const html = await pageRes.text();
+                      pageText = html
+                        .replace(/<script[\s\S]*?<\/script>/gi, '')
+                        .replace(/<style[\s\S]*?<\/style>/gi, '')
+                        .replace(/<[^>]+>/g, ' ')
+                        .replace(/\s{3,}/g, '\n')
+                        .substring(0, 5000);
+                    }
+                  } catch(fe) {
+                    console.warn('Page fetch failed (non-fatal):', fe.message);
+                  }
                 }
               }
 
-              // Step 3: Claude extracts and formats property data
-              const context = pageText
-                ? `Page content from ${topUrl}:\n${pageText}`
-                : `Search results:\n${searchSnippets}`;
+              // Claude synthesizes from whatever data we have + market knowledge
+              const context = [
+                pageText ? `Page content:\n${pageText}` : '',
+                searchSnippets ? `Search snippets:\n${searchSnippets}` : ''
+              ].filter(Boolean).join('\n\n') || '(no external data — use market knowledge)';
 
               const propResult = await anthropic.messages.create({
                 model: 'claude-sonnet-4-6',
                 max_tokens: 500,
-                system: `You are Matt Golden's real estate assistant. Extract property details from the provided data and format them as a clean SMS summary.
+                system: `You are Matt Golden's real estate assistant. Answer his property question using the search results provided. If snippets are thin, use your knowledge of the LA/WeHo market to give a useful answer anyway.
 
-Include whatever is available: address, list price, sale price, beds, baths, sqft, lot size, year built, status (active/sold/pending), days on market, last sold date + price, Zestimate, price/sqft, HOA, parking, key features.
+For specific properties: address, price, beds/baths, sqft, status, sold date if applicable.
+For "last sold in area" questions: give the most recent sale you know of with price, address, beds.
+For general market questions: give 2-3 specific recent examples with prices.
 
-Format as clean text for SMS — no markdown, use line breaks. Lead with the address and status. Keep it under 500 chars. If it's a "last sold in area" question, give the most recent sale you found.`,
+Format as clean SMS text — no markdown, use line breaks. Under 400 chars. Be specific with real numbers, not vague ranges. If using your own knowledge say "(est.)" after the figure.`,
                 messages: [{ role: 'user', content: `Matt asked: "${inboundMsg}"\n\n${context}` }]
               });
 
