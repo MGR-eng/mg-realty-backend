@@ -6080,6 +6080,67 @@ Return ONLY a JSON object in this exact format (no markdown, no explanation):
 });
 
 // ── Newsletter Personal Note Generator ───────────────────────────────────────
+// ── Newsletter: auto-fill Roundup stories ────────────────────
+app.post('/api/roundup-stories', async (req, res) => {
+  try {
+    const count = parseInt(req.body.count) || 3;
+
+    // Step 1: search for current LA real estate headlines
+    const searchQueries = [
+      'Los Angeles real estate news 2026',
+      'LA housing market June 2026',
+      'Southern California real estate Bisnow 2026'
+    ];
+
+    let headlines = [];
+    for (const q of searchQueries) {
+      try {
+        const sr = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=3&freshness=pw`, {
+          headers: { 'X-Subscription-Token': process.env.BRAVE_API_KEY || '', Accept: 'application/json' }
+        });
+        if (sr.ok) {
+          const sd = await sr.json();
+          const results = (sd.web?.results || []).slice(0, 3).map(r => `${r.title} (${r.url})`);
+          headlines = [...headlines, ...results];
+        }
+      } catch(e) { /* skip failed searches */ }
+    }
+
+    // Step 2: use Claude to write headlines + takes (fills gaps if search missed)
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const context = headlines.length
+      ? `Here are some real headlines I found:\n${headlines.slice(0,6).join('\n')}\n\nUse these where you can.`
+      : 'No live headlines were found — generate realistic, plausible stories based on current LA market conditions.';
+
+    const prompt = `You are helping Matt Golden, an LA real estate agent with MG Realty, fill out "The Roundup" section of his weekly newsletter. Today is ${today}.
+
+${context}
+
+Generate exactly ${count} newsletter story entries. Each should have:
+- "headline": A short, punchy headline (real or plausible) from a source like Bisnow, The Real Deal, Urbanize LA, or the LA Times — e.g. "LA rents drop 4% YoY — Bisnow"
+- "take": Matt's one-sentence take on it, written in his casual, direct voice — like a smart friend reacting to the news, not a press release. Max 25 words.
+
+Focus on topics relevant to LA buyers, sellers, and investors: prices, rates, inventory, new development, neighborhood trends, legislation.
+
+Return ONLY valid JSON: { "stories": [ { "headline": "...", "take": "..." }, ... ] }`;
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 600, messages: [{ role: 'user', content: prompt }] })
+    });
+    const aiData = await aiRes.json();
+    const text = aiData.content?.[0]?.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON in AI response');
+    const parsed = JSON.parse(jsonMatch[0]);
+    res.json({ ok: true, stories: parsed.stories || [] });
+  } catch(e) {
+    console.error('ROUNDUP STORIES ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/newsletter-personal-note', async (req, res) => {
   try {
     const { month, medianPrice, priceChange, daysOnMarket, marketTemp, neighborhood, existing } = req.body;

@@ -11760,7 +11760,10 @@ function nlSwitchType(type) {
 
   } else if (type === 'roundup') {
     fields.innerHTML =
-      '<div style="font-size:13px;color:var(--text3);margin-bottom:14px">Add 3–5 stories from the week (Urbanize LA, The Real Deal, Bisnow, etc.) with your one-sentence take on each.</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +
+        '<div style="font-size:13px;color:var(--text3)">Add 3–5 stories from the week (Urbanize LA, The Real Deal, Bisnow, etc.) with your one-sentence take on each.</div>' +
+        '<button class="btn btn-gold" onclick="nlAutoFillStories(this)" style="font-size:12px;padding:6px 14px;white-space:nowrap;margin-left:12px"><i class="ti ti-sparkles"></i> Auto-fill stories</button>' +
+      '</div>' +
       '<div id="nl-story-stack"></div>' +
       '<button class="btn" onclick="nlAddStory()" style="margin-bottom:16px;font-size:13px"><i class="ti ti-plus"></i> Add story</button>' +
       '<div style="margin-bottom:16px"><label>Week of</label><input type="date" id="ru-week"></div>';
@@ -11843,6 +11846,39 @@ function nlAddStory() {
     '<input class="ru-headline" placeholder="Headline or topic (e.g. \'LA rents drop 4% YoY — Bisnow\')" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
     '<textarea class="ru-take" placeholder="Your one-sentence take..." style="height:48px;resize:none;width:100%;box-sizing:border-box"></textarea>';
   stack.appendChild(d);
+}
+
+async function nlAutoFillStories(btn) {
+  var orig = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Searching…';
+  btn.disabled = true;
+  try {
+    var r = await fetch((window.BACKEND||'') + '/api/roundup-stories', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ count: 3 }) });
+    var data = await r.json();
+    if (!data.ok || !data.stories) throw new Error(data.error || 'No stories returned');
+    var stack = document.getElementById('nl-story-stack');
+    if (!stack) return;
+    // Clear existing stories and rebuild with auto-filled content
+    stack.innerHTML = '';
+    data.stories.forEach(function(story, i) {
+      var d = document.createElement('div');
+      d.className = 'tw';
+      d.style.cssText = 'padding:14px;margin-bottom:12px';
+      d.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Story ' + (i+1) + '</div>' +
+          (i > 0 ? '<button class="btn" onclick="this.closest(\'.tw\').remove()" style="font-size:11px;padding:3px 8px;color:var(--text3)"><i class="ti ti-x"></i></button>' : '') +
+        '</div>' +
+        '<input class="ru-headline" style="width:100%;box-sizing:border-box;margin-bottom:6px" value="' + (story.headline||'').replace(/"/g,'&quot;') + '">' +
+        '<textarea class="ru-take" style="height:48px;resize:none;width:100%;box-sizing:border-box">' + (story.take||'') + '</textarea>';
+      stack.appendChild(d);
+    });
+    toast('✅ Stories auto-filled — edit as you like');
+  } catch(e) {
+    toast('Auto-fill failed: ' + e.message, 'err');
+  } finally {
+    btn.innerHTML = orig; btn.disabled = false;
+  }
 }
 
 function nlGeneratePersonalNote() {
