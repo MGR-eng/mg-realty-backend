@@ -3384,6 +3384,9 @@ GOOGLE CALENDAR EVENT: {"action":"create_calendar_event","title":"...","start":"
 SEND EMAIL: {"action":"send_email_template","leadName":"...","email":"...","subject":"...","body":"..."}
 SEND DIGEST: {"action":"send_digest"}
 MARKET REPORT: {"action":"market_report","neighborhood":"Silver Lake"}
+WEB SEARCH (use when Matt asks about current news, headlines, rates, prices, events, or any question needing live data):
+{"action":"web_search","query":"LA real estate headlines June 2026"}
+→ Use for: "what are the headlines", "what are rates today", "what's happening in the market", "look up X", "search for Y", any question you can't answer from CRM data alone.
 → Use when Matt asks "what's the market like in [area]?", "pull a market report for [neighborhood]", "what's the current data on [area]", "how's the market in [area]", "what are homes selling for in [area]", etc. Pull neighborhood name from his message.
 CRM QUERY: {"action":"crm_query","question":"when does Alsace close","topic":"transaction"}
 → Use when Matt asks a specific question about a deal, lead, or contact from his CRM. Examples: "when does Alsace close", "what's my commission on Tocco", "who's the escrow officer on Alsace", "what stage is Kim in", "what's Sarah's phone number", "how many active deals do I have". Always use this — never guess from memory.
@@ -3504,6 +3507,38 @@ ${JSON.stringify(leads.filter(l => l.temp !== 'done').slice(0, 30).map(l => ({
             } catch(e) {
               console.error('Market report SMS error:', e.message);
               try { await sendSMS(callerPhone, `⚠️ Couldn't pull live market data for ${hood} right now. Try again in a moment.`); } catch(_) {}
+            }
+          })();
+        } else if (action.action === 'web_search') {
+          const searchQuery = action.query || inboundMsg;
+          reply = `🔍 Searching...`;
+          const callerPhone = from;
+          (async () => {
+            try {
+              // Search with Brave
+              let searchContext = '';
+              if (process.env.BRAVE_API_KEY) {
+                const sr = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=5&freshness=pw`, {
+                  headers: { 'X-Subscription-Token': process.env.BRAVE_API_KEY, Accept: 'application/json' }
+                });
+                if (sr.ok) {
+                  const sd = await sr.json();
+                  const results = (sd.web?.results || []).slice(0, 5).map(r => `${r.title}: ${r.description || ''} (${r.url})`).join('\n');
+                  searchContext = results ? `\n\nSearch results:\n${results}` : '';
+                }
+              }
+              // Ask Claude to synthesize
+              const wsResult = await anthropic.messages.create({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 400,
+                system: `You are Matt Golden's AI assistant. Answer his question directly using the search results provided. Be concise — this is an SMS reply, so keep it under 400 chars. Use plain text, no markdown.${searchContext}`,
+                messages: [{ role: 'user', content: inboundMsg }]
+              });
+              const wsReply = wsResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+              await sendSMS(callerPhone, wsReply.substring(0, 600));
+            } catch(e) {
+              console.error('Web search SMS error:', e.message);
+              try { await sendSMS(callerPhone, `⚠️ Search failed: ${e.message}`); } catch(_) {}
             }
           })();
         } else if (action.action === 'send_digest') {
