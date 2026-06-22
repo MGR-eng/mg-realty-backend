@@ -3965,8 +3965,8 @@ Format as clean text for SMS — no markdown, use line breaks. Lead with the add
             try {
               const braveKey = process.env.BRAVE_SEARCH_API_KEY;
               // Search for recently sold comps
-              const soldQuery = `${cmaArea} recently sold homes 2025 2026 sold price zillow redfin`;
-              const activeQuery = `${cmaAddress} active listings for sale price per sqft`;
+              const soldQuery = `site:zillow.com ${cmaArea} recently sold 2br 2025 price`;
+              const activeQuery = `site:zillow.com OR site:redfin.com ${cmaArea} 2 bedroom for sale price sqft`;
               const [soldRes, activeRes] = await Promise.all([
                 fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(soldQuery)}&count=5`, { headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' } }).then(r => r.json()),
                 fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(activeQuery)}&count=5`, { headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' } }).then(r => r.json())
@@ -3977,21 +3977,27 @@ Format as clean text for SMS — no markdown, use line breaks. Lead with the add
               const cmaResult = await anthropic.messages.create({
                 model: 'claude-sonnet-4-6',
                 max_tokens: 500,
-                messages: [{ role: 'user', content: `You are a real estate pricing expert helping agent Matt Golden with a CMA (Comparative Market Analysis) for ${cmaAddress}.
+                messages: [{ role: 'user', content: `You are a real estate pricing expert helping agent Matt Golden with a quick CMA for: ${cmaAddress}.
 
-Sold comp data:
-${soldSnippets}
+Web search snippets (may contain pricing clues):
+SOLD:
+${soldSnippets || '(no results)'}
 
-Active listing data:
-${activeSnippets}
+ACTIVE:
+${activeSnippets || '(no results)'}
 
-Based on this data, provide a concise pricing recommendation:
-- Suggested list price range
-- Key comps that support it (price, beds/baths if available, $/sqft if available)
-- One sentence on market conditions
-- Any caveats
+Your job: Give Matt a fast, useful pricing estimate based on:
+1. Any actual prices visible in the snippets above
+2. Your knowledge of the ${cmaArea} market (median prices, price per sqft, recent trends)
 
-Keep it under 300 characters for SMS. Be specific with dollar amounts. Format for easy reading.` }]
+Reply format — keep total SMS under 280 chars:
+📊 [area] [beds]br
+List: $X–$Y
+$/sqft: ~$Z
+Comps: [1-2 reference points]
+Market: [1 sentence]
+
+Use real numbers. If snippets are thin, use your market knowledge and say so briefly.` }]
               });
 
               const cmaReply = cmaResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
