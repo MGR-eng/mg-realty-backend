@@ -7804,6 +7804,22 @@ Omit any field not found in the document. Return only what you can actually read
   }
 });
 
+// ── CRM Settings ─────────────────────────────────────────────
+app.post('/api/settings', async (req, res) => {
+  try {
+    const { settings } = req.body;
+    if (!settings) return res.status(400).json({ ok: false, error: 'settings required' });
+    const crm = await readCRM();
+    crm.settings = Object.assign(crm.settings || {}, settings);
+    await writeCRM(crm);
+    console.log('SETTINGS SAVED: farmAreas=', settings.farmAreas);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Settings save error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Open House Lead Capture ───────────────────────────────────
 // POST /api/open-house-lead  { phone, address, source }
 app.post('/api/open-house-lead', async (req, res) => {

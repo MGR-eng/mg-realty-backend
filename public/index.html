@@ -531,6 +531,8 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item nav-sub" onclick="openMarketReport()"><span>Market Report</span></button>
     <button class="nav-item nav-sub" onclick="backupToSheet()"><span>Backup to Sheet</span></button>
 
+    <button class="nav-item" onclick="showPane('settings',this)"><i class="ti ti-settings"></i><span>Settings</span></button>
+
     <div class="nav-sep"></div>
   </nav>
   <div class="sidebar-foot">
@@ -545,6 +547,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="topbar">
     <div class="page-title"><span id="dash-greeting-title">Dashboard</span></div>
     <div class="tba">
+      <label class="btn" style="cursor:pointer;background:rgba(139,92,246,0.1);color:#a78bfa;border-color:rgba(139,92,246,0.3)" title="Upload any doc — AI reads it and routes to the right form"><i class="ti ti-scan"></i> Scan Doc<input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" style="display:none" onchange="universalScanDoc(this)"></label>
       <button class="btn btn-purple" onclick="openCrmSearch()"><i class="ti ti-search"></i> Ask the CRM</button>
       <button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[onclick*=leads]'));setTimeout(openAddLead,50)"><i class="ti ti-user-plus"></i> Add lead</button>
     </div>
@@ -717,6 +720,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         <button class="btn btn-sm" onclick="bulkUpdateTemp('warm')" style="background:rgba(251,191,36,0.12);color:#FBBF24;border:1px solid rgba(251,191,36,0.25)">→ Warm</button>
         <button class="btn btn-sm" onclick="bulkUpdateTemp('cold')" style="background:rgba(96,165,250,0.12);color:#60A5FA;border:1px solid rgba(96,165,250,0.25)">→ Cold</button>
         <button class="btn btn-sm" onclick="bulkUpdateTemp('done')" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)">→ Done</button>
+        <button class="btn btn-sm" onclick="bulkDeleteLeads()" style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.3)"><i class="ti ti-trash"></i> Delete</button>
         <button class="btn btn-sm" onclick="clearBulkSelection()" style="background:rgba(255,255,255,0.05);color:var(--text2);border:1px solid var(--border)">✕ Clear</button>
       </div>
       <div class="sw"><i class="ti ti-search"></i><input type="text" id="srch" placeholder="Search…" style="width:150px" oninput="renderLeads()"></div>
@@ -813,6 +817,37 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       </div>
     </div>
     <div id="tx-detail-content" style="flex:1;overflow-y:auto;padding:20px 24px"></div>
+  </div>
+</div>
+
+<!-- ── Universal Scan Doc Modal ── -->
+<div id="scanDocBackdrop" onclick="closeScanDoc()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300"></div>
+<div id="scanDocModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(560px,96vw);max-height:88vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:16px;z-index:301;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+  <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-weight:700;font-size:15px">🔍 Scan Doc</div>
+      <div id="scan-doc-subtitle" style="font-size:11px;color:var(--text3);margin-top:2px">AI reads any document and routes it to the right form</div>
+    </div>
+    <button onclick="closeScanDoc()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);padding:4px">✕</button>
+  </div>
+  <div id="scan-doc-body" style="padding:20px 24px">
+    <!-- Upload state -->
+    <div id="scan-doc-upload" style="text-align:center;padding:32px 0">
+      <i class="ti ti-scan" style="font-size:40px;color:var(--accent);display:block;margin-bottom:12px"></i>
+      <div style="font-size:14px;font-weight:600;color:var(--text1);margin-bottom:6px">Drop any real estate document</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:20px">Business card, contract, escrow instructions, listing agreement, invoice...</div>
+      <label class="btn btn-gold" style="cursor:pointer;padding:10px 24px;font-size:14px">
+        <i class="ti ti-upload"></i> Choose File
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" style="display:none" onchange="universalScanDoc(this)">
+      </label>
+    </div>
+    <!-- Scanning state -->
+    <div id="scan-doc-scanning" style="display:none;text-align:center;padding:32px 0">
+      <i class="ti ti-loader-2" style="font-size:36px;color:var(--accent);display:block;margin-bottom:12px;animation:spin 1s linear infinite"></i>
+      <div style="font-size:14px;color:var(--text2)" id="scan-doc-scanning-label">Reading document...</div>
+    </div>
+    <!-- Result state -->
+    <div id="scan-doc-result" style="display:none"></div>
   </div>
 </div>
 
@@ -2068,6 +2103,50 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Settings Pane -->
+<div id="pane-settings" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-settings" style="margin-right:6px;color:var(--accent)"></i>Settings</div>
+    <div class="tba">
+      <button class="btn btn-gold" onclick="saveSettings()"><i class="ti ti-device-floppy"></i> Save Settings</button>
+    </div>
+  </div>
+  <div class="content">
+    <div style="max-width:720px;display:flex;flex-direction:column;gap:18px">
+
+      <!-- Farm Areas -->
+      <div class="tw" style="padding:20px 22px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">🗺 Farm Areas</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Neighborhoods pulled into your Morning Brief, Neighborhood Snapshots, and AI market analysis. One area per line.</div>
+        <textarea id="settings-farm-areas" rows="8" placeholder="West Hollywood CA&#10;Silver Lake Los Angeles CA&#10;Los Feliz Los Angeles CA&#10;Echo Park Los Angeles CA&#10;Atwater Village Los Angeles CA" style="width:100%;font-size:13px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);resize:vertical;line-height:1.7;box-sizing:border-box"></textarea>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px">Format: <em>Neighborhood City State</em> — e.g. "West Hollywood CA" or "Silver Lake Los Angeles CA"</div>
+      </div>
+
+      <!-- Agent Info -->
+      <div class="tw" style="padding:20px 22px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">👤 Agent Info</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="fg"><label>Agent Name</label><input id="settings-agent-name" type="text" placeholder="Matt Golden"></div>
+          <div class="fg"><label>DRE License #</label><input id="settings-dre" type="text" placeholder="02130422"></div>
+          <div class="fg"><label>Brokerage</label><input id="settings-brokerage" type="text" placeholder="Rare Properties Inc."></div>
+          <div class="fg"><label>Business Phone</label><input id="settings-phone" type="text" placeholder="(323) 688-3855"></div>
+          <div class="fg"><label>Email</label><input id="settings-email" type="text" placeholder="matt@mgoldenrealty.com"></div>
+          <div class="fg"><label>Website</label><input id="settings-website" type="text" placeholder="mgoldenrealty.com"></div>
+        </div>
+      </div>
+
+      <!-- Google Review Link -->
+      <div class="tw" style="padding:20px 22px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">⭐ Google Review Link</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Used by the Review Request Bot when texting clients after close.</div>
+        <input id="settings-review-url" type="text" placeholder="https://g.page/r/YOUR-REVIEW-LINK/review" style="width:100%;box-sizing:border-box">
+      </div>
+
+      <div id="settings-save-status" style="font-size:12px;color:var(--green);display:none;padding:4px 0">✓ Settings saved</div>
+    </div>
   </div>
 </div>
 
@@ -3577,6 +3656,7 @@ function showPane(id,el){
   if(id==='textblast') tbUpdatePreview();
   if(id==='leads') syncFromBackend();
   if(id==='gci') initGCI();
+  if(id==='settings') loadSettingsPane();
 }
 function toggleMoreSheet(){
   document.getElementById('moreSheet').classList.toggle('open');
@@ -10518,6 +10598,23 @@ function bulkUpdateTemp(temp) {
   toast(`✓ ${ids.length} lead${ids.length !== 1 ? 's' : ''} marked as ${temp}`);
 }
 
+function bulkDeleteLeads() {
+  const ids = getSelectedLeadIds();
+  if (!ids.length) return;
+  const names = ids.map(id => { const l = leads.find(x => x.id === id); return l ? l.first + ' ' + (l.last||'') : id; }).join(', ');
+  if (!confirm(`Permanently delete ${ids.length} lead${ids.length !== 1 ? 's' : ''}?\n\n${names}\n\nThis cannot be undone.`)) return;
+  ids.forEach(id => {
+    if (typeof trackDeletedId === 'function') trackDeletedId(id);
+    fetch(BACKEND + '/leads/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ leadId: id }) }).catch(e => console.warn('Lead delete sync failed:', e.message));
+  });
+  leads = leads.filter(l => !ids.includes(l.id));
+  acts  = acts.filter(a => !ids.includes(a.leadId));
+  persist();
+  renderAll();
+  clearBulkSelection();
+  toast(`🗑 ${ids.length} lead${ids.length !== 1 ? 's' : ''} deleted`);
+}
+
 // Hook into renderAll
 const _origRenderDashSources = typeof renderDashSources === 'function' ? renderDashSources : null;
 const _wrappedRenderDashSources = function() {
@@ -12907,6 +13004,281 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sel) nlSwitchType(sel.value);
   }, 400);
 });
+</script>
+
+<script>
+// ── Settings Pane ─────────────────────────────────────────────
+var _crmSettings = {};
+
+function loadSettingsPane() {
+  // Load from CRM settings object (synced from backend)
+  var crm = typeof getCRMSnapshot === 'function' ? getCRMSnapshot() : {};
+  var s = crm.settings || _crmSettings || {};
+  var farmEl = document.getElementById('settings-farm-areas');
+  if (farmEl) farmEl.value = (s.farmAreas || ['West Hollywood CA','Silver Lake Los Angeles CA','Los Feliz Los Angeles CA']).join('\n');
+  var setField = function(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; };
+  setField('settings-agent-name', s.agentName || 'Matt Golden');
+  setField('settings-dre', s.dre || '02130422');
+  setField('settings-brokerage', s.brokerage || 'Rare Properties Inc.');
+  setField('settings-phone', s.phone || '(323) 688-3855');
+  setField('settings-email', s.email || 'matt@mgoldenrealty.com');
+  setField('settings-website', s.website || 'mgoldenrealty.com');
+  setField('settings-review-url', s.googleReviewUrl || 'https://g.page/r/Cb0DDRp3u6RFEBM/review');
+}
+
+async function saveSettings() {
+  var farmRaw = (document.getElementById('settings-farm-areas') || {}).value || '';
+  var farmAreas = farmRaw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var g = function(id) { return ((document.getElementById(id)||{}).value||'').trim(); };
+  var settings = {
+    farmAreas,
+    agentName:      g('settings-agent-name'),
+    dre:            g('settings-dre'),
+    brokerage:      g('settings-brokerage'),
+    phone:          g('settings-phone'),
+    email:          g('settings-email'),
+    website:        g('settings-website'),
+    googleReviewUrl: g('settings-review-url')
+  };
+  _crmSettings = settings;
+  try {
+    var BACKEND = window.BACKEND || 'https://mg-realty-backend.onrender.com';
+    var r = await fetch(BACKEND + '/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings })
+    }).then(function(r){ return r.json(); });
+    if (r.ok) {
+      var st = document.getElementById('settings-save-status');
+      if (st) { st.style.display = ''; setTimeout(function(){ st.style.display='none'; }, 3000); }
+      if (typeof toast === 'function') toast('✓ Settings saved');
+    } else {
+      if (typeof toast === 'function') toast('Save failed: ' + (r.error||'unknown'), 'err');
+    }
+  } catch(e) {
+    if (typeof toast === 'function') toast('Save error: ' + e.message, 'err');
+  }
+}
+
+// ── Universal Scan Doc ────────────────────────────────────────
+function closeScanDoc() {
+  document.getElementById('scanDocBackdrop').style.display = 'none';
+  document.getElementById('scanDocModal').style.display = 'none';
+  // Reset to upload state
+  document.getElementById('scan-doc-upload').style.display = '';
+  document.getElementById('scan-doc-scanning').style.display = 'none';
+  document.getElementById('scan-doc-result').style.display = 'none';
+  document.getElementById('scan-doc-result').innerHTML = '';
+  document.getElementById('scan-doc-subtitle').textContent = 'AI reads any document and routes it to the right form';
+}
+
+var _scanDocFields = {};
+var _scanDocType = '';
+
+async function universalScanDoc(input) {
+  var file = input && input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+
+  // Show modal
+  document.getElementById('scanDocBackdrop').style.display = 'block';
+  document.getElementById('scanDocModal').style.display = 'block';
+  document.getElementById('scan-doc-upload').style.display = 'none';
+  document.getElementById('scan-doc-scanning').style.display = '';
+  document.getElementById('scan-doc-result').style.display = 'none';
+  document.getElementById('scan-doc-scanning-label').textContent = 'Reading ' + file.name + '…';
+
+  try {
+    var b64 = await new Promise(function(res, rej) {
+      var r = new FileReader();
+      r.onload = function(e) { res(e.target.result.split(',')[1]); };
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    var BACKEND = window.BACKEND || 'https://mg-realty-backend.onrender.com';
+    var result = await fetch(BACKEND + '/api/scan-doc-universal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, mimeType: file.type, filename: file.name })
+    }).then(function(r){ return r.json(); });
+
+    document.getElementById('scan-doc-scanning').style.display = 'none';
+
+    if (!result.ok) throw new Error(result.error || 'Scan failed');
+
+    _scanDocFields = result.fields || {};
+    _scanDocType = result.docType || 'other';
+    renderScanDocResult(result, file.name);
+  } catch(e) {
+    document.getElementById('scan-doc-scanning').style.display = 'none';
+    document.getElementById('scan-doc-result').style.display = '';
+    document.getElementById('scan-doc-result').innerHTML = '<div style="color:var(--red);padding:12px 0"><b>Error:</b> ' + e.message + '</div>';
+  }
+}
+
+function renderScanDocResult(result, filename) {
+  var f = result.fields || {};
+  var type = result.docType || 'other';
+  var conf = result.confidence || 'medium';
+  var confColor = conf === 'high' ? 'var(--green)' : conf === 'medium' ? 'var(--amber)' : 'var(--red)';
+
+  var typeLabels = {
+    business_card: '💼 Business Card',
+    purchase_agreement: '📄 Purchase Agreement / Offer',
+    escrow: '🏦 Escrow / Closing Document',
+    listing_agreement: '📋 Listing Agreement',
+    other: '📎 Document'
+  };
+
+  var html = '<div style="margin-bottom:16px">';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+  html += '<div style="font-size:14px;font-weight:700;color:var(--text1)">' + (typeLabels[type] || '📎 Document') + '</div>';
+  html += '<span style="font-size:10px;font-weight:700;color:' + confColor + ';background:' + confColor + '18;border:1px solid ' + confColor + '44;border-radius:99px;padding:2px 8px">' + conf.toUpperCase() + ' confidence</span>';
+  html += '</div>';
+
+  // Show extracted fields
+  var fieldLabels = {
+    first: 'First Name', last: 'Last Name', phone: 'Phone', email: 'Email',
+    company: 'Company', title: 'Title', address: 'Property', salePrice: 'Sale Price',
+    listPrice: 'List Price', commissionPct: 'Commission %', closeDate: 'Close Date',
+    offerDate: 'Offer Date', earnestDue: 'Earnest Due', earnestMoney: 'Earnest Money',
+    inspectionDeadline: 'Inspection', contingencyRemoval: 'Contingency Removal',
+    loanApprovalDeadline: 'Loan Approval', buyerName: 'Buyer', sellerName: 'Seller',
+    coopAgent: 'Co-op Agent', coopBrokerage: 'Co-op Brokerage',
+    escrowName: 'Escrow Officer', escrowCompany: 'Escrow Co.', escrowPhone: 'Escrow Phone',
+    escrowEmail: 'Escrow Email', escrowNum: 'File #', tcName: 'TC Name', tcEmail: 'TC Email',
+    lenderName: 'Lender', lenderCompany: 'Lender Co.', mlsNum: 'MLS #', notes: 'Notes'
+  };
+
+  var fieldKeys = Object.keys(f).filter(function(k){ return f[k] !== null && f[k] !== undefined && f[k] !== ''; });
+  if (fieldKeys.length) {
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">';
+    fieldKeys.forEach(function(k) {
+      var val = f[k];
+      if (typeof val === 'number' && (k === 'salePrice' || k === 'listPrice' || k === 'earnestMoney')) val = '$' + Number(val).toLocaleString();
+      html += '<div style="padding:3px 0"><span style="font-size:10px;color:var(--text3)">' + (fieldLabels[k]||k) + '</span><br><span style="font-size:12px;font-weight:600;color:var(--text1)">' + val + '</span></div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="color:var(--text3);font-size:12px;margin-bottom:14px">No fields extracted — the document may be unclear or low resolution.</div>';
+  }
+
+  // Action buttons based on doc type
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+  if (type === 'business_card') {
+    html += '<button class="btn btn-gold" onclick="scanDocAddLead()"><i class="ti ti-user-plus"></i> Add as Lead</button>';
+    html += '<button class="btn" onclick="scanDocAddVendor()"><i class="ti ti-building-store"></i> Add as Vendor</button>';
+    html += '<button class="btn" onclick="scanDocAddAgent()"><i class="ti ti-users"></i> Add as Agent</button>';
+  } else if (type === 'purchase_agreement' || type === 'escrow' || type === 'listing_agreement') {
+    html += '<button class="btn btn-gold" onclick="scanDocOpenTransaction()"><i class="ti ti-home-move"></i> Open in Transaction Form</button>';
+  }
+  if (fieldKeys.some(function(k){ return k==='phone'||k==='email'||k==='first'; })) {
+    if (type !== 'business_card') {
+      html += '<button class="btn" onclick="scanDocAddLead()"><i class="ti ti-user-plus"></i> Save as Lead</button>';
+    }
+  }
+  html += '<button class="btn" onclick="closeScanDoc()" style="color:var(--text3)">Close</button>';
+  html += '</div></div>';
+
+  document.getElementById('scan-doc-result').innerHTML = html;
+  document.getElementById('scan-doc-result').style.display = '';
+  document.getElementById('scan-doc-subtitle').textContent = filename;
+}
+
+function scanDocAddLead() {
+  var f = _scanDocFields;
+  closeScanDoc();
+  if (typeof openAddLead === 'function') {
+    showPane('leads', document.querySelector('[onclick*="\'leads\'"]'));
+    setTimeout(function() {
+      openAddLead();
+      setTimeout(function() {
+        var setVal = function(id, val) { var el=document.getElementById(id); if(el&&val) el.value=val; };
+        setVal('first', f.first || f.buyerName?.split(' ')[0] || '');
+        setVal('last', f.last || f.buyerName?.split(' ').slice(1).join(' ') || '');
+        setVal('phone', f.phone || '');
+        setVal('email', f.email || '');
+        setVal('notes', f.notes || '');
+        if (typeof toast === 'function') toast('Fields pre-filled from scanned doc');
+      }, 200);
+    }, 100);
+  }
+}
+
+function scanDocAddVendor() {
+  var f = _scanDocFields;
+  closeScanDoc();
+  if (typeof openAddVendor === 'function') {
+    showPane('vendors', document.querySelector('[onclick*="\'vendors\'"]'));
+    setTimeout(function() {
+      openAddVendor();
+      setTimeout(function() {
+        var setVal = function(id, val) { var el=document.getElementById(id); if(el&&val) el.value=val; };
+        setVal('vnd-name', (f.first||'') + (f.last?' '+f.last:'') || f.company || '');
+        setVal('vnd-company', f.company || '');
+        setVal('vnd-phone', f.phone || '');
+        setVal('vnd-email', f.email || '');
+        if (typeof toast === 'function') toast('Fields pre-filled from scanned doc');
+      }, 200);
+    }, 100);
+  }
+}
+
+function scanDocAddAgent() {
+  var f = _scanDocFields;
+  closeScanDoc();
+  showPane('agents', document.querySelector('[onclick*="\'agents\'"]'));
+  setTimeout(function() {
+    if (typeof openAddAgent === 'function') openAddAgent();
+    setTimeout(function() {
+      var setVal = function(id, val) { var el=document.getElementById(id); if(el&&val) el.value=val; };
+      setVal('agt-first', f.first || '');
+      setVal('agt-last', f.last || '');
+      setVal('agt-phone', f.phone || '');
+      setVal('agt-email', f.email || '');
+      setVal('agt-brokerage', f.company || '');
+      if (typeof toast === 'function') toast('Fields pre-filled from scanned doc');
+    }, 200);
+  }, 100);
+}
+
+function scanDocOpenTransaction() {
+  var f = _scanDocFields;
+  closeScanDoc();
+  showPane('transactions', document.querySelector('[onclick*="\'transactions\'"]'));
+  setTimeout(function() {
+    openNewTx();
+    setTimeout(function() {
+      var setVal = function(id, val) { var el=document.getElementById(id); if(el&&val) el.value=val; };
+      setVal('tx-address', f.address || '');
+      setVal('tx-price', f.salePrice ? '$'+Number(f.salePrice).toLocaleString() : '');
+      setVal('tx-commission', f.commissionPct || '');
+      setVal('tx-closingdate', f.closeDate || '');
+      setVal('tx-offer-date', f.offerDate || '');
+      setVal('tx-earnest-due-date', f.earnestDue || '');
+      setVal('tx-inspection-date', f.inspectionDeadline || '');
+      setVal('tx-contingency-date', f.contingencyRemoval || '');
+      setVal('tx-loan-date', f.loanApprovalDeadline || '');
+      setVal('tx-buyer-name', f.buyerName || '');
+      setVal('tx-seller-name', f.sellerName || '');
+      setVal('tx-escrow-name', f.escrowName || '');
+      setVal('tx-escrow-company', f.escrowCompany || '');
+      setVal('tx-escrow-phone', f.escrowPhone || '');
+      setVal('tx-escrow-email', f.escrowEmail || '');
+      setVal('tx-escrow-num', f.escrowNum || '');
+      setVal('tx-coop-brokerage', f.coopBrokerage || '');
+      setVal('tx-lender-name', f.lenderName || '');
+      setVal('tx-lender-company', f.lenderCompany || '');
+      setVal('tx-mls', f.mlsNum || '');
+      setVal('tx-notes', f.notes || '');
+      if (f._scanDocType === 'listing_agreement') {
+        var sideEl = document.getElementById('tx-side');
+        if (sideEl) sideEl.value = 'Seller side';
+      }
+      if (typeof toast === 'function') toast('Transaction form pre-filled from scanned doc');
+    }, 300);
+  }, 100);
+}
 </script>
 
 </body>
