@@ -3841,6 +3841,21 @@ CMA REQUEST (use when Matt asks what to LIST a property at, wants comps, asks ab
 SCHEDULE SHOWING (use when Matt says "schedule a showing", "book a showing", "set up a showing for [lead] at [address]"):
 {"action":"schedule_showing","leadName":"Sarah Kim","address":"1234 Sunset Blvd, West Hollywood, CA","preferredDate":"YYYY-MM-DD","preferredTime":"10:00 AM"}
 → Matt is requesting to schedule a showing for one of his leads.
+FSBO/EXPIRED OUTREACH (use when Matt says "write outreach for", "draft a message for FSBO at", "reach out to expired at", "cold outreach for"):
+{"action":"fsbo_outreach","address":"1234 Sunset Blvd, West Hollywood, CA","type":"fsbo","ownerName":"","notes":""}
+→ type is "fsbo" or "expired". Generates personalized text + email outreach.
+TOUR PREP (use when Matt says "tour prep for", "prepare me for showings at", "prep for my tour", "brief me on these addresses"):
+{"action":"tour_prep","addresses":["123 Main St, LA","456 Oak Ave, WeHo"],"buyerName":"","buyerBudget":"","buyerNeeds":""}
+→ Extract all addresses from the message. Generates per-property prep cards.
+OFFER COMPARE (use when Matt says "compare these properties", "help me decide between", "which is the better deal", "offer comparison"):
+{"action":"offer_compare","properties":[{"address":"123 Main","price":"$900K","beds":"2","baths":"2","sqft":"1100","notes":""},{"address":"456 Oak","price":"$850K","beds":"2","baths":"1","sqft":"950","notes":""}],"buyerName":"","buyerPriorities":""}
+→ Extract property details from Matt's message. Returns side-by-side analysis + recommendation.
+NEGOTIATION COACH (use when Matt says "negotiate", "how should I counter", "what's my move", "negotiation help", "they came back at"):
+{"action":"negotiation_coach","situation":"[Matt's full description of the negotiation situation]"}
+→ Capture every detail Matt provides. Returns counter strategy + script.
+RENT VS BUY (use when Matt or a client asks "rent vs buy", "should I buy or rent", "does buying make sense", "rent vs own"):
+{"action":"rent_vs_buy","monthlyRent":"2800","homePrice":"900000","downPayment":"180000","timeline":"5","income":"","creditScore":""}
+→ Extract numbers from the message. Returns full financial analysis.
 CRM QUERY: {"action":"crm_query","question":"when does Alsace close","topic":"transaction"}
 → Use when Matt asks a specific question about a deal, lead, or contact from his CRM. Examples: "when does Alsace close", "what's my commission on Tocco", "who's the escrow officer on Alsace", "what stage is Kim in", "what's Sarah's phone number", "how many active deals do I have". Always use this — never guess from memory.
 NO ACTION: {"action":"none"}
@@ -4183,6 +4198,68 @@ Use real numbers. If snippets are thin, use your market knowledge and say so bri
             html: `<p>Overdue: ${overdue.map(l=>`${l.first} ${l.last}`).join(', ')||'none'}</p><p>Due today: ${dueToday.map(l=>`${l.first} ${l.last}`).join(', ')||'none'}</p>`
           });
           reply = `Digest sent — ${overdue.length} overdue, ${dueToday.length} due today.`;
+        } else if (action.action === 'fsbo_outreach') {
+          reply = `✍️ Writing outreach for ${action.address}...`;
+          (async () => {
+            try {
+              const r = await fetch(`${process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com'}/api/fsbo-outreach`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(action)
+              }).then(r => r.json());
+              if (r.ok) {
+                await sendSMS(from, `📱 Text:\n${r.text}\n\n📧 Email:\n${r.email}`.substring(0, 1500));
+              }
+            } catch(e) { console.error('FSBO outreach SMS error:', e.message); }
+          })();
+
+        } else if (action.action === 'tour_prep') {
+          reply = `🏠 Prepping your tour for ${(action.addresses||[]).length} properties...`;
+          (async () => {
+            try {
+              const r = await fetch(`${process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com'}/api/tour-prep`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(action)
+              }).then(r => r.json());
+              // sendSMS is handled inside /api/tour-prep
+            } catch(e) { console.error('Tour prep SMS error:', e.message); }
+          })();
+
+        } else if (action.action === 'offer_compare') {
+          reply = `📊 Comparing properties...`;
+          (async () => {
+            try {
+              const r = await fetch(`${process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com'}/api/offer-compare`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(action)
+              }).then(r => r.json());
+              if (r.ok) await sendSMS(from, `📊 Comparison:\n\n${r.comparison}`.substring(0, 1500));
+            } catch(e) { console.error('Offer compare SMS error:', e.message); }
+          })();
+
+        } else if (action.action === 'negotiation_coach') {
+          reply = `🥊 Analyzing your negotiation...`;
+          (async () => {
+            try {
+              const r = await fetch(`${process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com'}/api/negotiation-coach`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(action)
+              }).then(r => r.json());
+              if (r.ok) await sendSMS(from, `🥊 Negotiation Coach:\n\n${r.advice}`.substring(0, 1500));
+            } catch(e) { console.error('Negotiation coach SMS error:', e.message); }
+          })();
+
+        } else if (action.action === 'rent_vs_buy') {
+          reply = `🏠 Running the numbers...`;
+          (async () => {
+            try {
+              const r = await fetch(`${process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com'}/api/rent-vs-buy`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(action)
+              }).then(r => r.json());
+              if (r.ok) await sendSMS(from, `🏠 Rent vs Buy:\n\n${r.analysis}`);
+            } catch(e) { console.error('Rent vs buy SMS error:', e.message); }
+          })();
+
         } else if (action.action !== 'none') {
           // Actions that don't need an existing lead — always succeed
           const noLookupActions = ['add_lead', 'create_task', 'create_appointment', 'create_calendar_event', 'send_email_template', 'log_expense', 'send_digest'];
@@ -7228,6 +7305,250 @@ Keep each section tight and ready to use with zero editing.` }]
     });
   } catch (e) {
     console.error('Listing launch error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── FSBO / Expired Outreach AI ────────────────────────────────
+app.post('/api/fsbo-outreach', async (req, res) => {
+  try {
+    const { address, type = 'fsbo', ownerName = '', notes = '' } = req.body;
+    if (!address) return res.status(400).json({ ok: false, error: 'Address required' });
+
+    // Research the property with Brave
+    const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+    let snippets = '';
+    if (braveKey) {
+      const typeQuery = type === 'expired' ? 'expired listing' : 'for sale by owner FSBO';
+      const r = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(`${address} ${typeQuery} price beds baths`)}&count=5`, {
+        headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' }
+      }).then(r => r.json()).catch(() => ({}));
+      snippets = (r.web?.results || []).slice(0, 4).map(r => `${r.title}: ${r.description || ''}`).join('\n');
+    }
+
+    const typeLabel = type === 'expired' ? 'expired listing' : 'FSBO';
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: `You are helping real estate agent Matt Golden reach out to a ${typeLabel} at ${address}${ownerName ? ` (owner: ${ownerName})` : ''}.
+
+Property research:
+${snippets || '(no data found — use general knowledge about this approach)'}
+
+Agent notes: ${notes || 'none'}
+
+Generate TWO versions of outreach — separated by clear headers:
+
+===TEXT===
+A personalized SMS (under 160 chars). Conversational, not salesy. Reference something specific about their situation (${type === 'expired' ? 'their listing expired without selling' : 'they\'re trying to sell on their own'}). From Matt Golden, MG Realty LA. No hard pitch — just open a conversation.
+
+===EMAIL===
+Subject line + email body (under 200 words). Acknowledge what they're doing, show empathy, offer specific value (free CMA, wider buyer pool, negotiation expertise). Warm but confident. Not a template — feels handwritten. Sign off as Matt Golden, MG Realty, (323) 919-7539.
+
+Be specific. Reference the property, the neighborhood, the market if possible.` }]
+    });
+
+    const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const extract = (tag) => {
+      const m = raw.match(new RegExp(`===${tag}===\\s*([\\s\\S]*?)(?:===|$)`));
+      return m ? m[1].trim() : '';
+    };
+
+    res.json({ ok: true, text: extract('TEXT'), email: extract('EMAIL') });
+  } catch (e) {
+    console.error('FSBO outreach error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Buyer Tour Prep ───────────────────────────────────────────
+app.post('/api/tour-prep', async (req, res) => {
+  try {
+    const { addresses = [], buyerName = '', buyerBudget = '', buyerNeeds = '' } = req.body;
+    if (!addresses.length) return res.status(400).json({ ok: false, error: 'At least one address required' });
+
+    const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+
+    // Research each property in parallel
+    const propData = await Promise.all(addresses.map(async (addr) => {
+      let snippets = '';
+      if (braveKey) {
+        const r = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(`${addr} price beds baths sqft listing redfin`)}&count=4`, {
+          headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' }
+        }).then(r => r.json()).catch(() => ({}));
+        snippets = (r.web?.results || []).slice(0, 3).map(r => `${r.title}: ${r.description || ''}`).join('\n');
+      }
+      return { addr, snippets };
+    }));
+
+    const propSections = propData.map(({ addr, snippets }) =>
+      `PROPERTY: ${addr}\n${snippets || '(use market knowledge)'}`
+    ).join('\n\n---\n\n');
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: `You are preparing agent Matt Golden for a buyer showing tour.
+
+Buyer: ${buyerName || 'not specified'}
+Budget: ${buyerBudget || 'not specified'}
+Needs: ${buyerNeeds || 'not specified'}
+
+Properties to tour:
+${propSections}
+
+For EACH property, provide a concise prep card:
+1. 📍 Quick Facts (price, beds/baths, sqft, days on market if known)
+2. 💰 Value Check (price/sqft vs neighborhood avg, over/under priced?)
+3. 🏘 Neighborhood Notes (walkability, schools, vibe, nearby amenities)
+4. 🚩 Red Flags to probe (age of roof/HVAC, HOA issues, flood zone, traffic, etc.)
+5. 💬 Talking Points (what to highlight to the buyer)
+6. ❓ Questions to ask the listing agent
+
+Format cleanly. Be specific and useful — this is for an agent in the field.` }]
+    });
+
+    const prep = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+
+    // Also text Matt if OWNER_PHONE set
+    const ownerPhone = process.env.OWNER_PHONE;
+    if (ownerPhone) {
+      const shortPrep = prep.substring(0, 1500);
+      await sendSMS(ownerPhone, `🏠 Tour Prep — ${addresses.length} properties\n\n${shortPrep}${prep.length > 1500 ? '\n\n[See CRM for full prep]' : ''}`);
+    }
+
+    res.json({ ok: true, prep, addresses });
+  } catch (e) {
+    console.error('Tour prep error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Offer Comparison Tool ─────────────────────────────────────
+app.post('/api/offer-compare', async (req, res) => {
+  try {
+    const { properties = [], buyerName = '', buyerPriorities = '' } = req.body;
+    if (properties.length < 2) return res.status(400).json({ ok: false, error: 'At least 2 properties required' });
+
+    const propList = properties.map((p, i) =>
+      `Option ${i + 1}: ${p.address}\nPrice: ${p.price || '?'} | Beds: ${p.beds || '?'} | Baths: ${p.baths || '?'} | Sqft: ${p.sqft || '?'}\nNotes: ${p.notes || 'none'}`
+    ).join('\n\n');
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: `You are helping real estate agent Matt Golden advise buyer ${buyerName || 'their buyer'} who is deciding between properties.
+
+Buyer priorities: ${buyerPriorities || 'not specified'}
+
+${propList}
+
+Provide:
+1. Side-by-side comparison table (price, price/sqft, key features)
+2. Pros and cons for each option (3-4 bullet points each)
+3. Value analysis (which is the better deal and why)
+4. Your recommendation with reasoning
+5. One question to ask each listing agent before deciding
+
+Be direct. Give a real recommendation, not a wishy-washy "it depends." Format for easy reading.` }]
+    });
+
+    const comparison = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    res.json({ ok: true, comparison });
+  } catch (e) {
+    console.error('Offer compare error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Negotiation Coach ─────────────────────────────────────────
+app.post('/api/negotiation-coach', async (req, res) => {
+  try {
+    const { situation = '' } = req.body;
+    if (!situation) return res.status(400).json({ ok: false, error: 'Situation required' });
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: `You are an expert real estate negotiation coach advising agent Matt Golden in Los Angeles.
+
+Current situation:
+${situation}
+
+Provide:
+1. 🎯 Recommended move (specific counter or action with exact numbers/terms)
+2. 🧠 Strategy (the psychology behind your recommendation — what the other side is thinking)
+3. ⚡ Leverage points (what Matt has going for him right now)
+4. ⚠️ Watch out for (what to be careful about)
+5. 📞 Script (exact words Matt can use in his next call/email — 2-3 sentences)
+
+Be direct and tactical. Real estate deals in LA — assume a competitive, fast-moving market. Give Matt an edge.` }]
+    });
+
+    const advice = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    res.json({ ok: true, advice });
+  } catch (e) {
+    console.error('Negotiation coach error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Rent vs Buy Calculator ────────────────────────────────────
+app.post('/api/rent-vs-buy', async (req, res) => {
+  try {
+    const { monthlyRent, homePrice, downPayment, timeline, income = '', creditScore = '' } = req.body;
+    if (!monthlyRent || !homePrice) return res.status(400).json({ ok: false, error: 'Rent and home price required' });
+
+    const dp = parseFloat((downPayment || '').toString().replace(/[^0-9.]/g, '')) || homePrice * 0.1;
+    const loanAmt = homePrice - dp;
+    const rate = 0.07; // ~current 30yr rate
+    const monthlyRate = rate / 12;
+    const n = 360;
+    const mortgagePayment = Math.round(loanAmt * (monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1));
+    const propertyTax = Math.round(homePrice * 0.0125 / 12); // ~1.25% LA county
+    const insurance = Math.round(homePrice * 0.004 / 12);
+    const hoa = 400; // rough LA condo avg
+    const totalOwn = mortgagePayment + propertyTax + insurance + hoa;
+    const appreciation = Math.round(homePrice * Math.pow(1.05, (parseInt(timeline) || 5)) - homePrice); // ~5% annual LA
+    const equityBuilt = Math.round(loanAmt * 0.08 * (parseInt(timeline) || 5)); // rough equity after timeline
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: `You are a real estate financial advisor. Give a clear rent vs. buy analysis for an LA buyer.
+
+Input:
+- Monthly rent: $${monthlyRent}
+- Home price: $${homePrice}
+- Down payment: $${dp.toLocaleString()}
+- Loan amount: $${loanAmt.toLocaleString()}
+- Timeline: ${timeline || '5'} years
+- Income: ${income || 'not provided'}
+- Credit score: ${creditScore || 'not provided'}
+
+Calculated estimates (30yr fixed ~7%):
+- Est. mortgage P&I: $${mortgagePayment}/mo
+- Property tax: $${propertyTax}/mo
+- Insurance: $${insurance}/mo
+- HOA estimate: $${hoa}/mo
+- Total monthly cost to own: $${totalOwn}/mo
+- Rent: $${monthlyRent}/mo
+- Monthly difference: $${totalOwn - monthlyRent > 0 ? '+' : ''}${totalOwn - monthlyRent}/mo to own
+- Projected appreciation over ${timeline || 5} yrs: ~$${appreciation.toLocaleString()}
+- Approximate equity built: ~$${equityBuilt.toLocaleString()}
+
+Write a clear, friendly SMS-ready analysis:
+- Monthly cost comparison
+- Break-even timeline
+- Verdict: is buying worth it at this budget/timeline?
+- One key caveat
+Keep under 400 chars. Be direct — give a real recommendation.` }]
+    });
+
+    const analysis = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    res.json({ ok: true, analysis, numbers: { mortgagePayment, propertyTax, insurance, hoa, totalOwn, appreciation, equityBuilt } });
+  } catch (e) {
+    console.error('Rent vs buy error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
