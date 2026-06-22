@@ -3336,6 +3336,30 @@ app.post('/sms', async (req, res) => {
     // ── Inbound showing request from a CLIENT (not Matt) ─────
     const isOwner = from.replace(/\D/g,'') === (process.env.OWNER_PHONE || '').replace(/\D/g,'');
     if (!isOwner) {
+      // ── Open House Lead Capture ────────────────────────────
+      if (/^OPEN\s+/i.test(inboundMsg.trim())) {
+        const address = inboundMsg.trim().replace(/^OPEN\s+/i, '').trim() || 'open house';
+        (async () => {
+          try {
+            const r = await fetch(`${process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com'}/api/open-house-lead`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone: from, address })
+            }).then(r => r.json());
+            // Notify Matt
+            const ownerPhone = process.env.OWNER_PHONE;
+            if (ownerPhone) {
+              const msg = r.isNew
+                ? `🏠 Open House Lead!\n📞 ${from}\nProperty: ${address}\n\n→ Reply with their name to update the lead.`
+                : `🏠 ${r.name} stopped by the open house at:\n${address}`;
+              await sendSMS(ownerPhone, msg);
+            }
+          } catch(e) { console.error('OH lead capture error:', e.message); }
+        })();
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml(`Thanks for stopping by! 🏠 I'm Ace, Matt's assistant. Love the house? Matt can help you move fast. He'll be in touch shortly — or call/text him at (323) 919-7539!`));
+        return;
+      }
+
       const showingKeywords = /\b(showing|show|view|tour|see the|visit|schedule|appointment|available to see|want to see|interested in seeing|can i see|can we see)\b/i;
       if (showingKeywords.test(inboundMsg)) {
         res.set('Content-Type', 'text/xml');
@@ -3856,6 +3880,9 @@ NEGOTIATION COACH (use when Matt says "negotiate", "how should I counter", "what
 RENT VS BUY (use when Matt or a client asks "rent vs buy", "should I buy or rent", "does buying make sense", "rent vs own"):
 {"action":"rent_vs_buy","monthlyRent":"2800","homePrice":"900000","downPayment":"180000","timeline":"5","income":"","creditScore":""}
 → Extract numbers from the message. Returns full financial analysis.
+VIDEO HOOK MACHINE (use when Matt says "hook", "video hook", "write me hooks", "content idea", "reel idea", "script for", "video about"):
+{"action":"video_hooks","topic":"[Matt's video topic or idea]","format":"reel"}
+→ format options: reel, story, tiktok, youtube, carousel. Returns 5 hooks + full script + caption + hashtags.
 CRM QUERY: {"action":"crm_query","question":"when does Alsace close","topic":"transaction"}
 → Use when Matt asks a specific question about a deal, lead, or contact from his CRM. Examples: "when does Alsace close", "what's my commission on Tocco", "who's the escrow officer on Alsace", "what stage is Kim in", "what's Sarah's phone number", "how many active deals do I have". Always use this — never guess from memory.
 NO ACTION: {"action":"none"}
@@ -4258,6 +4285,21 @@ Use real numbers. If snippets are thin, use your market knowledge and say so bri
               }).then(r => r.json());
               if (r.ok) await sendSMS(from, `🏠 Rent vs Buy:\n\n${r.analysis}`);
             } catch(e) { console.error('Rent vs buy SMS error:', e.message); }
+          })();
+
+        } else if (action.action === 'video_hooks') {
+          reply = `🎬 Writing your hooks & script...`;
+          (async () => {
+            try {
+              const r = await fetch(`${process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com'}/api/video-hooks`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic: action.topic, format: action.format || 'reel' })
+              }).then(r => r.json());
+              if (r.ok) {
+                const out = `🎬 Video Hooks — "${action.topic}"\n\n${r.hooks}\n\n📝 SCRIPT:\n${r.script.substring(0,600)}\n\n📲 CAPTION:\n${r.caption.substring(0,400)}\n\n${r.hashtags.substring(0,200)}`;
+                await sendSMS(from, out.substring(0, 1500));
+              }
+            } catch(e) { console.error('Video hooks SMS error:', e.message); }
           })();
 
         } else if (action.action !== 'none') {
@@ -7758,6 +7800,132 @@ Omit any field not found in the document. Return only what you can actually read
     res.json({ ok: true, fields });
   } catch (e) {
     console.error('SCAN TX DOC ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Open House Lead Capture ───────────────────────────────────
+// POST /api/open-house-lead  { phone, address, source }
+app.post('/api/open-house-lead', async (req, res) => {
+  try {
+    const { phone, address, source = 'open_house' } = req.body;
+    if (!phone || !address) return res.status(400).json({ ok: false, error: 'phone and address required' });
+    const crm = await readCRM();
+    const existing = (crm.leads || []).find(l => l.phone && l.phone.replace(/\D/g,'') === phone.replace(/\D/g,''));
+    if (existing) {
+      // Add a note to existing lead
+      existing.notes = (existing.notes ? existing.notes + '\n' : '') + `Attended open house: ${address} on ${new Date().toLocaleDateString()}`;
+      crm.leads = crm.leads.map(l => l.id === existing.id ? existing : l);
+      await writeCRM(crm);
+      return res.json({ ok: true, leadId: existing.id, isNew: false, name: existing.first });
+    }
+    const newLead = {
+      id: 'l' + Date.now(),
+      first: 'Open House',
+      last: 'Lead',
+      phone,
+      type: 'buyer',
+      source,
+      status: 'new',
+      notes: `Attended open house: ${address} on ${new Date().toLocaleDateString()}`,
+      openHouseAddress: address,
+      createdAt: new Date().toISOString()
+    };
+    crm.leads = crm.leads || [];
+    crm.leads.push(newLead);
+    await writeCRM(crm);
+    console.log(`OPEN HOUSE LEAD: ${phone} at ${address}`);
+    res.json({ ok: true, leadId: newLead.id, isNew: true });
+  } catch(e) {
+    console.error('Open house lead error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Review Request Bot ────────────────────────────────────────
+// POST /api/review-request  { leadId, address }
+app.post('/api/review-request', async (req, res) => {
+  try {
+    const { leadId, address } = req.body;
+    if (!leadId) return res.status(400).json({ ok: false, error: 'leadId required' });
+    const crm = await readCRM();
+    const lead = crm.leads.find(l => l.id === leadId);
+    if (!lead) return res.status(404).json({ ok: false, error: 'Lead not found' });
+    if (!lead.phone) return res.status(400).json({ ok: false, error: 'Lead has no phone number' });
+
+    const REVIEW_URL = process.env.GOOGLE_REVIEW_URL || 'https://g.page/r/Cb0DDRp3u6RFEBM/review';
+    const prop = address || lead.prop || 'your new home';
+    const firstName = lead.first || 'there';
+    const msg = `Hi ${firstName}! 🏠 Hope you're loving ${prop}! Would you mind leaving Matt a quick Google review? It takes 2 min and means the world: ${REVIEW_URL}\n\nThanks so much — Matt Golden, MG Realty`;
+
+    await sendSMS(lead.phone, msg);
+    console.log(`REVIEW REQUEST sent to ${lead.first} ${lead.last} at ${lead.phone}`);
+    res.json({ ok: true, sentTo: lead.phone });
+  } catch(e) {
+    console.error('Review request error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Video Hook Machine ────────────────────────────────────────
+// POST /api/video-hooks  { topic, format }
+app.post('/api/video-hooks', async (req, res) => {
+  try {
+    const { topic, format = 'reel' } = req.body;
+    if (!topic) return res.status(400).json({ ok: false, error: 'topic required' });
+
+    const formatGuide = {
+      reel:     'short-form vertical video (15–60 sec), fast cuts, hook in first 2 sec',
+      story:    'Instagram/Facebook story (15 sec), casual, swipe-up CTA',
+      tiktok:   'TikTok (30–60 sec), trending audio style, educational or entertaining',
+      youtube:  'YouTube short or intro (60–90 sec), slightly longer hook, authority-building',
+      carousel: 'Instagram carousel (5–8 slides), each slide = one key point'
+    }[format] || 'short-form video reel';
+
+    const prompt = `You are a real estate social media strategist helping Matt Golden, a Los Angeles real estate agent at MG Realty, create viral content.
+
+Topic: "${topic}"
+Format: ${formatGuide}
+
+Generate ALL of the following sections. Use EXACTLY these section headers:
+
+===HOOKS===
+5 different opening hooks (each 1-2 sentences, under 15 words). Number them 1-5. Each should create curiosity, challenge an assumption, or promise value. Make them punchy and specific to LA real estate.
+
+===SCRIPT===
+A complete video script for the ${format}. Include:
+- [HOOK] opening line (use Hook #1 from above)
+- [BODY] 3-4 key points or story beats (labeled 1, 2, 3...)
+- [CTA] closing call to action (DM, follow, link in bio, or call/text Matt at (323) 919-7539)
+Keep total script under 150 words for reels/stories, 250 words for YouTube.
+
+===CAPTION===
+Full Instagram/TikTok caption. Open strong (repeat the hook), deliver value in 3-4 short punchy lines, end with a CTA. 150-200 words. Use natural line breaks. Sign as Matt Golden · MG Realty.
+
+===HASHTAGS===
+25-30 hashtags grouped: 5 broad (#realestate #losangeles), 10 niche (#LArealestate #WeHoRealEstate #SilverLakeHomes), 5 engagement (#firsttimehomebuyer #buyersmarket), 5 trending/seasonal. One line, space-separated.`;
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const text = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    const extract = (tag) => {
+      const m = text.match(new RegExp(`===${tag}===\\s*([\\s\\S]*?)(?====|$)`));
+      return m ? m[1].trim() : '';
+    };
+
+    const hooks    = extract('HOOKS');
+    const script   = extract('SCRIPT');
+    const caption  = extract('CAPTION');
+    const hashtags = extract('HASHTAGS');
+
+    console.log(`VIDEO HOOKS: topic="${topic}" format=${format}`);
+    res.json({ ok: true, hooks, script, caption, hashtags, topic, format });
+  } catch(e) {
+    console.error('Video hooks error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

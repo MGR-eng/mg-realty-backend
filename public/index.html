@@ -807,6 +807,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         </label>
         <button class="btn" onclick="openMatchBuyers()" style="background:rgba(99,102,241,0.08);color:#6366f1;border-color:rgba(99,102,241,0.3)" title="Find buyers in your CRM that match this listing"><i class="ti ti-users"></i> Match Buyers</button>
         <button class="btn" onclick="openLaunchKit()" style="background:rgba(232,104,26,0.08);color:var(--accent);border-color:rgba(232,104,26,0.3)" title="Generate Instagram, email blast, and postcard copy for this listing"><i class="ti ti-rocket"></i> Launch Kit</button>
+        <button class="btn" onclick="sendReviewRequest()" style="background:rgba(234,179,8,0.08);color:#ca8a04;border-color:rgba(234,179,8,0.3)" title="Text the client a Google review request (best sent ~2 weeks after close)"><i class="ti ti-star"></i> Review Request</button>
         <button class="btn" onclick="openEditTx(window._activeTxId)"><i class="ti ti-edit"></i> Edit</button>
         <button class="btn btn-red btn-sm" onclick="deleteTxFromDetail()"><i class="ti ti-trash"></i></button>
       </div>
@@ -1497,6 +1498,8 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <div class="ce-tab" data-tab="pulse" onclick="showCeTab('pulse')"><i class="ti ti-activity" style="font-size:12px"></i> Market Pulse</div>
       <div class="ce-tab" data-tab="scriptgen" onclick="showCeTab('scriptgen')"><i class="ti ti-microphone" style="font-size:12px"></i> Script Generator</div>
       <div class="ce-tab" data-tab="listingwriter" onclick="showCeTab('listingwriter')"><i class="ti ti-home-edit" style="font-size:12px"></i> Listing Writer</div>
+      <div class="ce-tab" data-tab="videohooks" onclick="showCeTab('videohooks')"><i class="ti ti-movie" style="font-size:12px"></i> Video Hooks</div>
+      <div class="ce-tab" data-tab="openhousequr" onclick="showCeTab('openhousequr')"><i class="ti ti-qrcode" style="font-size:12px"></i> Open House QR</div>
     </div>
 
     <!-- GENERATE VIEW -->
@@ -1952,6 +1955,116 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- VIDEO HOOKS VIEW -->
+    <div id="ce-videohooks-view" style="display:none;padding:20px 0">
+      <div style="display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start">
+
+        <!-- LEFT: form -->
+        <div class="tw" style="padding:18px;display:flex;flex-direction:column;gap:13px">
+          <div style="font-size:13px;font-weight:700;color:var(--text1)">🎬 Video Hook Machine</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:-6px">Describe your video idea → get 5 hooks, full script, caption + hashtags.</div>
+          <div class="fg">
+            <label>Video Topic / Idea</label>
+            <textarea id="vh-topic" rows="3" placeholder="e.g. Why LA renters are being priced into buying right now" style="resize:vertical"></textarea>
+          </div>
+          <div class="fg">
+            <label>Format</label>
+            <select id="vh-format">
+              <option value="reel">Instagram Reel (15–60 sec)</option>
+              <option value="tiktok">TikTok (30–60 sec)</option>
+              <option value="story">Story (15 sec)</option>
+              <option value="youtube">YouTube Short / Intro</option>
+              <option value="carousel">Carousel (5–8 slides)</option>
+            </select>
+          </div>
+          <button class="btn btn-gold" onclick="generateVideoHooks()" id="vh-btn" style="width:100%"><i class="ti ti-sparkles"></i> Generate Hooks + Script</button>
+          <div id="vh-status" style="font-size:12px;color:var(--text3);display:none"></div>
+
+          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+            <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px">Or text it to yourself:</div>
+            <div style="font-size:11px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;line-height:1.6">
+              Text <strong style="color:var(--accent)">hook [your topic]</strong><br>
+              to (323) 919-7539<br><br>
+              e.g. <em>"hook why LA renters should buy now"</em>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: output -->
+        <div id="vh-output" style="display:flex;flex-direction:column;gap:14px">
+          <div style="color:var(--text3);font-size:13px;text-align:center;padding:60px 20px">
+            <i class="ti ti-movie" style="font-size:32px;display:block;margin-bottom:12px;opacity:0.4"></i>
+            Enter a topic and hit Generate
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- OPEN HOUSE QR VIEW -->
+    <div id="ce-openhousequr-view" style="display:none;padding:20px 0">
+      <div style="display:grid;grid-template-columns:360px 1fr;gap:18px;align-items:start">
+
+        <!-- LEFT: form -->
+        <div class="tw" style="padding:18px;display:flex;flex-direction:column;gap:13px">
+          <div style="font-size:13px;font-weight:700;color:var(--text1)">🏠 Open House Lead Capture</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:-6px">Print or screenshot this QR code for your sign-in table. Visitors text to opt in instantly.</div>
+          <div class="fg">
+            <label>Property Address</label>
+            <input id="oh-address" type="text" placeholder="1234 Kings Rd, West Hollywood, CA 90069">
+          </div>
+          <div class="fg">
+            <label>Open House Date (optional)</label>
+            <input id="oh-date" type="date">
+          </div>
+          <button class="btn btn-gold" onclick="generateOpenHouseQR()" style="width:100%"><i class="ti ti-qrcode"></i> Generate QR Code</button>
+
+          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+            <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">How it works:</div>
+            <div style="font-size:11px;color:var(--text3);line-height:1.8">
+              1. Visitor scans QR or reads the sign<br>
+              2. They text <strong style="color:var(--accent)">OPEN [address]</strong> to your number<br>
+              3. They get an auto-reply from Ace<br>
+              4. You get a text alert with their number<br>
+              5. Lead is saved to CRM automatically
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: QR output -->
+        <div>
+          <div id="oh-qr-output" style="display:none">
+            <div class="tw" style="padding:24px;text-align:center">
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:16px">Open House Sign-In Card</div>
+              <div id="oh-qr-container" style="margin:0 auto 18px;max-width:220px"></div>
+              <div style="font-size:16px;font-weight:700;color:var(--text1);margin-bottom:4px" id="oh-qr-address-display"></div>
+              <div style="font-size:13px;color:var(--text3);margin-bottom:16px" id="oh-qr-date-display"></div>
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+                <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Scan or text:</div>
+                <div style="font-size:15px;font-weight:700;color:var(--accent)" id="oh-qr-keyword"></div>
+                <div style="font-size:12px;color:var(--text2);margin-top:2px">to (323) 919-7539</div>
+              </div>
+              <div style="display:flex;gap:10px;justify-content:center">
+                <button class="btn btn-gold" onclick="printOpenHouseCard()"><i class="ti ti-printer"></i> Print / Save</button>
+                <button class="btn" onclick="copyOHText()"><i class="ti ti-copy"></i> Copy Text</button>
+              </div>
+            </div>
+          </div>
+          <div id="oh-qr-empty" style="color:var(--text3);font-size:13px;text-align:center;padding:60px 20px">
+            <i class="ti ti-qrcode" style="font-size:32px;display:block;margin-bottom:12px;opacity:0.4"></i>
+            Enter an address to generate your QR code
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent Open House Leads -->
+      <div style="margin-top:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Recent Open House Leads</div>
+        <div id="oh-leads-list" style="font-size:12px;color:var(--text3)">Loading...</div>
       </div>
     </div>
 
@@ -6767,11 +6880,14 @@ function showCeTab(tab) {
   document.getElementById('ce-pulse-view').style.display        = tab === 'pulse'       ? '' : 'none';
   document.getElementById('ce-scriptgen-view').style.display     = tab === 'scriptgen'     ? '' : 'none';
   document.getElementById('ce-listingwriter-view').style.display = tab === 'listingwriter' ? '' : 'none';
+  document.getElementById('ce-videohooks-view').style.display    = tab === 'videohooks'    ? '' : 'none';
+  document.getElementById('ce-openhousequr-view').style.display  = tab === 'openhousequr'  ? '' : 'none';
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
   if (tab === 'pulse')       { showCePulseTab(); }
   if (tab === 'scriptgen')   { renderConsistencyTracker(); }
+  if (tab === 'openhousequr') { renderOHLeads(); }
   if (tab === 'sellers') { if(typeof renderSellers==="function") renderSellers(); }
   if (tab === 'transactions') { if(typeof renderTransactions==="function") renderTransactions(); }
   if (tab === 'buyers') { if(typeof renderBuyers==="function") renderBuyers(); }
@@ -6826,6 +6942,156 @@ function lwCopy() {
   } else {
     ta.select(); document.execCommand('copy');
     if(typeof toast==='function') toast('Copied!');
+  }
+}
+
+// ── Video Hook Machine ────────────────────────────────────────
+async function generateVideoHooks() {
+  var topic = (document.getElementById('vh-topic').value || '').trim();
+  if (!topic) { if(typeof toast==='function') toast('Enter a video topic first','err'); return; }
+  var format = document.getElementById('vh-format').value;
+  var btn = document.getElementById('vh-btn');
+  var status = document.getElementById('vh-status');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Generating...';
+  status.style.display = '';
+  status.textContent = '✦ Writing hooks + script...';
+
+  try {
+    var BACKEND = window.BACKEND || 'https://mg-realty-backend.onrender.com';
+    var r = await fetch(BACKEND + '/api/video-hooks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, format })
+    }).then(r => r.json());
+    if (!r.ok) throw new Error(r.error || 'Generate failed');
+    status.style.display = 'none';
+
+    var out = document.getElementById('vh-output');
+    out.innerHTML =
+      vhSection('🎣 5 Hooks', r.hooks, 'hook') +
+      vhSection('📝 Script', r.script, 'script') +
+      vhSection('📲 Caption', r.caption, 'caption') +
+      vhSection('#️⃣ Hashtags', r.hashtags, 'hashtags');
+  } catch(e) {
+    status.style.color = 'var(--red)';
+    status.textContent = 'Error: ' + e.message;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Hooks + Script';
+}
+
+function vhSection(title, content, id) {
+  return '<div class="tw" style="padding:16px 18px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.07em">' + title + '</div>' +
+      '<button onclick="vhCopy(\'vh-' + id + '\')" class="btn btn-sm"><i class="ti ti-copy"></i> Copy</button>' +
+    '</div>' +
+    '<div id="vh-' + id + '" style="font-size:13px;color:var(--text1);line-height:1.7;white-space:pre-wrap">' + (content||'').replace(/</g,'&lt;') + '</div>' +
+  '</div>';
+}
+
+function vhCopy(id) {
+  var el = document.getElementById(id); if (!el) return;
+  var text = el.textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function(){ if(typeof toast==='function') toast('Copied!'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    if(typeof toast==='function') toast('Copied!');
+  }
+}
+
+// ── Open House QR Generator ───────────────────────────────────
+function generateOpenHouseQR() {
+  var address = (document.getElementById('oh-address').value || '').trim();
+  if (!address) { if(typeof toast==='function') toast('Enter a property address','err'); return; }
+  var date = document.getElementById('oh-date').value;
+
+  var keyword = 'OPEN ' + address;
+  var phone = '3239197539';
+  var smsUrl = 'sms:+1' + phone + '?body=' + encodeURIComponent(keyword);
+  var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(smsUrl);
+
+  document.getElementById('oh-qr-container').innerHTML = '<img src="' + qrUrl + '" style="width:200px;height:200px;border-radius:8px;border:1px solid var(--border)" alt="QR Code">';
+  document.getElementById('oh-qr-address-display').textContent = address;
+  document.getElementById('oh-qr-date-display').textContent = date ? 'Open House: ' + new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' }) : '';
+  document.getElementById('oh-qr-keyword').textContent = 'OPEN ' + address;
+  document.getElementById('oh-qr-output').style.display = '';
+  document.getElementById('oh-qr-empty').style.display = 'none';
+  renderOHLeads();
+}
+
+function renderOHLeads() {
+  var el = document.getElementById('oh-leads-list'); if (!el) return;
+  var ohLeads = (leads || []).filter(function(l) { return l.source === 'open_house' || l.openHouseAddress; });
+  if (!ohLeads.length) { el.innerHTML = '<span style="color:var(--text3)">No open house leads yet. Generate a QR code, put it at your next open house, and leads will appear here when people text in.</span>'; return; }
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">' +
+    ohLeads.map(function(l) {
+      var name = (l.first === 'Open House' ? 'Unknown' : l.first + ' ' + (l.last||'')).trim();
+      var date = l.createdAt ? new Date(l.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+      return '<div class="tw" style="padding:12px 14px">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text1)">' + name + '</div>' +
+        (l.openHouseAddress ? '<div style="font-size:11px;color:var(--text3);margin-top:2px">🏠 ' + l.openHouseAddress + '</div>' : '') +
+        '<div style="font-size:11px;color:var(--text2);margin-top:2px">📞 ' + (l.phone||'—') + (date ? ' · ' + date : '') + '</div>' +
+        '<button onclick="openLeadProfile(\'' + l.id + '\')" class="btn btn-sm" style="margin-top:8px">View Lead</button>' +
+      '</div>';
+    }).join('') + '</div>';
+}
+
+function copyOHText() {
+  var address = (document.getElementById('oh-qr-address-display')||{}).textContent || '';
+  var text = 'To get updates on ' + address + ', text:\nOPEN ' + address + '\nto (323) 919-7539\n\nYou\'ll get an instant reply!';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function(){ if(typeof toast==='function') toast('Copied!'); });
+  }
+}
+
+function printOpenHouseCard() {
+  var container = document.getElementById('oh-qr-output');
+  if (!container) return;
+  var win = window.open('', '_blank');
+  win.document.write('<html><head><title>Open House Sign-In</title><style>body{font-family:sans-serif;text-align:center;padding:40px;background:#fff;color:#111} img{border:1px solid #ddd;border-radius:8px} h2{margin:12px 0 4px;font-size:20px} p{margin:4px 0;color:#555;font-size:14px} .kw{font-size:18px;font-weight:700;color:#E8681A;margin:12px 0 2px} .num{font-size:15px;color:#555}</style></head><body>');
+  win.document.write('<h2 style="font-size:16px;color:#888;text-transform:uppercase;letter-spacing:.08em">Open House Sign-In</h2>');
+  win.document.write('<h2>' + (document.getElementById('oh-qr-address-display')||{}).textContent + '</h2>');
+  var dateText = (document.getElementById('oh-qr-date-display')||{}).textContent;
+  if (dateText) win.document.write('<p>' + dateText + '</p>');
+  win.document.write('<img src="' + document.getElementById('oh-qr-container').querySelector('img').src + '" style="width:180px;height:180px;margin:16px auto;display:block">');
+  win.document.write('<p style="font-size:14px;color:#555;margin-bottom:4px">Scan the QR code OR text:</p>');
+  win.document.write('<div class="kw">OPEN ' + (document.getElementById('oh-qr-address-display')||{}).textContent + '</div>');
+  win.document.write('<div class="num">to (323) 919-7539</div>');
+  win.document.write('<p style="font-size:12px;color:#aaa;margin-top:20px">Matt Golden · MG Realty · matt@mgoldenrealty.com</p>');
+  win.document.write('</body></html>');
+  win.document.close();
+  setTimeout(function() { win.print(); }, 500);
+}
+
+// ── Review Request ────────────────────────────────────────────
+async function sendReviewRequest() {
+  var id = window._activeTxId;
+  if (!id) return;
+  var d = (deals||[]).find(function(x){ return x.id===id; });
+  if (!d) return;
+  if (!d.leadId) { if(typeof toast==='function') toast('No lead linked to this transaction','err'); return; }
+  var lead = (leads||[]).find(function(l){ return l.id===d.leadId; });
+  if (!lead) { if(typeof toast==='function') toast('Lead not found','err'); return; }
+  if (!lead.phone) { if(typeof toast==='function') toast('Lead has no phone number','err'); return; }
+  if (!confirm('Send a Google review request text to ' + lead.first + ' ' + (lead.last||'') + ' at ' + lead.phone + '?')) return;
+
+  try {
+    var BACKEND = window.BACKEND || 'https://mg-realty-backend.onrender.com';
+    var r = await fetch(BACKEND + '/api/review-request', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leadId: d.leadId, address: d.address })
+    }).then(r => r.json());
+    if (r.ok) {
+      if(typeof toast==='function') toast('⭐ Review request sent to ' + lead.first + '!');
+    } else {
+      if(typeof toast==='function') toast('Error: ' + (r.error||'Send failed'), 'err');
+    }
+  } catch(e) {
+    if(typeof toast==='function') toast('Error: ' + e.message, 'err');
   }
 }
 
