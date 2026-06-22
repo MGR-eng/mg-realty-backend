@@ -801,6 +801,10 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
           <i class="ti ti-file-upload"></i> Scan Doc
           <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="scanTxDocFromDetail(this)">
         </label>
+        <label class="btn" style="cursor:pointer;background:rgba(34,197,94,0.08);color:#16a34a;border-color:rgba(34,197,94,0.3)" title="Take a photo of any invoice or receipt — AI reads it and logs it here">
+          <i class="ti ti-receipt"></i> Scan Invoice
+          <input type="file" id="txInvoiceFileInput" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" capture="environment" style="display:none" onchange="handleTxInvoiceScanFile(this)">
+        </label>
         <button class="btn" onclick="openEditTx(window._activeTxId)"><i class="ti ti-edit"></i> Edit</button>
         <button class="btn btn-red btn-sm" onclick="deleteTxFromDetail()"><i class="ti ti-trash"></i></button>
       </div>
@@ -2298,6 +2302,68 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <button class="more-btn" onclick="sendDigest();toggleMoreSheet()"><i class="ti ti-mail"></i>Digest</button>
     <button class="more-btn" onclick="backupToSheet();toggleMoreSheet()"><i class="ti ti-cloud-upload"></i>Backup</button>
     <button class="more-btn" onclick="showPane('leads',document.querySelector('[data-pane=leads]'));setTimeout(openAddLead,50);toggleMoreSheet()"><i class="ti ti-user-plus"></i>Add Lead</button>
+    <button class="more-btn" onclick="openUniversalScan();toggleMoreSheet()" style="background:rgba(232,104,26,0.15);color:var(--accent)"><i class="ti ti-scan" style="color:var(--accent)"></i>Scan Doc</button>
+  </div>
+</div>
+
+<!-- ── Universal Scan Doc Modal ── -->
+<div id="scanDocBackdrop" onclick="closeUniversalScan()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200"></div>
+<div id="scanDocModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(600px,95vw);max-height:85vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:16px;z-index:201;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:16px;font-weight:700;color:var(--text1)"><i class="ti ti-scan" style="color:var(--accent);margin-right:6px"></i>Scan Document</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px">Upload any doc — AI extracts and fills the right fields</div>
+    </div>
+    <button onclick="closeUniversalScan()" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;padding:4px">×</button>
+  </div>
+  <div style="padding:20px 24px">
+    <!-- Upload area -->
+    <div id="scanUploadArea" style="border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color 0.2s" onclick="document.getElementById('scanDocFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleScanDocDrop(event)">
+      <i class="ti ti-cloud-upload" style="font-size:32px;color:var(--accent);margin-bottom:8px;display:block"></i>
+      <div style="font-weight:600;color:var(--text1);margin-bottom:4px">Drop your document here or click to browse</div>
+      <div style="font-size:12px;color:var(--text3)">Business cards · Contracts · Escrow docs · Listing agreements · PDF or image</div>
+      <input type="file" id="scanDocFileInput" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" style="display:none" onchange="handleUniversalScanUpload(this)">
+    </div>
+    <!-- Status -->
+    <div id="scanDocStatus" style="display:none;text-align:center;padding:24px;color:var(--amber)"><i class="ti ti-loader-2"></i> Scanning document…</div>
+    <!-- Results -->
+    <div id="scanDocResults" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ── Transaction Invoice Scan Modal ── -->
+<div id="txInvoiceBackdrop" onclick="closeTxInvoiceScan()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200"></div>
+<div id="txInvoiceModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(540px,95vw);max-height:85vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:16px;z-index:201;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:16px;font-weight:700;color:var(--text1)"><i class="ti ti-receipt" style="color:#16a34a;margin-right:6px"></i>Scan Invoice</div>
+      <div id="txInvoiceModalSubtitle" style="font-size:12px;color:var(--text3);margin-top:2px">AI reads the invoice and logs it to this transaction</div>
+    </div>
+    <button onclick="closeTxInvoiceScan()" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;padding:4px">×</button>
+  </div>
+  <div style="padding:20px 24px">
+    <div id="txInvoiceScanStatus" style="text-align:center;padding:24px;color:var(--amber)"><i class="ti ti-loader-2"></i> Reading invoice…</div>
+    <div id="txInvoiceScanResults" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Vendor / From</label><input id="si-vendor" class="form-control" style="margin-top:4px"></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Amount</label><input id="si-amount" class="form-control" type="number" step="0.01" style="margin-top:4px"></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Date</label><input id="si-date" class="form-control" type="date" style="margin-top:4px"></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Description</label><input id="si-description" class="form-control" style="margin-top:4px"></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Category</label>
+          <select id="si-category" class="form-control" style="margin-top:4px">
+            <option>Inspection</option><option>Appraisal</option><option>Repairs</option><option>Title</option><option>Escrow</option>
+            <option>Photography</option><option>Staging</option><option>Marketing</option><option>Legal</option><option>HOA</option><option>Supplies</option><option>Other</option>
+          </select>
+        </div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Invoice #</label><input id="si-invoicenum" class="form-control" style="margin-top:4px"></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Notes</label><textarea id="si-notes" class="form-control" rows="2" style="margin-top:4px;resize:none"></textarea></div>
+      </div>
+      <div id="txInvoiceDriveStatus" style="font-size:12px;color:var(--text3);margin-bottom:12px"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" style="flex:1" onclick="saveTxInvoiceExpense()"><i class="ti ti-check"></i> Save to Transaction</button>
+        <button class="btn" onclick="closeTxInvoiceScan()">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -11902,6 +11968,263 @@ function nlGeneratePersonalNote() {
       if (data.note && document.getElementById('nl-personal-note')) document.getElementById('nl-personal-note').value = data.note;
     })
     .catch(function(){ btn.innerHTML = '<i class="ti ti-sparkles"></i> Ace Generate'; btn.disabled = false; toast('Failed to generate — try again'); });
+}
+
+// ── Universal Scan Doc ────────────────────────────────────────
+function openUniversalScan() {
+  document.getElementById('scanDocBackdrop').style.display = '';
+  document.getElementById('scanDocModal').style.display = '';
+  document.getElementById('scanUploadArea').style.display = '';
+  document.getElementById('scanDocStatus').style.display = 'none';
+  document.getElementById('scanDocResults').style.display = 'none';
+  document.getElementById('scanDocResults').innerHTML = '';
+  document.getElementById('scanDocFileInput').value = '';
+}
+function closeUniversalScan() {
+  document.getElementById('scanDocBackdrop').style.display = 'none';
+  document.getElementById('scanDocModal').style.display = 'none';
+}
+function handleScanDocDrop(e) {
+  var f = e.dataTransfer.files[0];
+  if (f) processUniversalScanFile(f);
+}
+function handleUniversalScanUpload(input) {
+  if (input.files && input.files[0]) processUniversalScanFile(input.files[0]);
+}
+async function processUniversalScanFile(file) {
+  document.getElementById('scanUploadArea').style.display = 'none';
+  document.getElementById('scanDocStatus').style.display = '';
+  document.getElementById('scanDocStatus').innerHTML = '<i class="ti ti-loader-2"></i> Reading document…';
+  document.getElementById('scanDocResults').style.display = 'none';
+  try {
+    var b64 = await new Promise(function(resolve, reject) {
+      var r = new FileReader();
+      r.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+    var res = await fetch((window.BACKEND||'') + '/api/scan-doc-universal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, mimeType: file.type, filename: file.name })
+    });
+    var data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Scan failed');
+    document.getElementById('scanDocStatus').style.display = 'none';
+    document.getElementById('scanDocResults').style.display = '';
+    renderScanResults(data.docType, data.fields, file.name);
+  } catch(e) {
+    document.getElementById('scanDocStatus').innerHTML = '<span style="color:var(--red)">⚠️ ' + e.message + '</span><br><button class="btn" onclick="openUniversalScan()" style="margin-top:12px">Try again</button>';
+  }
+}
+
+function renderScanResults(docType, f, filename) {
+  var el = document.getElementById('scanDocResults');
+  var typeLabels = { business_card:'Business Card', purchase_agreement:'Purchase Agreement', escrow:'Escrow / Closing Doc', listing_agreement:'Listing Agreement', other:'Document' };
+  var typeColors = { business_card:'#3B82F6', purchase_agreement:'#10B981', escrow:'#8B5CF6', listing_agreement:'#F59E0B', other:'var(--text3)' };
+  var label = typeLabels[docType] || 'Document';
+  var color = typeColors[docType] || 'var(--accent)';
+
+  var html = '<div style="background:rgba(0,0,0,0.04);border-radius:10px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">'
+    + '<i class="ti ti-file-check" style="font-size:20px;color:' + color + '"></i>'
+    + '<div><div style="font-weight:700;color:var(--text1)">' + label + ' detected</div>'
+    + '<div style="font-size:12px;color:var(--text3)">' + filename + '</div></div></div>';
+
+  if (docType === 'business_card') {
+    html += '<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Extracted Info — review before saving</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">';
+    html += sdField('First name','sd-first',f.first||'') + sdField('Last name','sd-last',f.last||'');
+    html += sdField('Phone','sd-phone',f.phone||'') + sdField('Email','sd-email',f.email||'');
+    html += sdField('Company','sd-company',f.company||'') + sdField('Title / Role','sd-title',f.title||'');
+    html += '</div>';
+    html += '<div style="margin-bottom:16px"><label style="font-size:12px">Notes</label><textarea id="sd-notes" style="height:60px;resize:none;width:100%;box-sizing:border-box">' + (f.notes||'') + '</textarea></div>';
+    html += '<div style="display:flex;gap:10px">'
+      + '<button class="btn btn-gold" onclick="saveScanAsLead()" style="flex:1"><i class="ti ti-user-plus"></i> Save as New Lead</button>'
+      + '<button class="btn" onclick="openUniversalScan()">Scan another</button></div>';
+
+  } else if (docType === 'purchase_agreement' || docType === 'escrow' || docType === 'listing_agreement') {
+    html += '<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Extracted Fields — review before saving</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">';
+    html += sdField('Property address','sd-address',f.address||'','2');
+    html += sdField('Sale price','sd-salePrice',f.salePrice||'') + sdField('List price','sd-listPrice',f.listPrice||'');
+    html += sdField('Buyer name','sd-buyerName',f.buyerName||'') + sdField('Seller name','sd-sellerName',f.sellerName||'');
+    html += sdField('Close date','sd-closeDate',f.closeDate||'') + sdField('Offer / Acceptance date','sd-offerDate',f.offerDate||'');
+    html += sdField('Earnest money due','sd-earnestDue',f.earnestDue||'') + sdField('Inspection deadline','sd-inspectionDeadline',f.inspectionDeadline||'');
+    html += sdField('Contingency removal','sd-contingencyRemoval',f.contingencyRemoval||'') + sdField('Loan approval deadline','sd-loanApprovalDeadline',f.loanApprovalDeadline||'');
+    html += sdField('Seller docs due','sd-sellerDocsDue',f.sellerDocsDue||'') + sdField('Commission %','sd-commissionPct',f.commissionPct||'');
+    html += sdField('Escrow officer','sd-escrowName',f.escrowName||'') + sdField('Escrow company','sd-escrowCompany',f.escrowCompany||'');
+    html += sdField('Escrow phone','sd-escrowPhone',f.escrowPhone||'') + sdField('Escrow email','sd-escrowEmail',f.escrowEmail||'');
+    html += sdField('TC name','sd-tcName',f.tcName||'') + sdField('TC email','sd-tcEmail',f.tcEmail||'');
+    html += sdField('Lender name','sd-lenderName',f.lenderName||'') + sdField('Coop agent','sd-coopAgent',f.coopAgent||'');
+    html += sdField('MLS #','sd-mlsNum',f.mlsNum||'') + sdField('Escrow #','sd-escrowNum',f.escrowNum||'');
+    html += '</div>';
+    if (f.notes) html += '<div style="margin-bottom:16px"><label style="font-size:12px">Notes from document</label><textarea id="sd-notes" style="height:56px;resize:none;width:100%;box-sizing:border-box">' + f.notes + '</textarea></div>';
+    html += '<div style="display:flex;gap:10px">'
+      + '<button class="btn btn-gold" onclick="saveScanAsTransaction()" style="flex:1"><i class="ti ti-building-estate"></i> Create Transaction</button>'
+      + '<button class="btn" onclick="openUniversalScan()">Scan another</button></div>';
+  } else {
+    html += '<pre style="font-size:12px;white-space:pre-wrap;color:var(--text2)">' + JSON.stringify(f, null, 2) + '</pre>';
+    html += '<button class="btn" onclick="openUniversalScan()">Scan another</button>';
+  }
+
+  el.innerHTML = html;
+}
+
+function sdField(label, id, val, cols) {
+  var span = cols ? 'grid-column:span ' + cols + ';' : '';
+  return '<div style="' + span + '">'
+    + '<label style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em">' + label + '</label>'
+    + '<input id="' + id + '" value="' + (val+'').replace(/"/g,'&quot;') + '" style="margin-top:2px">'
+    + '</div>';
+}
+
+function sdV(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+
+function saveScanAsLead() {
+  var now = new Date();
+  var lead = {
+    id: 'lead_' + now.getTime(),
+    first: sdV('sd-first'), last: sdV('sd-last'),
+    phone: sdV('sd-phone'), email: sdV('sd-email'),
+    company: sdV('sd-company'),
+    notes: (sdV('sd-title') ? sdV('sd-title') + (sdV('sd-company') ? ' at ' + sdV('sd-company') : '') + '\n' : '') + sdV('sd-notes'),
+    temp: 'warm', source: 'scan', stage: 'new',
+    createdAt: now.toISOString(), followup: ''
+  };
+  leads.push(lead);
+  persist(); pushToBackend(); renderAll();
+  closeUniversalScan();
+  toast('✅ Lead saved — ' + lead.first + ' ' + lead.last);
+  // Open the lead detail immediately
+  setTimeout(function() { showPane('leads', document.querySelector('[data-pane=leads]')); setTimeout(function(){ openLeadDetail(lead.id); }, 100); }, 200);
+}
+
+function saveScanAsTransaction() {
+  var now = new Date();
+  var deal = {
+    id: 'deal_' + now.getTime(),
+    address: sdV('sd-address'),
+    salePrice: parseFloat((sdV('sd-salePrice')+'').replace(/[^0-9.]/g,'')) || '',
+    listPrice: parseFloat((sdV('sd-listPrice')+'').replace(/[^0-9.]/g,'')) || '',
+    buyerName: sdV('sd-buyerName'), sellerName: sdV('sd-sellerName'),
+    closeDate: sdV('sd-closeDate'), offerDate: sdV('sd-offerDate'),
+    earnestDue: sdV('sd-earnestDue'), inspectionDeadline: sdV('sd-inspectionDeadline'),
+    contingencyRemoval: sdV('sd-contingencyRemoval'), loanApprovalDeadline: sdV('sd-loanApprovalDeadline'),
+    sellerDocsDue: sdV('sd-sellerDocsDue'), commissionPct: sdV('sd-commissionPct'),
+    escrowName: sdV('sd-escrowName'), escrowCompany: sdV('sd-escrowCompany'),
+    escrowPhone: sdV('sd-escrowPhone'), escrowEmail: sdV('sd-escrowEmail'),
+    tcName: sdV('sd-tcName'), tcEmail: sdV('sd-tcEmail'),
+    lenderName: sdV('sd-lenderName'), coopAgent: sdV('sd-coopAgent'),
+    mlsNum: sdV('sd-mlsNum'), escrowNum: sdV('sd-escrowNum'),
+    notes: sdV('sd-notes'),
+    txStage: 'Active', side: 'buyer', checklist: {},
+    createdAt: now.toISOString()
+  };
+  if (typeof deals === 'undefined') window.deals = [];
+  deals.push(deal);
+  persist(); pushToBackend();
+  closeUniversalScan();
+  toast('✅ Transaction created — ' + (deal.address || 'New transaction'));
+  setTimeout(function() {
+    showPane('transactions', document.querySelector('[data-pane=transactions]'));
+    setTimeout(function() { if (typeof openTxDetail === 'function') openTxDetail(deal.id); }, 150);
+  }, 200);
+}
+
+// ── Transaction Invoice Scanner ─────────────────────────────
+var _txInvoiceScanDealId = null;
+var _txInvoiceScanDealName = null;
+var _txInvoiceScanDriveUrl = null;
+
+function handleTxInvoiceScanFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var deal = (deals || []).find(function(d){ return d.id === window._activeTxId; });
+  _txInvoiceScanDealId = deal ? deal.id : null;
+  _txInvoiceScanDealName = deal ? (deal.txName || deal.address || '') : '';
+  _txInvoiceScanDriveUrl = null;
+
+  // Show modal with loading state
+  document.getElementById('txInvoiceBackdrop').style.display = 'block';
+  document.getElementById('txInvoiceModal').style.display = 'block';
+  document.getElementById('txInvoiceModalSubtitle').textContent = _txInvoiceScanDealName ? 'Filing to: ' + _txInvoiceScanDealName : 'AI reads the invoice and logs it';
+  document.getElementById('txInvoiceScanStatus').style.display = 'block';
+  document.getElementById('txInvoiceScanResults').style.display = 'none';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var b64 = e.target.result.split(',')[1];
+    var mimeType = file.type || 'image/jpeg';
+
+    // Also upload the image to Drive first
+    var uploadPromise = fetch(BACKEND + '/drive/upload-stream?fileName=' + encodeURIComponent(file.name) + '&mimeType=' + encodeURIComponent(mimeType), {
+      method: 'POST', headers: { 'Content-Type': mimeType }, body: file
+    }).then(function(r){ return r.json(); }).then(function(dr){
+      if (dr.ok) _txInvoiceScanDriveUrl = dr.viewUrl || null;
+    }).catch(function(){});
+
+    // Scan the invoice
+    var scanPromise = fetch(BACKEND + '/api/scan-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, mimeType: mimeType, filename: file.name, dealId: _txInvoiceScanDealId, dealName: _txInvoiceScanDealName })
+    }).then(function(r){ return r.json(); });
+
+    Promise.all([uploadPromise, scanPromise]).then(function(results){
+      var res = results[1];
+      if (!res.ok) { toast('⚠️ ' + (res.error || 'Could not read invoice')); closeTxInvoiceScan(); return; }
+      var f = res.fields || {};
+      document.getElementById('si-vendor').value = f.vendor || '';
+      document.getElementById('si-amount').value = f.amount || '';
+      document.getElementById('si-date').value = f.date || new Date().toISOString().slice(0,10);
+      document.getElementById('si-description').value = f.description || '';
+      var cat = document.getElementById('si-category');
+      if (f.category) { for(var i=0;i<cat.options.length;i++){ if(cat.options[i].value===f.category){cat.selectedIndex=i;break;} } }
+      document.getElementById('si-invoicenum').value = f.invoiceNumber || '';
+      document.getElementById('si-notes').value = f.notes || '';
+      var driveNote = _txInvoiceScanDriveUrl ? '📁 Image uploaded to Drive' : '';
+      document.getElementById('txInvoiceDriveStatus').textContent = driveNote;
+      document.getElementById('txInvoiceScanStatus').style.display = 'none';
+      document.getElementById('txInvoiceScanResults').style.display = 'block';
+    }).catch(function(err){
+      toast('⚠️ Scan failed: ' + err.message);
+      closeTxInvoiceScan();
+    });
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function closeTxInvoiceScan() {
+  document.getElementById('txInvoiceBackdrop').style.display = 'none';
+  document.getElementById('txInvoiceModal').style.display = 'none';
+}
+
+function saveTxInvoiceExpense() {
+  var amount = parseFloat(document.getElementById('si-amount').value) || 0;
+  var vendor = document.getElementById('si-vendor').value.trim();
+  var expense = {
+    id: 'exp' + Date.now(),
+    date: document.getElementById('si-date').value || new Date().toISOString().slice(0,10),
+    category: document.getElementById('si-category').value,
+    description: document.getElementById('si-description').value.trim(),
+    amount: amount,
+    vendor: vendor,
+    invoiceNumber: document.getElementById('si-invoicenum').value.trim(),
+    notes: document.getElementById('si-notes').value.trim(),
+    dealId: _txInvoiceScanDealId || '',
+    leadName: _txInvoiceScanDealName || '',
+    driveUrl: _txInvoiceScanDriveUrl || '',
+    source: 'scan',
+    status: 'paid'
+  };
+  if (!window.expenses) window.expenses = [];
+  expenses.push(expense);
+  persist(); pushToBackend();
+  closeTxInvoiceScan();
+  toast('✅ Invoice logged — ' + (vendor || 'expense') + ' $' + amount.toFixed(2));
+  // Re-render if we're still in the deal detail
+  if (typeof renderTxDetail === 'function' && _txInvoiceScanDealId) setTimeout(function(){ renderTxDetail(_txInvoiceScanDealId); }, 100);
 }
 
 function nlCopy(id) {

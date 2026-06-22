@@ -3278,6 +3278,160 @@ app.post('/sms', async (req, res) => {
       return res.send(twiml(`✅ ${pending.lead.first} ${pending.lead.last || ''} saved to CRM as a ${pending.lead.type} lead.`.trim()));
     }
 
+    // ── MMS: photo/image received → scan as invoice/doc, file to Drive ──
+    const mediaUrl = req.body.MediaUrl0;
+    const mediaType = req.body.MediaContentType0 || 'image/jpeg';
+    if (mediaUrl && from === process.env.OWNER_PHONE) {
+      res.set('Content-Type', 'text/xml');
+      res.send(twiml('📸 Got it — scanning now...'));
+
+      (async () => {
+        try {
+          const crmForScan = await readCRM();
+          const deals = crmForScan.deals || [];
+
+          // Fetch image from Twilio with auth
+          const twilioAuth = 'Basic ' + Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+          const imgRes = await fetch(mediaUrl, { headers: { Authorization: twilioAuth } });
+          const imgBuffer = await imgRes.buffer();
+          const b64 = imgBuffer.toString('base64');
+          const hint = inboundMsg || '';
+
+          // Build deal names list for matching
+          const dealList = deals.map(d => ({
+            id: d.id,
+            name: d.txName || d.address || '',
+            address: d.address || '',
+            buyer: d.buyerName || '',
+            seller: d.sellerName || ''
+          }));
+
+          // Claude reads the image
+          const scanResult = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 800,
+            messages: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: `You are scanning a document photo for real estate agent Matt Golden.
+
+${hint ? `Matt said: "${hint}"` : ''}
+
+Active transactions: ${JSON.stringify(dealList)}
+
+Extract all invoice/document fields and identify which transaction this belongs to (fuzzy match on address, property name, or any reference you see in the document).
+
+Return ONLY valid JSON:
+{
+  "vendor": "company or person who issued this",
+  "amount": 0.00,
+  "date": "YYYY-MM-DD or null",
+  "description": "what this is for (1 sentence)",
+  "category": "Inspection|Appraisal|Repairs|Title|Escrow|Photography|Staging|Marketing|Legal|HOA|Supplies|Other",
+  "dealId": "matching deal id from the list, or null",
+  "dealName": "matching deal name, or null",
+  "confidence": "high|medium|low",
+  "notes": "any other important details"
+}`
+                },
+                { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } }
+              ]
+            }]
+          });
+
+          const rawText = scanResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) throw new Error('Could not parse scan result');
+          const doc = JSON.parse(jsonMatch[0]);
+
+          // Find the matching deal
+          const matchedDeal = doc.dealId ? deals.find(d => d.id === doc.dealId) : null;
+          const dealName = doc.dealName || (matchedDeal ? (matchedDeal.txName || matchedDeal.address) : null);
+
+          // Upload image to Google Drive in the deal's folder (or a general Receipts folder)
+          let driveUrl = null;
+          try {
+            const folderName = dealName ? `MG Realty – ${dealName}` : 'MG Realty – Receipts';
+            const driveToken = await getDriveToken();
+            // Find or create folder
+            const folderSearch = await fetch(`https://www.googleapis.com/drive/v3/files?q=name%3D'${encodeURIComponent(folderName)}'%20and%20mimeType%3D'application%2Fvnd.google-apps.folder'%20and%20trashed%3Dfalse&fields=files(id)`, {
+              headers: { Authorization: `Bearer ${driveToken}` }
+            });
+            const folderData = await folderSearch.json();
+            let folderId = folderData.files?.[0]?.id;
+            if (!folderId) {
+              const createFolder = await fetch('https://www.googleapis.com/drive/v3/files', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' })
+              });
+              const cf = await createFolder.json();
+              folderId = cf.id;
+            }
+
+            // Upload file
+            const ts = new Date().toISOString().slice(0,10);
+            const filename = `${ts}-${(doc.vendor || 'receipt').replace(/[^a-z0-9]/gi,'-')}.jpg`;
+            const meta = JSON.stringify({ name: filename, parents: [folderId] });
+            const boundary = 'xxxxboundary';
+            const multipart = Buffer.concat([
+              Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${mediaType}\r\n\r\n`),
+              imgBuffer,
+              Buffer.from(`\r\n--${boundary}--`)
+            ]);
+            const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${driveToken}`, 'Content-Type': `multipart/related; boundary=${boundary}`, 'Content-Length': multipart.length },
+              body: multipart
+            });
+            const uploaded = await uploadRes.json();
+            if (uploaded.id) {
+              // Make viewable
+              await fetch(`https://www.googleapis.com/drive/v3/files/${uploaded.id}/permissions`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${driveToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'anyone', role: 'reader' })
+              });
+              driveUrl = uploaded.webViewLink || `https://drive.google.com/file/d/${uploaded.id}/view`;
+            }
+          } catch(driveErr) {
+            console.error('MMS Drive upload error:', driveErr.message);
+          }
+
+          // Save expense to CRM
+          const crmSave = await readCRM();
+          if (!crmSave.expenses) crmSave.expenses = [];
+          const expRecord = {
+            id: 'exp' + Date.now(),
+            date: doc.date || new Date().toISOString().slice(0,10),
+            category: doc.category || 'Other',
+            description: doc.description || doc.notes || '',
+            amount: parseFloat(doc.amount) || 0,
+            vendor: doc.vendor || '',
+            dealId: doc.dealId || '',
+            leadName: dealName || '',
+            driveUrl: driveUrl || '',
+            source: 'mms_scan',
+            status: 'paid'
+          };
+          crmSave.expenses.push(expRecord);
+          await writeCRM(crmSave);
+
+          // Send confirmation
+          const amtStr = doc.amount ? `$${parseFloat(doc.amount).toFixed(2)}` : 'unknown amount';
+          const filed = dealName ? `under ${dealName}` : 'under Receipts (no transaction matched)';
+          const driveNote = driveUrl ? `\n📁 ${driveUrl}` : '';
+          await sendSMS(from, `✅ Scanned!\n${doc.vendor || 'Vendor unknown'} — ${amtStr}\n${doc.description || ''}\nFiled ${filed}${driveNote}`);
+        } catch(scanErr) {
+          console.error('MMS scan error:', scanErr.message);
+          try { await sendSMS(from, `⚠️ Couldn't scan that image: ${scanErr.message}`); } catch(_) {}
+        }
+      })();
+      return;
+    }
+
     // Load live CRM data
     const crm = await readCRM();
     const now2 = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
@@ -6457,6 +6611,137 @@ Return ONLY valid JSON: {"subject":"...","body":"..."}`;
 });
 
 // ── Transaction Doc Scanner ───────────────────────────────────
+// ── Invoice scanner for transaction detail ───────────────────
+app.post('/api/scan-invoice', async (req, res) => {
+  try {
+    const { data: b64, mimeType = 'image/jpeg', filename = '', dealId = '', dealName = '' } = req.body;
+    if (!b64) return res.status(400).json({ ok: false, error: 'No file data' });
+
+    const isPdf = mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');
+    const docBlock = isPdf
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
+      : { type: 'image',    source: { type: 'base64', media_type: mimeType,           data: b64 } };
+
+    const prompt = `Extract all invoice/receipt/document details. This is for a real estate transaction${dealName ? ` named "${dealName}"` : ''}.
+
+Return ONLY valid JSON:
+{
+  "vendor": "company or person who issued this",
+  "amount": 0.00,
+  "date": "YYYY-MM-DD or null",
+  "description": "what this is for (1 sentence)",
+  "category": "Inspection|Appraisal|Repairs|Title|Escrow|Photography|Staging|Marketing|Legal|HOA|Supplies|Other",
+  "invoiceNumber": "invoice/order number if present",
+  "notes": "any important terms, due dates, or line items"
+}`;
+
+    const result = await anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, docBlock] }]
+      },
+      isPdf ? { headers: { 'anthropic-beta': 'pdfs-2024-09-25' } } : {}
+    );
+
+    const rawText = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    const jsonMatch = rawText.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim().match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.json({ ok: false, error: 'Could not read document' });
+    const doc = JSON.parse(jsonMatch[0]);
+    console.log(`SCAN INVOICE: ${doc.vendor} $${doc.amount} for deal ${dealId || 'unknown'}`);
+    res.json({ ok: true, fields: doc });
+  } catch(e) {
+    console.error('SCAN INVOICE ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Universal document scanner ────────────────────────────────
+app.post('/api/scan-doc-universal', async (req, res) => {
+  try {
+    const { data: b64, mimeType = 'application/pdf', filename = '' } = req.body;
+    if (!b64) return res.status(400).json({ ok: false, error: 'No file data' });
+
+    const isPdf = mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');
+    const docBlock = isPdf
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
+      : { type: 'image',    source: { type: 'base64', media_type: mimeType,           data: b64 } };
+
+    const prompt = `You are scanning a real estate document for Matt Golden, a Los Angeles agent. First identify the document type, then extract every piece of information you can find.
+
+Document types:
+- "business_card" — contact card, name card, any document primarily showing a person's contact info
+- "purchase_agreement" — RPA, offer, purchase contract, counter offer
+- "escrow" — escrow instructions, closing disclosure, settlement statement, escrow calendar, contact sheet
+- "listing_agreement" — RLA, listing contract, seller representation agreement
+- "other" — anything else
+
+Return ONLY valid JSON with no markdown fences:
+{
+  "docType": "business_card|purchase_agreement|escrow|listing_agreement|other",
+  "confidence": "high|medium|low",
+  "fields": {
+    "first": "first name (business card)",
+    "last": "last name (business card)",
+    "phone": "phone number",
+    "email": "email address",
+    "company": "company or brokerage name",
+    "title": "job title or role",
+    "address": "property address",
+    "salePrice": numeric sale price as plain number,
+    "listPrice": numeric list price as plain number,
+    "commissionPct": commission % as plain number,
+    "closeDate": "YYYY-MM-DD",
+    "offerDate": "YYYY-MM-DD",
+    "earnestDue": "YYYY-MM-DD",
+    "earnestMoney": numeric earnest amount,
+    "sellerDocsDue": "YYYY-MM-DD",
+    "inspectionDeadline": "YYYY-MM-DD",
+    "contingencyRemoval": "YYYY-MM-DD",
+    "loanApprovalDeadline": "YYYY-MM-DD",
+    "buyerName": "buyer full name(s)",
+    "sellerName": "seller full name(s)",
+    "coopAgent": "cooperating agent name",
+    "coopBrokerage": "cooperating brokerage",
+    "escrowName": "escrow officer name",
+    "escrowCompany": "escrow company",
+    "escrowPhone": "escrow phone",
+    "escrowEmail": "escrow email",
+    "escrowNum": "escrow/file number",
+    "tcName": "transaction coordinator name",
+    "tcEmail": "TC email",
+    "tcPhone": "TC phone",
+    "lenderName": "loan officer name",
+    "lenderCompany": "lender/mortgage company",
+    "mlsNum": "MLS number",
+    "notes": "any important conditions, terms, or notes — 1-2 sentences max"
+  }
+}
+
+Omit any field not found. For dates, look carefully at calendar grids, timelines, and labeled date fields. Extract ALL contact info you find.`;
+
+    const result = await anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, docBlock] }]
+      },
+      isPdf ? { headers: { 'anthropic-beta': 'pdfs-2024-09-25' } } : {}
+    );
+
+    const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    const cleaned = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) return res.json({ ok: false, error: 'Could not read document. Is it clear and readable?', raw: raw.substring(0,400) });
+    const parsed = JSON.parse(match[0]);
+    console.log(`SCAN DOC: ${parsed.docType} (${parsed.confidence}) — ${filename}`);
+    res.json({ ok: true, docType: parsed.docType, confidence: parsed.confidence, fields: parsed.fields || {} });
+  } catch(e) {
+    console.error('SCAN DOC UNIVERSAL ERROR:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/scan-tx-doc', async (req, res) => {
   try {
     const { data: b64, mimeType = 'application/pdf', filename = '' } = req.body;
