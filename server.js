@@ -4062,7 +4062,7 @@ Format as clean SMS text — no markdown, use line breaks. Under 400 chars. Be s
               });
 
               const propReply = propResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-              const sourceTag = topUrl ? `\n\nSource: ${topUrl.substring(0, 60)}...` : '';
+              const sourceTag = '';
               await sendSMS(callerPhone, (propReply + sourceTag).substring(0, 800));
             } catch(e) {
               console.error('Property lookup error:', e.message);
