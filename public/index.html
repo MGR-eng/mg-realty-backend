@@ -805,11 +805,37 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
           <i class="ti ti-receipt"></i> Scan Invoice
           <input type="file" id="txInvoiceFileInput" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" capture="environment" style="display:none" onchange="handleTxInvoiceScanFile(this)">
         </label>
+        <button class="btn" onclick="openMatchBuyers()" style="background:rgba(99,102,241,0.08);color:#6366f1;border-color:rgba(99,102,241,0.3)" title="Find buyers in your CRM that match this listing"><i class="ti ti-users"></i> Match Buyers</button>
+        <button class="btn" onclick="openLaunchKit()" style="background:rgba(232,104,26,0.08);color:var(--accent);border-color:rgba(232,104,26,0.3)" title="Generate Instagram, email blast, and postcard copy for this listing"><i class="ti ti-rocket"></i> Launch Kit</button>
         <button class="btn" onclick="openEditTx(window._activeTxId)"><i class="ti ti-edit"></i> Edit</button>
         <button class="btn btn-red btn-sm" onclick="deleteTxFromDetail()"><i class="ti ti-trash"></i></button>
       </div>
     </div>
     <div id="tx-detail-content" style="flex:1;overflow-y:auto;padding:20px 24px"></div>
+  </div>
+</div>
+
+<!-- ── Match Buyers Modal ── -->
+<div id="matchBuyersBackdrop" onclick="closeMatchBuyers()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200"></div>
+<div id="matchBuyersModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(520px,95vw);max-height:85vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:16px;z-index:201;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+  <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div style="font-weight:700;font-size:15px">🎯 Match Buyers</div>
+    <button onclick="closeMatchBuyers()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3)">✕</button>
+  </div>
+  <div style="padding:20px 24px">
+    <div id="matchBuyersBody" style="color:var(--text2);font-size:14px">Scanning your buyer leads...</div>
+  </div>
+</div>
+
+<!-- ── Listing Launch Kit Modal ── -->
+<div id="launchKitBackdrop" onclick="closeLaunchKit()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200"></div>
+<div id="launchKitModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(580px,95vw);max-height:90vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:16px;z-index:201;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+  <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div style="font-weight:700;font-size:15px">🚀 Listing Launch Kit</div>
+    <button onclick="closeLaunchKit()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3)">✕</button>
+  </div>
+  <div id="launchKitBody" style="padding:20px 24px">
+    <div style="color:var(--text2);font-size:14px">Generating your marketing kit...</div>
   </div>
 </div>
 
@@ -12402,6 +12428,104 @@ function saveTxInvoiceExpense() {
   toast('✅ Invoice logged — ' + (vendor || 'expense') + ' $' + amount.toFixed(2));
   // Re-render if we're still in the deal detail
   if (typeof renderTxDetail === 'function' && _txInvoiceScanDealId) setTimeout(function(){ renderTxDetail(_txInvoiceScanDealId); }, 100);
+}
+
+// ── Match Buyers ─────────────────────────────────────────────
+function openMatchBuyers() {
+  var deal = (window.deals || []).find(function(d){ return d.id === window._activeTxId; });
+  if (!deal) { toast('Open a transaction first'); return; }
+  document.getElementById('matchBuyersBackdrop').style.display = 'block';
+  document.getElementById('matchBuyersModal').style.display = 'block';
+  document.getElementById('matchBuyersBody').innerHTML = '<div style="color:var(--text3)">🔍 Scanning your buyer leads...</div>';
+
+  var price = parseFloat((deal.salePrice || deal.listPrice || '0').toString().replace(/[^0-9.]/g,'')) || 0;
+  var beds = parseInt(deal.beds || deal.bedrooms || '0') || 0;
+  var area = (deal.address || '').split(',').slice(-2).join(',').trim();
+
+  fetch('/api/buyer-match', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: deal.address || '', price: price, beds: beds, area: area })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d.ok || !d.matches || d.matches.length === 0) {
+      document.getElementById('matchBuyersBody').innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px">No buyer matches found.<br><small>Make sure buyer leads have budget and neighborhood fields filled in.</small></div>';
+      return;
+    }
+    var html = '<div style="font-size:13px;color:var(--text3);margin-bottom:16px">' + d.count + ' buyer' + (d.count > 1 ? 's' : '') + ' match this listing — Matt has been texted the list.</div>';
+    html += d.matches.map(function(m){
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+        + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">' + m.name + '</div>'
+        + '<div style="font-size:12px;color:var(--text3);line-height:1.7">'
+        + '💰 Budget: ' + (m.budget || '—') + '<br>'
+        + '📍 Areas: ' + (m.neighborhoods || '—') + '<br>'
+        + '⏱ Timeline: ' + (m.timeline || '—') + '<br>'
+        + (m.phone ? '📞 ' + m.phone : '')
+        + '</div></div>';
+    }).join('');
+    document.getElementById('matchBuyersBody').innerHTML = html;
+  }).catch(function(e){
+    document.getElementById('matchBuyersBody').innerHTML = '<div style="color:var(--red)">Error: ' + e.message + '</div>';
+  });
+}
+function closeMatchBuyers() {
+  document.getElementById('matchBuyersBackdrop').style.display = 'none';
+  document.getElementById('matchBuyersModal').style.display = 'none';
+}
+
+// ── Listing Launch Kit ────────────────────────────────────────
+function openLaunchKit() {
+  var deal = (window.deals || []).find(function(d){ return d.id === window._activeTxId; });
+  if (!deal) { toast('Open a transaction first'); return; }
+  document.getElementById('launchKitBackdrop').style.display = 'block';
+  document.getElementById('launchKitModal').style.display = 'block';
+  document.getElementById('launchKitBody').innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px"><i class="ti ti-loader-2"></i> Generating your marketing kit...<br><small style="opacity:.6">Takes ~10 seconds</small></div>';
+
+  fetch('/api/listing-launch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      address: deal.address || '',
+      price: deal.salePrice || deal.listPrice || '',
+      beds: deal.beds || deal.bedrooms || '',
+      baths: deal.baths || deal.bathrooms || '',
+      sqft: deal.sqft || '',
+      highlights: deal.notes || deal.description || '',
+      area: (deal.address || '').split(',').slice(-2).join(',').trim()
+    })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d.ok) { document.getElementById('launchKitBody').innerHTML = '<div style="color:var(--red)">Error generating kit.</div>'; return; }
+
+    function section(icon, title, id, content) {
+      return '<div style="margin-bottom:20px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+        + '<div style="font-weight:700;font-size:13px">' + icon + ' ' + title + '</div>'
+        + '<button onclick="lkCopy(\'' + id + '\')" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;color:var(--text2)">Copy</button>'
+        + '</div>'
+        + '<div id="' + id + '" style="font-size:13px;color:var(--text2);background:var(--bg2);border-radius:8px;padding:12px;white-space:pre-wrap;line-height:1.6">' + content + '</div>'
+        + '</div>';
+    }
+
+    document.getElementById('launchKitBody').innerHTML =
+      section('📸', 'Instagram Caption', 'lk-ig', d.instagram || '') +
+      section('📧', 'Email Blast', 'lk-email', d.email || '') +
+      section('📮', 'Postcard Copy', 'lk-postcard', d.postcard || '') +
+      section('💬', 'Showing Text (SMS)', 'lk-sms', d.showingText || '');
+  }).catch(function(e){
+    document.getElementById('launchKitBody').innerHTML = '<div style="color:var(--red)">Error: ' + e.message + '</div>';
+  });
+}
+function closeLaunchKit() {
+  document.getElementById('launchKitBackdrop').style.display = 'none';
+  document.getElementById('launchKitModal').style.display = 'none';
+}
+function lkCopy(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.innerText).then(function(){ toast('Copied!'); }).catch(function(){
+    var r = document.createRange(); r.selectNode(el);
+    window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+    document.execCommand('copy'); toast('Copied!');
+  });
 }
 
 function nlCopy(id) {

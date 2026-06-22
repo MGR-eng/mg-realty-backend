@@ -3356,16 +3356,123 @@ app.post('/sms', async (req, res) => {
         return;
       }
 
-      // Unknown number, no showing keyword — treat as general inquiry, notify Matt
-      res.set('Content-Type', 'text/xml');
-      res.send(twiml("Hi! Thanks for reaching out to MG Realty. Matt will get back to you shortly."));
-      const ownerPhone = process.env.OWNER_PHONE;
-      if (ownerPhone) {
-        const crmCheck2 = await readCRM().catch(() => ({ leads: [] }));
-        const knownLead2 = crmCheck2.leads.find(l => l.phone && l.phone.replace(/\D/g,'') === from.replace(/\D/g,''));
-        const who2 = knownLead2 ? `${knownLead2.first} ${knownLead2.last||''}`.trim() : `Unknown (${from})`;
-        sendSMS(ownerPhone, `💬 Text from ${who2}:\n"${inboundMsg}"`).catch(() => {});
+      // ── Client Onboarding Bot ─────────────────────────────────
+      const state = onboardingState.get(from);
+
+      if (state) {
+        // Continuing an onboarding conversation
+        const msg2 = inboundMsg.trim();
+        let reply2 = '';
+
+        if (state.step === 1) {
+          // Capture buy/sell
+          const isBuyer = /buy|buyer|looking|purchase|find/i.test(msg2);
+          const isSeller = /sell|seller|list|selling/i.test(msg2);
+          state.data.type = isBuyer ? 'buyer' : isSeller ? 'seller' : 'buyer';
+          state.step = 2;
+          if (state.data.type === 'buyer') {
+            reply2 = "Great! What's your budget? (e.g. $800K, $1-1.2M)";
+          } else {
+            reply2 = "Perfect! What's the address of the property you're looking to sell?";
+            state.step = 5; // sellers skip to address
+          }
+        } else if (state.step === 2) {
+          state.data.budget = msg2;
+          state.step = 3;
+          reply2 = "Which areas or neighborhoods are you interested in? (e.g. West Hollywood, Silver Lake)";
+        } else if (state.step === 3) {
+          state.data.neighborhoods = msg2;
+          state.step = 4;
+          reply2 = "Minimum bedrooms? (e.g. 2, 3+)";
+        } else if (state.step === 4) {
+          state.data.minBeds = msg2.replace(/\D/g,'') || '0';
+          state.step = 5;
+          reply2 = "What's your timeline? (e.g. ASAP, 3 months, 6+ months)";
+        } else if (state.step === 5) {
+          state.data.timeline = msg2;
+          state.step = 6;
+          // Save to CRM
+          (async () => {
+            try {
+              const freshCrm = await readCRM();
+              const d = state.data;
+              const nameParts = (d.name || 'New Lead').split(' ');
+              const newLead = {
+                id: 'l' + Date.now(),
+                first: nameParts[0] || 'New',
+                last: nameParts.slice(1).join(' ') || 'Lead',
+                phone: from,
+                type: d.type || 'buyer',
+                source: 'SMS onboarding',
+                status: 'new',
+                budget: d.budget || '',
+                neighborhoods: d.neighborhoods || '',
+                minBeds: d.minBeds || '',
+                buyTimeline: d.timeline || '',
+                notes: `Onboarded via SMS. Budget: ${d.budget||'?'}, Areas: ${d.neighborhoods||'?'}, Beds: ${d.minBeds||'?'}, Timeline: ${d.timeline||'?'}`,
+                createdAt: new Date().toISOString()
+              };
+              freshCrm.leads = freshCrm.leads || [];
+              freshCrm.leads.push(newLead);
+              await writeCRM(freshCrm);
+              // Notify Matt
+              const ownerPhone2 = process.env.OWNER_PHONE;
+              if (ownerPhone2) {
+                await sendSMS(ownerPhone2, `🆕 New Lead (SMS Onboarding)\n${newLead.first} ${newLead.last}\n📞 ${from}\nType: ${newLead.type}\nBudget: ${d.budget||'?'}\nAreas: ${d.neighborhoods||'?'}\nBeds: ${d.minBeds||'?'}+\nTimeline: ${d.timeline||'?'}`);
+              }
+            } catch(e) { console.error('Onboarding save error:', e.message); }
+          })();
+          onboardingState.delete(from);
+          reply2 = `Perfect — I've got all I need! Matt will be in touch soon to help you ${state.data.type === 'seller' ? 'get your home sold' : 'find the right place'}. Talk soon! 🏠`;
+        }
+
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml(reply2));
+        return;
       }
+
+      // New contact — start onboarding
+      const crmCheck2 = await readCRM().catch(() => ({ leads: [] }));
+      const knownLead2 = crmCheck2.leads.find(l => l.phone && l.phone.replace(/\D/g,'') === from.replace(/\D/g,''));
+
+      if (knownLead2) {
+        // Known lead — just notify Matt, don't restart onboarding
+        const who2 = `${knownLead2.first} ${knownLead2.last||''}`.trim();
+        const ownerPhone = process.env.OWNER_PHONE;
+        if (ownerPhone) sendSMS(ownerPhone, `💬 Text from ${who2}:\n"${inboundMsg}"`).catch(() => {});
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml(`Hey ${knownLead2.first}! Got your message — Matt will follow up shortly. 🏠`));
+      } else {
+        // Unknown — start onboarding flow
+        onboardingState.set(from, { step: 1, data: { name: '' } });
+        // Auto-expire after 30 min
+        setTimeout(() => onboardingState.delete(from), 30 * 60 * 1000);
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml("Hi! I'm Ace, Matt Golden's assistant at MG Realty 🏠 Are you looking to buy or sell?"));
+      }
+      return;
+    }
+
+    // ── MATCH BUYERS command ───────────────────────────────────
+    if (isOwner && /^match buyers?\s+for\s+/i.test(inboundMsg)) {
+      const detail = inboundMsg.replace(/^match buyers?\s+for\s+/i, '').trim();
+      // Parse: "9006 Kings Rd WeHo 2br $1.1M"
+      const bedsM = detail.match(/(\d+)\s*br/i);
+      const priceM = detail.match(/\$?([\d.]+)\s*[Mm]/);
+      const beds = bedsM ? parseInt(bedsM[1]) : 0;
+      const price = priceM ? parseFloat(priceM[1]) * 1000000 : 0;
+      const address = detail.replace(/\d+br|\$[\d.]+[Mm]/gi, '').trim();
+      res.set('Content-Type', 'text/xml');
+      res.send(twiml(`🔍 Scanning buyers for ${address}...`));
+      (async () => {
+        try {
+          await fetch(`${process.env.SERVER_URL || 'http://localhost:3000'}/api/buyer-match`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address, price, beds, area: address })
+          });
+        } catch(e) { console.error('Match buyers SMS error:', e.message); }
+      })();
       return;
     }
 
@@ -6242,6 +6349,10 @@ Caption: ${caption}`;
 // Each entry: { lead, activity, timestamp }
 const pendingAceCalls = [];
 
+// ── Client onboarding state (in-memory, per phone number) ─────
+// Each entry: { step, data: { name, type, budget, neighborhoods, minBeds, timeline } }
+const onboardingState = new Map();
+
 // ── Vapi Call Screener Webhook ────────────────────────────────
 // Receives end-of-call report from Vapi. Texts Matt a summary.
 // Lead is NOT auto-saved — Matt replies ADD to save to CRM.
@@ -6945,6 +7056,172 @@ Format as a punchy text message. Lead with the most important item. Skip areas w
     res.json({ ok: true, brief });
   } catch(e) {
     console.error('Neighborhood brief error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Buyer Match Bot ───────────────────────────────────────────
+app.post('/api/buyer-match', async (req, res) => {
+  try {
+    const { address = '', price = 0, beds = 0, area = '', description = '' } = req.body;
+    const crm = await readCRM();
+    const buyers = (crm.leads || []).filter(l => l.type === 'buyer' || l.type === 'Buyer');
+
+    const matches = [];
+    for (const b of buyers) {
+      const budgetRaw = (b.budget || b.buyerBudget || '').toString().replace(/[$,K]/gi, '').trim();
+      const budgetNum = budgetRaw.includes('-')
+        ? parseFloat(budgetRaw.split('-').pop()) * (budgetRaw.toLowerCase().includes('k') ? 1000 : 1)
+        : parseFloat(budgetRaw) * (budgetRaw.toLowerCase().includes('k') ? 1000 : 1);
+
+      const hood = (b.neighborhoods || b.preferredAreas || b.notes || '').toLowerCase();
+      const areaMatch = !area || !hood || hood.includes(area.toLowerCase().split(',')[0].toLowerCase()) || hood.includes('any') || hood.includes('all');
+
+      const minBeds = parseInt(b.minBeds || b.mustHaves || '0') || 0;
+      const bedsMatch = !beds || !minBeds || beds >= minBeds;
+
+      const budgetMatch = !price || !budgetNum || isNaN(budgetNum) || budgetNum >= price * 0.9;
+
+      const score = (areaMatch ? 2 : 0) + (budgetMatch ? 2 : 0) + (bedsMatch ? 1 : 0);
+      if (score >= 2) {
+        matches.push({
+          name: `${b.first} ${b.last || ''}`.trim(),
+          phone: b.phone || '',
+          budget: b.budget || b.buyerBudget || 'unknown',
+          neighborhoods: b.neighborhoods || b.preferredAreas || 'not specified',
+          timeline: b.buyTimeline || b.timeline || 'unknown',
+          score
+        });
+      }
+    }
+
+    matches.sort((a, b) => b.score - a.score);
+
+    // Text Matt the results
+    const ownerPhone = process.env.OWNER_PHONE;
+    if (ownerPhone && matches.length > 0) {
+      const lines = matches.slice(0, 5).map((m, i) =>
+        `${i + 1}. ${m.name} — budget ${m.budget}, wants ${m.neighborhoods}, timeline ${m.timeline}${m.phone ? '\n   📞 ' + m.phone : ''}`
+      );
+      const msg = `🎯 Buyer Match — ${address || area}\n${matches.length} buyer${matches.length > 1 ? 's' : ''} match:\n\n${lines.join('\n\n')}`;
+      await sendSMS(ownerPhone, msg);
+    }
+
+    res.json({ ok: true, matches, count: matches.length });
+  } catch (e) {
+    console.error('Buyer match error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Deal Momentum Monitor ──────────────────────────────────────
+app.post('/api/deal-momentum', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const deals = (crm.deals || []).filter(d => !['closed','cancelled','withdrawn'].includes((d.txStage||'').toLowerCase()));
+    if (!deals.length) return res.json({ ok: true, alerts: [] });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const alerts = [];
+
+    for (const deal of deals) {
+      const name = deal.txName || deal.address || 'Unnamed deal';
+      const dealAlerts = [];
+
+      // Check key dates
+      const dateFields = [
+        { key: 'inspectionDeadline', label: 'Inspection deadline' },
+        { key: 'contingencyRemoval', label: 'Contingency removal' },
+        { key: 'loanApprovalDeadline', label: 'Loan approval deadline' },
+        { key: 'closeDate', label: 'Close of escrow' }
+      ];
+      for (const { key, label } of dateFields) {
+        if (!deal[key]) continue;
+        const d = new Date(deal[key] + 'T12:00:00');
+        const diffDays = Math.round((d - today) / 86400000);
+        if (diffDays < 0) dealAlerts.push(`⚠️ OVERDUE: ${label} was ${Math.abs(diffDays)}d ago`);
+        else if (diffDays <= 3) dealAlerts.push(`🔔 ${label} in ${diffDays === 0 ? 'TODAY' : diffDays + 'd'}`);
+      }
+
+      // Check open checklist items
+      const checklist = deal.checklist || {};
+      const openItems = Object.entries(checklist).filter(([, v]) => !v).map(([k]) => k.replace(/_/g, ' '));
+      if (openItems.length > 0) dealAlerts.push(`📋 ${openItems.length} open: ${openItems.slice(0, 2).join(', ')}${openItems.length > 2 ? '…' : ''}`);
+
+      if (dealAlerts.length > 0) {
+        alerts.push({ deal: name, items: dealAlerts });
+      }
+    }
+
+    if (alerts.length > 0) {
+      const ownerPhone = process.env.OWNER_PHONE;
+      if (ownerPhone) {
+        const lines = alerts.map(a => `📌 ${a.deal}:\n${a.items.join('\n')}`).join('\n\n');
+        await sendSMS(ownerPhone, `🏠 Deal Momentum Check\n\n${lines}`);
+      }
+    }
+
+    res.json({ ok: true, alerts, count: alerts.length });
+  } catch (e) {
+    console.error('Deal momentum error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Listing Launch Kit ─────────────────────────────────────────
+app.post('/api/listing-launch', async (req, res) => {
+  try {
+    const { address, price, beds, baths, sqft, highlights = '', area = '' } = req.body;
+    if (!address) return res.status(400).json({ ok: false, error: 'Address required' });
+
+    const priceStr = price ? `$${Number(price).toLocaleString()}` : 'Price upon request';
+    const specs = [beds ? `${beds}br` : '', baths ? `${baths}ba` : '', sqft ? `${Number(sqft).toLocaleString()} sqft` : ''].filter(Boolean).join(' · ');
+
+    const result = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: `You are a real estate marketing expert. Generate a full listing launch kit for:
+
+Property: ${address}
+Price: ${priceStr}
+Specs: ${specs}
+Highlights: ${highlights || 'Not provided'}
+Area: ${area || 'Los Angeles'}
+Agent: Matt Golden, MG Realty
+
+Generate ALL of the following, separated by clear headers:
+
+===INSTAGRAM===
+Caption for Instagram (engaging, 150-200 words, include 10-15 relevant LA real estate hashtags at end). Emoji-rich, aspirational tone.
+
+===EMAIL===
+Email blast subject line + body to send to buyer database (150 words max, personal tone from Matt, include all specs, strong CTA to schedule a showing).
+
+===POSTCARD===
+Just-listed postcard copy (under 80 words, punchy, designed to print). Include headline, specs, price, and "Call Matt" CTA.
+
+===SHOWING_LINK_TEXT===
+One SMS to send to hot buyer leads inviting them to schedule a showing (under 160 chars).
+
+Keep each section tight and ready to use with zero editing.` }]
+    });
+
+    const raw = result.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const extract = (tag) => {
+      const m = raw.match(new RegExp(`===${tag}===\\s*([\\s\\S]*?)(?:===|$)`));
+      return m ? m[1].trim() : '';
+    };
+
+    res.json({
+      ok: true,
+      instagram: extract('INSTAGRAM'),
+      email: extract('EMAIL'),
+      postcard: extract('POSTCARD'),
+      showingText: extract('SHOWING_LINK_TEXT')
+    });
+  } catch (e) {
+    console.error('Listing launch error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
