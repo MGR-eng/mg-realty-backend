@@ -3115,7 +3115,7 @@ async function sendLeadEmail(first, last, phone, email, intent, budget, timeline
 
 // ── Twilio Voice screening ────────────────────────────────────
 const twimlVoice = xml => `<?xml version="1.0" encoding="UTF-8"?><Response>${xml}</Response>`;
-const say = (text, voice='Polly.Joanna') => `<Say voice="${voice}">${text}</Say>`;
+const say = (text, voice='Polly.Joanna-Neural') => `<Say voice="${voice}">${text}</Say>`;
 
 // Step 1: Incoming call — greet and gather caller info
 app.post('/voice', (req, res) => {
@@ -3127,9 +3127,9 @@ app.post('/voice', (req, res) => {
   if (callerNum && ownerNum && callerNum === ownerNum) {
     return res.send(twimlVoice(`
       <Gather input="speech" action="/voice/deal-brief" method="POST" timeout="8" speechTimeout="auto" language="en-US">
-        ${say("Hey Matt. Which deal do you want a briefing on?", 'Polly.Matthew')}
+        ${say("Hey Matt. Which deal do you want a briefing on?", 'Polly.Matthew-Neural')}
       </Gather>
-      ${say("I didn't catch that. Call back and just say the deal name.", 'Polly.Matthew')}
+      ${say("I didn't catch that. Call back and just say the deal name.", 'Polly.Matthew-Neural')}
     `));
   }
 
@@ -3146,7 +3146,7 @@ app.post('/voice/deal-brief', async (req, res) => {
   res.set('Content-Type', 'text/xml');
   const speech = (req.body.SpeechResult || '').trim();
   if (!speech) {
-    return res.send(twimlVoice(say("I didn't catch that. Try again — just say the deal name.", 'Polly.Matthew')));
+    return res.send(twimlVoice(say("I didn't catch that. Try again — just say the deal name.", 'Polly.Matthew-Neural')));
   }
   try {
     const crm = await readCRM();
@@ -3161,7 +3161,7 @@ app.post('/voice/deal-brief', async (req, res) => {
     }
     if (!deal) {
       const dealNames = deals.map(d => d.txName || d.address).join(', ');
-      return res.send(twimlVoice(say(`I couldn't find that deal. Your active deals are: ${dealNames || 'none found'}. Call back and try again.`, 'Polly.Matthew')));
+      return res.send(twimlVoice(say(`I couldn't find that deal. Your active deals are: ${dealNames || 'none found'}. Call back and try again.`, 'Polly.Matthew-Neural')));
     }
 
     // Build the briefing
@@ -3190,13 +3190,13 @@ app.post('/voice/deal-brief', async (req, res) => {
     const closing = `That's your briefing on ${name}. Call back anytime for another update.`;
 
     res.send(twimlVoice(`
-      ${say(briefing, 'Polly.Matthew')}
+      ${say(briefing, 'Polly.Matthew-Neural')}
       <Pause length="1"/>
-      ${say(closing, 'Polly.Matthew')}
+      ${say(closing, 'Polly.Matthew-Neural')}
     `));
   } catch(e) {
     console.error('Deal brief error:', e.message);
-    res.send(twimlVoice(say("Something went wrong pulling that deal. Try again in a moment.", 'Polly.Matthew')));
+    res.send(twimlVoice(say("Something went wrong pulling that deal. Try again in a moment.", 'Polly.Matthew-Neural')));
   }
 });
 
