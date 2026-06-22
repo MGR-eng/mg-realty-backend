@@ -3120,12 +3120,84 @@ const say = (text, voice='Polly.Joanna') => `<Say voice="${voice}">${text}</Say>
 // Step 1: Incoming call — greet and gather caller info
 app.post('/voice', (req, res) => {
   res.set('Content-Type', 'text/xml');
+  const callerNum = (req.body.From || '').replace(/\D/g,'');
+  const ownerNum = (process.env.OWNER_PHONE || '').replace(/\D/g,'');
+
+  // Matt calling his own number → Deal Briefing mode
+  if (callerNum && ownerNum && callerNum === ownerNum) {
+    return res.send(twimlVoice(`
+      <Gather input="speech" action="/voice/deal-brief" method="POST" timeout="8" speechTimeout="auto" language="en-US">
+        ${say("Hey Matt. Which deal do you want a briefing on?", 'Polly.Matthew')}
+      </Gather>
+      ${say("I didn't catch that. Call back and just say the deal name.", 'Polly.Matthew')}
+    `));
+  }
+
   res.send(twimlVoice(`
     <Gather input="speech" action="/voice/screen" method="POST" timeout="8" speechTimeout="auto" language="en-US">
       ${say("Hi, you've reached MG Realty. I'm Matt's assistant — can I get your name and the reason for your call?")}
     </Gather>
     ${say("I didn't catch that. Please call back and I'll make sure Matt gets your message.")}
   `));
+});
+
+// Deal Briefing: Matt called in and named a deal
+app.post('/voice/deal-brief', async (req, res) => {
+  res.set('Content-Type', 'text/xml');
+  const speech = (req.body.SpeechResult || '').trim();
+  if (!speech) {
+    return res.send(twimlVoice(say("I didn't catch that. Try again — just say the deal name.", 'Polly.Matthew')));
+  }
+  try {
+    const crm = await readCRM();
+    const deals = (crm.deals || []).filter(d => d.txStage);
+    // Fuzzy match deal by address or name
+    const query = speech.toLowerCase();
+    let deal = deals.find(d => (d.address||'').toLowerCase().includes(query) || (d.txName||'').toLowerCase().includes(query));
+    if (!deal) {
+      // Try word-by-word match
+      const words = query.split(' ').filter(w => w.length > 3);
+      deal = deals.find(d => words.some(w => (d.address||d.txName||'').toLowerCase().includes(w)));
+    }
+    if (!deal) {
+      const dealNames = deals.map(d => d.txName || d.address).join(', ');
+      return res.send(twimlVoice(say(`I couldn't find that deal. Your active deals are: ${dealNames || 'none found'}. Call back and try again.`, 'Polly.Matthew')));
+    }
+
+    // Build the briefing
+    const name = deal.txName || deal.address;
+    const stage = deal.txStage || 'Active';
+    const closeDate = deal.closeDate ? `closes ${new Date(deal.closeDate+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric'})}` : 'no close date set';
+    const commission = deal.commissionPct ? `${deal.commissionPct}% commission` : '';
+    const price = deal.salePrice ? `$${Number(deal.salePrice).toLocaleString()}` : '';
+
+    // Count open checklist items
+    const checklist = deal.checklist || {};
+    const openItems = Object.entries(checklist).filter(([k,v]) => !v).map(([k]) => k.replace(/_/g,' '));
+    const checklistSay = openItems.length
+      ? `You have ${openItems.length} open checklist item${openItems.length>1?'s':''}: ${openItems.slice(0,3).join(', ')}${openItems.length>3?' and more':''}.`
+      : 'All checklist items are complete.';
+
+    // Key dates
+    const dates = [];
+    if (deal.inspectionDeadline) dates.push(`inspection deadline ${deal.inspectionDeadline}`);
+    if (deal.contingencyRemoval) dates.push(`contingency removal ${deal.contingencyRemoval}`);
+    if (deal.loanApprovalDeadline) dates.push(`loan approval ${deal.loanApprovalDeadline}`);
+
+    const dateSay = dates.length ? `Upcoming: ${dates.slice(0,2).join(', ')}.` : '';
+
+    const briefing = `${name}. Stage: ${stage}. ${price ? price + ',' : ''} ${closeDate}. ${commission}. ${checklistSay} ${dateSay}`.trim();
+    const closing = `That's your briefing on ${name}. Call back anytime for another update.`;
+
+    res.send(twimlVoice(`
+      ${say(briefing, 'Polly.Matthew')}
+      <Pause length="1"/>
+      ${say(closing, 'Polly.Matthew')}
+    `));
+  } catch(e) {
+    console.error('Deal brief error:', e.message);
+    res.send(twimlVoice(say("Something went wrong pulling that deal. Try again in a moment.", 'Polly.Matthew')));
+  }
 });
 
 // Step 2: Screen the caller with Claude
@@ -3260,6 +3332,41 @@ app.post('/sms', async (req, res) => {
     const inboundMsg = (req.body.Body || '').trim();
     const from = req.body.From || '';
     console.log(`SMS from ${from}: ${inboundMsg}`);
+
+    // ── Inbound showing request from a CLIENT (not Matt) ─────
+    if (from !== process.env.OWNER_PHONE) {
+      const showingKeywords = /\b(showing|show|view|tour|see the|visit|schedule|appointment|available to see|want to see|interested in seeing|can i see|can we see)\b/i;
+      if (showingKeywords.test(inboundMsg)) {
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml("Thanks for reaching out! Matt will be in touch shortly to confirm your showing. 🏠"));
+        // Notify Matt
+        const ownerPhone = process.env.OWNER_PHONE;
+        if (ownerPhone) {
+          (async () => {
+            try {
+              // Check if this is a known lead
+              const crmCheck = await readCRM();
+              const knownLead = crmCheck.leads.find(l => l.phone && l.phone.replace(/\D/g,'') === from.replace(/\D/g,''));
+              const whoText = knownLead ? `${knownLead.first} ${knownLead.last||''}`.trim() : `Unknown (${from})`;
+              await sendSMS(ownerPhone, `🏠 Showing Request!\n${whoText} texted:\n"${inboundMsg}"\n\nReply: "schedule showing for ${knownLead?.first||'[name]'} at [address] on [day] at [time]"`);
+            } catch(e) { console.error('Showing notify error:', e.message); }
+          })();
+        }
+        return;
+      }
+
+      // Unknown number, no showing keyword — treat as general inquiry, notify Matt
+      res.set('Content-Type', 'text/xml');
+      res.send(twiml("Hi! Thanks for reaching out to MG Realty. Matt will get back to you shortly."));
+      const ownerPhone = process.env.OWNER_PHONE;
+      if (ownerPhone) {
+        const crmCheck2 = await readCRM().catch(() => ({ leads: [] }));
+        const knownLead2 = crmCheck2.leads.find(l => l.phone && l.phone.replace(/\D/g,'') === from.replace(/\D/g,''));
+        const who2 = knownLead2 ? `${knownLead2.first} ${knownLead2.last||''}`.trim() : `Unknown (${from})`;
+        sendSMS(ownerPhone, `💬 Text from ${who2}:\n"${inboundMsg}"`).catch(() => {});
+      }
+      return;
+    }
 
     // ── ADD command: save most recent pending Ace call to CRM ─
     if (inboundMsg.toUpperCase() === 'ADD' && from === process.env.OWNER_PHONE) {
@@ -3620,6 +3727,12 @@ WEB SEARCH (use when Matt asks about current news, headlines, rates, prices, eve
 PROPERTY LOOKUP (use when Matt asks about a specific property address, or asks "what sold last in [area]", "give me info on [address]", "pull the listing for [address]", "what's [address] worth", "last sold in [neighborhood]"):
 {"action":"property_lookup","address":"1234 Sunset Blvd, West Hollywood, CA","query":"1234 Sunset Blvd West Hollywood CA zillow redfin"}
 → Extracts address from Matt's message. If no specific address given, use his question as the query (e.g. "last house sold in west hollywood"). Always include city/state if mentioned.
+CMA REQUEST (use when Matt asks what to LIST a property at, wants comps, asks about pricing strategy, or says "CMA for [address]", "what should I list [address] at", "comps for [area]", "what's the market value of [address]"):
+{"action":"cma_request","address":"1234 Sunset Blvd, West Hollywood, CA","area":"West Hollywood"}
+→ Different from property_lookup — this is about LISTING PRICE and SOLD COMPS, not current listing info.
+SCHEDULE SHOWING (use when Matt says "schedule a showing", "book a showing", "set up a showing for [lead] at [address]"):
+{"action":"schedule_showing","leadName":"Sarah Kim","address":"1234 Sunset Blvd, West Hollywood, CA","preferredDate":"YYYY-MM-DD","preferredTime":"10:00 AM"}
+→ Matt is requesting to schedule a showing for one of his leads.
 CRM QUERY: {"action":"crm_query","question":"when does Alsace close","topic":"transaction"}
 → Use when Matt asks a specific question about a deal, lead, or contact from his CRM. Examples: "when does Alsace close", "what's my commission on Tocco", "who's the escrow officer on Alsace", "what stage is Kim in", "what's Sarah's phone number", "how many active deals do I have". Always use this — never guess from memory.
 NO ACTION: {"action":"none"}
@@ -3842,6 +3955,104 @@ Format as clean text for SMS — no markdown, use line breaks. Lead with the add
               try { await sendSMS(callerPhone, `⚠️ Couldn't pull property data right now: ${e.message}`); } catch(_) {}
             }
           })();
+        } else if (action.action === 'cma_request') {
+          const cmaAddress = action.address || inboundMsg;
+          const cmaArea = action.area || cmaAddress;
+          reply = `🏡 Pulling comps for ${cmaAddress}...`;
+          const callerPhone = from;
+          (async () => {
+            try {
+              const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+              // Search for recently sold comps
+              const soldQuery = `${cmaArea} recently sold homes 2025 2026 sold price zillow redfin`;
+              const activeQuery = `${cmaAddress} active listings for sale price per sqft`;
+              const [soldRes, activeRes] = await Promise.all([
+                fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(soldQuery)}&count=5`, { headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' } }).then(r => r.json()),
+                fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(activeQuery)}&count=5`, { headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' } }).then(r => r.json())
+              ]);
+              const soldSnippets = (soldRes.web?.results || []).map(r => `${r.title}: ${r.description}`).join('\n');
+              const activeSnippets = (activeRes.web?.results || []).map(r => `${r.title}: ${r.description}`).join('\n');
+
+              const cmaResult = await anthropic.messages.create({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 500,
+                messages: [{ role: 'user', content: `You are a real estate pricing expert helping agent Matt Golden with a CMA (Comparative Market Analysis) for ${cmaAddress}.
+
+Sold comp data:
+${soldSnippets}
+
+Active listing data:
+${activeSnippets}
+
+Based on this data, provide a concise pricing recommendation:
+- Suggested list price range
+- Key comps that support it (price, beds/baths if available, $/sqft if available)
+- One sentence on market conditions
+- Any caveats
+
+Keep it under 300 characters for SMS. Be specific with dollar amounts. Format for easy reading.` }]
+              });
+
+              const cmaReply = cmaResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+              await sendSMS(callerPhone, `📊 CMA — ${cmaAddress}\n\n${cmaReply}`);
+            } catch(e) {
+              console.error('CMA error:', e.message);
+              try { await sendSMS(callerPhone, `⚠️ CMA failed: ${e.message}`); } catch(_) {}
+            }
+          })();
+
+        } else if (action.action === 'schedule_showing') {
+          const showLead = crm.leads.find(l => {
+            const name = `${l.first} ${l.last||''}`.toLowerCase();
+            return name.includes((action.leadName||'').toLowerCase().split(' ')[0]);
+          });
+          const showAddress = action.address || '';
+          const showDate = action.preferredDate || '';
+          const showTime = action.preferredTime || '';
+          const callerPhone = from;
+
+          if (!showLead) {
+            reply = `Couldn't find ${action.leadName} in your leads. Check the name and try again.`;
+          } else {
+            reply = `📅 Scheduling showing for ${showLead.first} ${showLead.last||''} at ${showAddress}...`;
+            (async () => {
+              try {
+                // Create appointment in CRM
+                const freshCrm = await readCRM();
+                const appt = {
+                  id: 'appt_' + Date.now(),
+                  leadId: showLead.id,
+                  leadName: `${showLead.first} ${showLead.last||''}`.trim(),
+                  type: 'showing',
+                  address: showAddress,
+                  date: showDate,
+                  time: showTime,
+                  status: 'confirmed',
+                  createdAt: new Date().toISOString(),
+                  notes: `Scheduled via SMS`
+                };
+                if (!freshCrm.appointments) freshCrm.appointments = [];
+                freshCrm.appointments.push(appt);
+                // Also log activity
+                freshCrm.activities = freshCrm.activities || [];
+                freshCrm.activities.unshift({ id: 'act_'+Date.now(), leadId: showLead.id, leadName: appt.leadName, type: 'showing', outcome: 'scheduled', date: today2, notes: `Showing at ${showAddress} on ${showDate} ${showTime}` });
+                await writeCRM(freshCrm);
+
+                // Text the lead if they have a phone number
+                if (showLead.phone) {
+                  const dateStr = showDate ? new Date(showDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}) : 'TBD';
+                  await sendSMS(showLead.phone, `Hi ${showLead.first}! This is Matt Golden from MG Realty. I've scheduled a showing for you at ${showAddress} on ${dateStr}${showTime ? ' at ' + showTime : ''}. Reply to confirm or let me know if you need to reschedule. See you then! 🏠`);
+                  await sendSMS(callerPhone, `✅ Showing scheduled!\n${showLead.first} ${showLead.last||''} — ${showAddress}\n${showDate} ${showTime}\nText sent to ${showLead.phone}`);
+                } else {
+                  await sendSMS(callerPhone, `✅ Showing logged!\n${showLead.first} ${showLead.last||''} — ${showAddress}\n${showDate} ${showTime}\n(No phone on file — couldn't text them)`);
+                }
+              } catch(e) {
+                console.error('Schedule showing error:', e.message);
+                try { await sendSMS(callerPhone, `⚠️ Showing failed to schedule: ${e.message}`); } catch(_) {}
+              }
+            })();
+          }
+
         } else if (action.action === 'send_digest') {
           const overdue = crm.leads.filter(l => l.temp !== 'done' && l.followup && l.followup < today2);
           const dueToday = crm.leads.filter(l => l.temp !== 'done' && l.followup === today2);
@@ -6682,6 +6893,52 @@ Return ONLY valid JSON: {"subject":"...","body":"..."}`;
   } catch(e) {
     console.error('Newsletter generate error:', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Neighborhood Morning Brief ────────────────────────────────
+app.post('/api/neighborhood-brief', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const farmAreas = (crm.settings?.farmAreas || []);
+    const areas = farmAreas.length ? farmAreas : ['West Hollywood CA', 'Silver Lake Los Angeles CA', 'Los Feliz Los Angeles CA'];
+
+    const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    // Search each area in parallel
+    const searches = await Promise.all(areas.map(area =>
+      fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(`${area} real estate new listings price reduction just sold ${new Date().getFullYear()}`)}&count=5`, {
+        headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' }
+      }).then(r => r.json()).then(d => ({
+        area,
+        snippets: (d.web?.results || []).map(r => `${r.title}: ${r.description}`).join('\n')
+      })).catch(() => ({ area, snippets: 'No data available' }))
+    ));
+
+    const briefResult = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: `You are writing a morning market brief for real estate agent Matt Golden in Los Angeles. Today is ${today}.
+
+Data by neighborhood:
+${searches.map(s => `=== ${s.area} ===\n${s.snippets}`).join('\n\n')}
+
+Write a concise morning brief (under 500 chars total for SMS). For each area that has news:
+- New listings or notable price reductions
+- Recent sales and price trends
+- Any market shifts worth noting
+
+Format as a punchy text message. Lead with the most important item. Skip areas with no news. Sign off with "— Your Morning Brief 🏠"` }]
+    });
+
+    const brief = briefResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    const ownerPhone = process.env.OWNER_PHONE;
+    if (ownerPhone) await sendSMS(ownerPhone, brief);
+    res.json({ ok: true, brief });
+  } catch(e) {
+    console.error('Neighborhood brief error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
