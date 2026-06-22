@@ -3356,7 +3356,7 @@ app.post('/sms', async (req, res) => {
           } catch(e) { console.error('OH lead capture error:', e.message); }
         })();
         res.set('Content-Type', 'text/xml');
-        res.send(twiml(`Thanks for stopping by! 🏠 I'm Ace, Matt's assistant. Love the house? Matt can help you move fast. He'll be in touch shortly — or call/text him at (323) 919-7539!`));
+        res.send(twiml(`Thanks for stopping by! 🏠 I'm Ace, Matt's assistant. Love the house? Matt can help you move fast. He'll be in touch shortly — or call/text him at (323) 688-3855!`));
         return;
       }
 
@@ -7385,7 +7385,7 @@ Generate TWO versions of outreach — separated by clear headers:
 A personalized SMS (under 160 chars). Conversational, not salesy. Reference something specific about their situation (${type === 'expired' ? 'their listing expired without selling' : 'they\'re trying to sell on their own'}). From Matt Golden, MG Realty LA. No hard pitch — just open a conversation.
 
 ===EMAIL===
-Subject line + email body (under 200 words). Acknowledge what they're doing, show empathy, offer specific value (free CMA, wider buyer pool, negotiation expertise). Warm but confident. Not a template — feels handwritten. Sign off as Matt Golden, MG Realty, (323) 919-7539.
+Subject line + email body (under 200 words). Acknowledge what they're doing, show empathy, offer specific value (free CMA, wider buyer pool, negotiation expertise). Warm but confident. Not a template — feels handwritten. Sign off as Matt Golden, MG Realty, (323) 688-3855.
 
 Be specific. Reference the property, the neighborhood, the market if possible.` }]
     });
@@ -7896,7 +7896,7 @@ Generate ALL of the following sections. Use EXACTLY these section headers:
 A complete video script for the ${format}. Include:
 - [HOOK] opening line (use Hook #1 from above)
 - [BODY] 3-4 key points or story beats (labeled 1, 2, 3...)
-- [CTA] closing call to action (DM, follow, link in bio, or call/text Matt at (323) 919-7539)
+- [CTA] closing call to action (DM, follow, link in bio, or call/text Matt at (323) 688-3855)
 Keep total script under 150 words for reels/stories, 250 words for YouTube.
 
 ===CAPTION===
