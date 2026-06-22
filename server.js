@@ -3334,7 +3334,8 @@ app.post('/sms', async (req, res) => {
     console.log(`SMS from ${from}: ${inboundMsg}`);
 
     // ── Inbound showing request from a CLIENT (not Matt) ─────
-    if (from !== process.env.OWNER_PHONE) {
+    const isOwner = from.replace(/\D/g,'') === (process.env.OWNER_PHONE || '').replace(/\D/g,'');
+    if (!isOwner) {
       const showingKeywords = /\b(showing|show|view|tour|see the|visit|schedule|appointment|available to see|want to see|interested in seeing|can i see|can we see)\b/i;
       if (showingKeywords.test(inboundMsg)) {
         res.set('Content-Type', 'text/xml');
@@ -3369,7 +3370,7 @@ app.post('/sms', async (req, res) => {
     }
 
     // ── ADD command: save most recent pending Ace call to CRM ─
-    if (inboundMsg.toUpperCase() === 'ADD' && from === process.env.OWNER_PHONE) {
+    if (inboundMsg.toUpperCase() === 'ADD' && isOwner) {
       if (pendingAceCalls.length === 0) {
         res.set('Content-Type', 'text/xml');
         return res.send(twiml('No pending calls to add. Call came in more than 24 hours ago, or nothing is waiting.'));
@@ -3388,7 +3389,7 @@ app.post('/sms', async (req, res) => {
     // ── MMS: photo/image received → scan as invoice/doc, file to Drive ──
     const mediaUrl = req.body.MediaUrl0;
     const mediaType = req.body.MediaContentType0 || 'image/jpeg';
-    if (mediaUrl && from === process.env.OWNER_PHONE) {
+    if (mediaUrl && isOwner) {
       // Detect "personal" or "work" prefix → Finance receipt flow
       const msgLower = inboundMsg.toLowerCase().trim();
       const isFinanceReceipt = msgLower.startsWith('personal') || msgLower.startsWith('work');
