@@ -3282,6 +3282,81 @@ app.post('/sms', async (req, res) => {
     const mediaUrl = req.body.MediaUrl0;
     const mediaType = req.body.MediaContentType0 || 'image/jpeg';
     if (mediaUrl && from === process.env.OWNER_PHONE) {
+      // Detect "personal" or "work" prefix → Finance receipt flow
+      const msgLower = inboundMsg.toLowerCase().trim();
+      const isFinanceReceipt = msgLower.startsWith('personal') || msgLower.startsWith('work');
+      if (isFinanceReceipt) {
+        const bucket = msgLower.startsWith('personal') ? 'personal' : 'work';
+        const hint = inboundMsg.replace(/^(personal|work)[,\s]*/i, '').trim();
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml(`📸 Got it — scanning ${bucket} receipt...`));
+        (async () => {
+          try {
+            const twilioAuth = 'Basic ' + Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+            const imgRes = await fetch(mediaUrl, { headers: { Authorization: twilioAuth } });
+            const imgBuffer = await imgRes.buffer();
+            const b64 = imgBuffer.toString('base64');
+
+            // Work categories skew toward business; personal toward lifestyle
+            const catOptions = bucket === 'work'
+              ? 'Marketing|Mileage / Gas|Office Supplies|Technology|Professional Development|Client Entertainment|Photography / Media|Signs / Lockboxes|MLS / Dues|Other'
+              : 'Groceries|Dining|Utilities|Subscriptions|Mileage / Gas|Technology|Other';
+
+            const scanResult = await anthropic.messages.create({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 500,
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'text', text: `Extract receipt/invoice details for a real estate agent's ${bucket} expense tracker.${hint ? ` Context: "${hint}"` : ''}
+
+Return ONLY valid JSON:
+{
+  "vendor": "store or company name",
+  "amount": 0.00,
+  "date": "YYYY-MM-DD",
+  "description": "what this is for (short)",
+  "category": "one of: ${catOptions}",
+  "notes": "any notable line items or details"
+}` },
+                  { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } }
+                ]
+              }]
+            });
+
+            const rawText = scanResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error('Could not parse receipt');
+            const doc = JSON.parse(jsonMatch[0]);
+
+            // Save to CRM expenses
+            const crmSave = await readCRM();
+            if (!crmSave.expenses) crmSave.expenses = [];
+            crmSave.expenses.push({
+              id: 'exp' + Date.now(),
+              date: doc.date || new Date().toISOString().slice(0,10),
+              amt: parseFloat(doc.amount) || 0,
+              category: doc.category || 'Other',
+              desc: doc.description || hint || '',
+              vendor: doc.vendor || '',
+              notes: doc.notes || '',
+              bucket: bucket,
+              source: 'mms_scan',
+              status: 'paid'
+            });
+            await writeCRM(crmSave);
+
+            const amtStr = doc.amount ? `$${parseFloat(doc.amount).toFixed(2)}` : '?';
+            const emoji = bucket === 'personal' ? '🏠' : '💼';
+            await sendSMS(from, `${emoji} ${bucket.charAt(0).toUpperCase()+bucket.slice(1)} expense logged!\n${doc.vendor||'Vendor'} — ${amtStr}\n${doc.description||doc.category||''}\nCheck Finance → ${bucket === 'personal' ? 'Personal' : 'Work'}`);
+          } catch(err) {
+            console.error('Finance MMS scan error:', err.message);
+            try { await sendSMS(from, `⚠️ Couldn't scan that receipt: ${err.message}`); } catch(_) {}
+          }
+        })();
+        return;
+      }
+
       res.set('Content-Type', 'text/xml');
       res.send(twiml('📸 Got it — scanning now...'));
 

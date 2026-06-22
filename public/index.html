@@ -1226,11 +1226,21 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="tba">
       <button class="btn" onclick="financeTab('expenses')" id="ftab-expenses" style="background:var(--accent);color:#fff">Expenses</button>
       <button class="btn" onclick="financeTab('invoices')" id="ftab-invoices">Invoices</button>
+      <label class="btn" style="cursor:pointer;background:rgba(34,197,94,0.08);color:#16a34a;border-color:rgba(34,197,94,0.3)" title="Take a photo of a receipt — AI reads it and files it under Work or Personal">
+        <i class="ti ti-camera"></i> Scan Receipt
+        <input type="file" id="finScanFileInput" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp" capture="environment" style="display:none" onchange="handleFinScanFile(this)">
+      </label>
     </div>
   </div>
   <!-- Expenses sub-pane -->
   <div id="finance-expenses" class="content">
     <div style="padding:16px 20px 0">
+      <!-- Work / Personal bucket tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button id="fbucket-work" onclick="switchFinBucket('work')" style="padding:6px 18px;border-radius:99px;font-size:13px;font-weight:600;border:1.5px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer">💼 Work</button>
+        <button id="fbucket-personal" onclick="switchFinBucket('personal')" style="padding:6px 18px;border-radius:99px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer">🏠 Personal</button>
+        <span style="margin-left:auto;font-size:11px;color:var(--text3);align-self:center" id="exp-filter-total"></span>
+      </div>
       <!-- Stats row -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
         <div class="stat-card"><div class="stat-val" id="exp-total-month">$0</div><div class="stat-lbl">This month</div></div>
@@ -1240,7 +1250,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       </div>
       <!-- Add expense form -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Log Expense</div>
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px" id="exp-form-label">Log Work Expense</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
           <div class="fgg"><label>Date</label><input id="exp-date" type="date"></div>
           <div class="fgg"><label>Category</label>
@@ -1254,26 +1264,30 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
               <option value="Photography / Media">Photography / Media</option>
               <option value="Signs / Lockboxes">Signs / Lockboxes</option>
               <option value="MLS / Dues">MLS / Dues</option>
+              <option value="Groceries">Groceries</option>
+              <option value="Dining">Dining</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Subscriptions">Subscriptions</option>
               <option value="Other">Other</option>
             </select>
           </div>
           <div class="fgg"><label>Amount ($)</label><input id="exp-amount" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="fgg"><label>Vendor</label><input id="exp-vendor" placeholder="e.g. Trader Joe's"></div>
           <div class="fgg"><label>Description</label><input id="exp-desc" placeholder="e.g. Instagram ads — Alsace listing"></div>
-          <div class="fgg"><label>Link to lead/deal</label>
+          <div class="fgg" id="exp-link-wrap"><label>Link to lead/deal</label>
             <select id="exp-link">
               <option value="">None</option>
             </select>
           </div>
           <div class="fgg" style="align-self:end">
-            <button class="btn btn-gold" style="width:100%" onclick="saveExpense()"><i class="ti ti-plus"></i> Add Expense</button>
+            <button class="btn btn-gold" style="width:100%" onclick="saveExpense()"><i class="ti ti-plus"></i> Add</button>
           </div>
         </div>
       </div>
       <!-- Filter row -->
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-        <select id="exp-filter-cat" onchange="renderExpenses()" style="width:auto;font-size:12px"><option value="">All categories</option><option value="Marketing">Marketing</option><option value="Mileage / Gas">Mileage / Gas</option><option value="Office Supplies">Office Supplies</option><option value="Technology">Technology</option><option value="Professional Development">Professional Development</option><option value="Client Entertainment">Client Entertainment</option><option value="Photography / Media">Photography / Media</option><option value="Signs / Lockboxes">Signs / Lockboxes</option><option value="MLS / Dues">MLS / Dues</option><option value="Other">Other</option></select>
+        <select id="exp-filter-cat" onchange="renderExpenses()" style="width:auto;font-size:12px"><option value="">All categories</option><option value="Marketing">Marketing</option><option value="Mileage / Gas">Mileage / Gas</option><option value="Office Supplies">Office Supplies</option><option value="Technology">Technology</option><option value="Professional Development">Professional Development</option><option value="Client Entertainment">Client Entertainment</option><option value="Photography / Media">Photography / Media</option><option value="Signs / Lockboxes">Signs / Lockboxes</option><option value="MLS / Dues">MLS / Dues</option><option value="Groceries">Groceries</option><option value="Dining">Dining</option><option value="Utilities">Utilities</option><option value="Subscriptions">Subscriptions</option><option value="Other">Other</option></select>
         <select id="exp-filter-period" onchange="renderExpenses()" style="width:auto;font-size:12px"><option value="">All time</option><option value="thismonth">This month</option><option value="lastmonth">Last month</option><option value="ytd">This year</option></select>
-        <span style="margin-left:auto;font-size:11px;color:var(--text3)" id="exp-filter-total"></span>
       </div>
     </div>
     <div id="expense-list" style="padding:0 20px 20px"></div>
@@ -2328,6 +2342,48 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
     <div id="scanDocStatus" style="display:none;text-align:center;padding:24px;color:var(--amber)"><i class="ti ti-loader-2"></i> Scanning document…</div>
     <!-- Results -->
     <div id="scanDocResults" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ── Finance Scan Receipt Modal ── -->
+<div id="finScanBackdrop" onclick="closeFinScan()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200"></div>
+<div id="finScanModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(540px,95vw);max-height:85vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:16px;z-index:201;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:16px;font-weight:700;color:var(--text1)"><i class="ti ti-camera" style="color:#16a34a;margin-right:6px"></i>Scan Receipt</div>
+      <div id="finScanModalSubtitle" style="font-size:12px;color:var(--text3);margin-top:2px">Filing to: Work</div>
+    </div>
+    <button onclick="closeFinScan()" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;padding:4px">×</button>
+  </div>
+  <div style="padding:20px 24px">
+    <!-- Bucket toggle inside modal -->
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button id="fsBucket-work" onclick="setFinScanBucket('work')" style="padding:5px 16px;border-radius:99px;font-size:12px;font-weight:600;border:1.5px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer">💼 Work</button>
+      <button id="fsBucket-personal" onclick="setFinScanBucket('personal')" style="padding:5px 16px;border-radius:99px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer">🏠 Personal</button>
+    </div>
+    <div id="finScanStatus" style="text-align:center;padding:24px;color:var(--amber)"><i class="ti ti-loader-2"></i> Reading receipt…</div>
+    <div id="finScanResults" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Vendor</label><input id="fsr-vendor" class="form-control" style="margin-top:4px"></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Amount</label><input id="fsr-amount" class="form-control" type="number" step="0.01" style="margin-top:4px"></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Date</label><input id="fsr-date" class="form-control" type="date" style="margin-top:4px"></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Description</label><input id="fsr-description" class="form-control" style="margin-top:4px"></div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Category</label>
+          <select id="fsr-category" class="form-control" style="margin-top:4px">
+            <option>Marketing</option><option>Mileage / Gas</option><option>Office Supplies</option><option>Technology</option>
+            <option>Professional Development</option><option>Client Entertainment</option><option>Photography / Media</option>
+            <option>Signs / Lockboxes</option><option>MLS / Dues</option><option>Groceries</option><option>Dining</option>
+            <option>Utilities</option><option>Subscriptions</option><option>Other</option>
+          </select>
+        </div>
+        <div><label style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Items / Notes</label><input id="fsr-notes" class="form-control" style="margin-top:4px"></div>
+      </div>
+      <div id="finScanDriveStatus" style="font-size:12px;color:var(--text3);margin-bottom:12px"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gold" style="flex:1" onclick="saveFinScanExpense()"><i class="ti ti-check"></i> Save Expense</button>
+        <button class="btn" onclick="closeFinScan()">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -4810,6 +4866,10 @@ function delVendor(id){if(confirm('Remove this vendor?')){vendors=vendors.filter
 // ── Finance: Expenses & Invoices ─────────────────────────────
 let _invLineCount = 0;
 
+window._finBucket = 'work'; // 'work' | 'personal'
+window._finScanBucket = 'work';
+window._finScanDriveUrl = null;
+
 function financeTab(tab) {
   document.getElementById('finance-expenses').style.display = tab==='expenses'?'':'none';
   document.getElementById('finance-invoices').style.display = tab==='invoices'?'':'none';
@@ -4817,6 +4877,116 @@ function financeTab(tab) {
   document.getElementById('ftab-invoices').style.cssText = tab==='invoices'?'background:var(--accent);color:#fff':'';
   if(tab==='expenses') renderExpenses();
   if(tab==='invoices') renderInvoices();
+}
+
+function switchFinBucket(bucket) {
+  window._finBucket = bucket;
+  const isWork = bucket === 'work';
+  document.getElementById('fbucket-work').style.cssText = isWork
+    ? 'padding:6px 18px;border-radius:99px;font-size:13px;font-weight:600;border:1.5px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer'
+    : 'padding:6px 18px;border-radius:99px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer';
+  document.getElementById('fbucket-personal').style.cssText = !isWork
+    ? 'padding:6px 18px;border-radius:99px;font-size:13px;font-weight:600;border:1.5px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer'
+    : 'padding:6px 18px;border-radius:99px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer';
+  const lbl = document.getElementById('exp-form-label');
+  if (lbl) lbl.textContent = isWork ? 'Log Work Expense' : 'Log Personal Expense';
+  const linkWrap = document.getElementById('exp-link-wrap');
+  if (linkWrap) linkWrap.style.display = isWork ? '' : 'none';
+  renderExpenses();
+}
+
+function setFinScanBucket(bucket) {
+  window._finScanBucket = bucket;
+  const isWork = bucket === 'work';
+  const sub = document.getElementById('finScanModalSubtitle');
+  if (sub) sub.textContent = 'Filing to: ' + (isWork ? 'Work' : 'Personal');
+  document.getElementById('fsBucket-work').style.cssText = isWork
+    ? 'padding:5px 16px;border-radius:99px;font-size:12px;font-weight:600;border:1.5px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer'
+    : 'padding:5px 16px;border-radius:99px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer';
+  document.getElementById('fsBucket-personal').style.cssText = !isWork
+    ? 'padding:5px 16px;border-radius:99px;font-size:12px;font-weight:600;border:1.5px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer'
+    : 'padding:5px 16px;border-radius:99px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer';
+}
+
+function handleFinScanFile(input) {
+  var file = input.files[0]; if (!file) return;
+  window._finScanBucket = window._finBucket; // inherit active tab
+  window._finScanDriveUrl = null;
+
+  // Open modal in loading state
+  document.getElementById('finScanBackdrop').style.display = 'block';
+  document.getElementById('finScanModal').style.display = 'block';
+  document.getElementById('finScanStatus').style.display = 'block';
+  document.getElementById('finScanResults').style.display = 'none';
+  setFinScanBucket(window._finScanBucket);
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var b64 = e.target.result.split(',')[1];
+    var mimeType = file.type || 'image/jpeg';
+
+    // Upload to Drive in background
+    var drivePromise = fetch(BACKEND + '/drive/upload-stream?fileName=' + encodeURIComponent(file.name) + '&mimeType=' + encodeURIComponent(mimeType), {
+      method: 'POST', headers: {'Content-Type': mimeType}, body: file
+    }).then(function(r){ return r.json(); }).then(function(dr){ if(dr.ok) window._finScanDriveUrl = dr.viewUrl || null; }).catch(function(){});
+
+    // Scan the receipt
+    var scanPromise = fetch(BACKEND + '/api/scan-invoice', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ data: b64, mimeType: mimeType, filename: file.name, dealName: '', dealId: '' })
+    }).then(function(r){ return r.json(); });
+
+    Promise.all([drivePromise, scanPromise]).then(function(results){
+      var res = results[1];
+      if (!res.ok) { toast('⚠️ ' + (res.error || 'Could not read receipt')); closeFinScan(); return; }
+      var f = res.fields || {};
+      document.getElementById('fsr-vendor').value = f.vendor || '';
+      document.getElementById('fsr-amount').value = f.amount || '';
+      document.getElementById('fsr-date').value = f.date || new Date().toISOString().slice(0,10);
+      document.getElementById('fsr-description').value = f.description || '';
+      var cat = document.getElementById('fsr-category');
+      if (f.category) { for(var i=0;i<cat.options.length;i++){ if(cat.options[i].value===f.category){cat.selectedIndex=i;break;} } }
+      document.getElementById('fsr-notes').value = f.notes || '';
+      var dEl = document.getElementById('finScanDriveStatus');
+      if (dEl) dEl.textContent = window._finScanDriveUrl ? '📁 Receipt uploaded to Drive' : '';
+      document.getElementById('finScanStatus').style.display = 'none';
+      document.getElementById('finScanResults').style.display = 'block';
+    }).catch(function(err){ toast('⚠️ ' + err.message); closeFinScan(); });
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function closeFinScan() {
+  document.getElementById('finScanBackdrop').style.display = 'none';
+  document.getElementById('finScanModal').style.display = 'none';
+}
+
+function saveFinScanExpense() {
+  var amount = parseFloat(document.getElementById('fsr-amount').value) || 0;
+  var vendor = document.getElementById('fsr-vendor').value.trim();
+  var exp = {
+    id: 'exp' + Date.now(),
+    date: document.getElementById('fsr-date').value || new Date().toISOString().slice(0,10),
+    amt: amount,
+    category: document.getElementById('fsr-category').value,
+    desc: document.getElementById('fsr-description').value.trim(),
+    vendor: vendor,
+    notes: document.getElementById('fsr-notes').value.trim(),
+    bucket: window._finScanBucket || 'work',
+    driveUrl: window._finScanDriveUrl || '',
+    source: 'scan',
+    linkId: ''
+  };
+  if (!window.expenses) window.expenses = [];
+  expenses.push(exp);
+  persistFinance();
+  closeFinScan();
+  toast('✅ ' + (vendor || 'Expense') + ' $' + amount.toFixed(2) + ' saved to ' + (exp.bucket === 'work' ? 'Work' : 'Personal'));
+  if (document.getElementById('finance-expenses') && document.getElementById('finance-expenses').style.display !== 'none') {
+    renderExpenses();
+  }
 }
 
 function loadFinance() {
@@ -4841,7 +5011,9 @@ function saveExpense() {
     date, amt,
     category: document.getElementById('exp-cat').value,
     desc: document.getElementById('exp-desc').value.trim(),
-    linkId: document.getElementById('exp-link').value
+    vendor: (document.getElementById('exp-vendor')||{}).value?.trim() || '',
+    linkId: document.getElementById('exp-link')?.value || '',
+    bucket: window._finBucket || 'work'
   };
   if(editExpenseId) { expenses = expenses.map(e=>e.id===editExpenseId?exp:e); editExpenseId=null; }
   else expenses.push(exp);
@@ -4850,7 +5022,8 @@ function saveExpense() {
   // Reset form
   document.getElementById('exp-amount').value='';
   document.getElementById('exp-desc').value='';
-  document.getElementById('exp-link').value='';
+  if(document.getElementById('exp-vendor')) document.getElementById('exp-vendor').value='';
+  if(document.getElementById('exp-link')) document.getElementById('exp-link').value='';
   document.getElementById('exp-date').value=new Date().toISOString().split('T')[0];
   toast('Expense saved');
 }
@@ -4871,7 +5044,11 @@ function renderExpenses() {
   const period = document.getElementById('exp-filter-period')?.value||'';
   const now = new Date(); const yr=now.getFullYear(); const mo=now.getMonth();
 
-  let filtered = expenses.filter(e=>{
+  const bucket = window._finBucket || 'work';
+  // Expenses without a bucket are treated as 'work' (legacy records)
+  const bucketExpenses = expenses.filter(e => (e.bucket || 'work') === bucket);
+
+  let filtered = bucketExpenses.filter(e=>{
     if(catF && e.category!==catF) return false;
     if(period){
       const d=new Date(e.date+'T00:00:00');
@@ -4882,20 +5059,20 @@ function renderExpenses() {
     return true;
   }).sort((a,b)=>b.date.localeCompare(a.date));
 
-  // Stats
-  const thisMonthTotal = expenses.filter(e=>{ const d=new Date(e.date+'T00:00:00'); return d.getFullYear()===yr&&d.getMonth()===mo; }).reduce((s,e)=>s+e.amt,0);
-  const ytdTotal = expenses.filter(e=>new Date(e.date+'T00:00:00').getFullYear()===yr).reduce((s,e)=>s+e.amt,0);
-  const catTotals = {}; expenses.forEach(e=>{ catTotals[e.category]=(catTotals[e.category]||0)+e.amt; });
+  // Stats — scoped to bucket
+  const thisMonthTotal = bucketExpenses.filter(e=>{ const d=new Date(e.date+'T00:00:00'); return d.getFullYear()===yr&&d.getMonth()===mo; }).reduce((s,e)=>s+e.amt,0);
+  const ytdTotal = bucketExpenses.filter(e=>new Date(e.date+'T00:00:00').getFullYear()===yr).reduce((s,e)=>s+e.amt,0);
+  const catTotals = {}; bucketExpenses.forEach(e=>{ catTotals[e.category]=(catTotals[e.category]||0)+e.amt; });
   const topCat = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
   document.getElementById('exp-total-month').textContent='$'+thisMonthTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   document.getElementById('exp-total-ytd').textContent='$'+ytdTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   document.getElementById('exp-top-cat').textContent=topCat;
-  document.getElementById('exp-count').textContent=expenses.length;
+  document.getElementById('exp-count').textContent=bucketExpenses.length;
   const filteredTotal=filtered.reduce((s,e)=>s+e.amt,0);
   const ftEl=document.getElementById('exp-filter-total');
   if(ftEl) ftEl.textContent=filtered.length?`${filtered.length} entries · $${filteredTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} total`:'';
 
-  if(!filtered.length){ list.innerHTML=`<div class="empty">No expenses yet${catF||period?' for this filter':''}. Log your first one above.</div>`; return; }
+  if(!filtered.length){ list.innerHTML=`<div class="empty">No ${bucket} expenses yet${catF||period?' for this filter':''}. Log your first one above.</div>`; return; }
 
   // Group by month
   const groups={};
@@ -4918,8 +5095,8 @@ function renderExpenses() {
             <i class="ti ${CAT_ICON[e.category]||'ti-tag'}" style="font-size:14px;color:var(--accent)"></i>
           </div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:500">${e.desc||e.category}</div>
-            <div style="font-size:11px;color:var(--text3)">${e.category} · ${e.date}${linked?' · '+linked.first+' '+linked.last:''}
+            <div style="font-size:13px;font-weight:500">${e.vendor||e.desc||e.category}</div>
+            <div style="font-size:11px;color:var(--text3)">${e.desc&&e.vendor?e.desc+' · ':''}${e.category} · ${e.date}${linked?' · '+linked.first+' '+linked.last:''}${e.driveUrl?` · <a href="${e.driveUrl}" target="_blank" style="color:var(--accent)">📁</a>`:''}
             </div>
           </div>
           <div style="font-weight:700;font-size:14px;color:var(--text1);margin-right:8px">$${e.amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
