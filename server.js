@@ -3388,6 +3388,9 @@ WEB SEARCH (use when Matt asks about current news, headlines, rates, prices, eve
 {"action":"web_search","query":"LA real estate headlines June 2026"}
 → Use for: "what are the headlines", "what are rates today", "what's happening in the market", "look up X", "search for Y", any question you can't answer from CRM data alone.
 → Use when Matt asks "what's the market like in [area]?", "pull a market report for [neighborhood]", "what's the current data on [area]", "how's the market in [area]", "what are homes selling for in [area]", etc. Pull neighborhood name from his message.
+PROPERTY LOOKUP (use when Matt asks about a specific property address, or asks "what sold last in [area]", "give me info on [address]", "pull the listing for [address]", "what's [address] worth", "last sold in [neighborhood]"):
+{"action":"property_lookup","address":"1234 Sunset Blvd, West Hollywood, CA","query":"1234 Sunset Blvd West Hollywood CA zillow redfin"}
+→ Extracts address from Matt's message. If no specific address given, use his question as the query (e.g. "last house sold in west hollywood"). Always include city/state if mentioned.
 CRM QUERY: {"action":"crm_query","question":"when does Alsace close","topic":"transaction"}
 → Use when Matt asks a specific question about a deal, lead, or contact from his CRM. Examples: "when does Alsace close", "what's my commission on Tocco", "who's the escrow officer on Alsace", "what stage is Kim in", "what's Sarah's phone number", "how many active deals do I have". Always use this — never guess from memory.
 NO ACTION: {"action":"none"}
@@ -3539,6 +3542,75 @@ ${JSON.stringify(leads.filter(l => l.temp !== 'done').slice(0, 30).map(l => ({
             } catch(e) {
               console.error('Web search SMS error:', e.message);
               try { await sendSMS(callerPhone, `⚠️ Search failed: ${e.message}`); } catch(_) {}
+            }
+          })();
+        } else if (action.action === 'property_lookup') {
+          const propAddress = action.address || inboundMsg;
+          const searchQ = action.query || `${propAddress} site:zillow.com OR site:redfin.com OR site:realtor.com`;
+          reply = `🏠 Pulling property data...`;
+          const callerPhone = from;
+          (async () => {
+            try {
+              // Step 1: search for the property
+              let topUrl = null;
+              let searchSnippets = '';
+              if (process.env.BRAVE_API_KEY) {
+                const sr = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQ)}&count=5`, {
+                  headers: { 'X-Subscription-Token': process.env.BRAVE_API_KEY, Accept: 'application/json' }
+                });
+                if (sr.ok) {
+                  const sd = await sr.json();
+                  const results = sd.web?.results || [];
+                  // Prefer Zillow, Redfin, Realtor
+                  const preferred = results.find(r => r.url.includes('zillow.com') || r.url.includes('redfin.com') || r.url.includes('realtor.com'));
+                  topUrl = preferred?.url || results[0]?.url;
+                  searchSnippets = results.slice(0, 4).map(r => `${r.title}: ${r.description || ''}`).join('\n');
+                }
+              }
+
+              // Step 2: fetch the listing page
+              let pageText = '';
+              if (topUrl) {
+                try {
+                  const pageRes = await fetch(topUrl, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+                    signal: AbortSignal.timeout(8000)
+                  });
+                  const html = await pageRes.text();
+                  // Strip HTML tags and collapse whitespace
+                  pageText = html
+                    .replace(/<script[\s\S]*?<\/script>/gi, '')
+                    .replace(/<style[\s\S]*?<\/style>/gi, '')
+                    .replace(/<[^>]+>/g, ' ')
+                    .replace(/\s{3,}/g, '\n')
+                    .substring(0, 6000);
+                } catch(fe) {
+                  console.warn('Page fetch failed:', fe.message);
+                }
+              }
+
+              // Step 3: Claude extracts and formats property data
+              const context = pageText
+                ? `Page content from ${topUrl}:\n${pageText}`
+                : `Search results:\n${searchSnippets}`;
+
+              const propResult = await anthropic.messages.create({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 500,
+                system: `You are Matt Golden's real estate assistant. Extract property details from the provided data and format them as a clean SMS summary.
+
+Include whatever is available: address, list price, sale price, beds, baths, sqft, lot size, year built, status (active/sold/pending), days on market, last sold date + price, Zestimate, price/sqft, HOA, parking, key features.
+
+Format as clean text for SMS — no markdown, use line breaks. Lead with the address and status. Keep it under 500 chars. If it's a "last sold in area" question, give the most recent sale you found.`,
+                messages: [{ role: 'user', content: `Matt asked: "${inboundMsg}"\n\n${context}` }]
+              });
+
+              const propReply = propResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+              const sourceTag = topUrl ? `\n\nSource: ${topUrl.substring(0, 60)}...` : '';
+              await sendSMS(callerPhone, (propReply + sourceTag).substring(0, 800));
+            } catch(e) {
+              console.error('Property lookup error:', e.message);
+              try { await sendSMS(callerPhone, `⚠️ Couldn't pull property data right now: ${e.message}`); } catch(_) {}
             }
           })();
         } else if (action.action === 'send_digest') {
