@@ -4069,26 +4069,15 @@ ${JSON.stringify(leads.filter(l => l.temp !== 'done').slice(0, 30).map(l => ({
           const callerPhone = from;
           (async () => {
             try {
-              // Search with Brave
-              let searchContext = '';
-              if (process.env.BRAVE_API_KEY) {
-                const sr = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(searchQuery)}&count=5&freshness=pw`, {
-                  headers: { 'X-Subscription-Token': process.env.BRAVE_API_KEY, Accept: 'application/json' }
-                });
-                if (sr.ok) {
-                  const sd = await sr.json();
-                  const results = (sd.web?.results || []).slice(0, 5).map(r => `${r.title}: ${r.description || ''} (${r.url})`).join('\n');
-                  searchContext = results ? `\n\nSearch results:\n${results}` : '';
-                }
-              }
-              // Ask Claude to synthesize
-              const wsResult = await anthropic.messages.create({
-                model: 'claude-haiku-4-5-20251001',
-                max_tokens: 400,
-                system: `You are Matt Golden's AI assistant. Answer his question directly using the search results provided. Be concise — this is an SMS reply, so keep it under 400 chars. Use plain text, no markdown.${searchContext}`,
-                messages: [{ role: 'user', content: inboundMsg }]
-              });
-              const wsReply = wsResult.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+              // Use Claude's native web search tool — gets real live data
+              const wsMsg = await anthropic.messages.create({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 1024,
+                tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+                system: `You are Ace, Matt Golden's AI assistant. Matt texted you a question. Search the web and answer it directly with the actual information found. Be concise — this is an SMS reply so keep it under 450 characters. Use plain text only, no markdown, no bullet points. Lead with the answer, skip preamble like "based on search results".`,
+                messages: [{ role: 'user', content: searchQuery }]
+              }, { headers: { 'anthropic-beta': 'web-search-2025-03-05' } });
+              const wsReply = wsMsg.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
               await sendSMS(callerPhone, wsReply.substring(0, 600));
             } catch(e) {
               console.error('Web search SMS error:', e.message);
