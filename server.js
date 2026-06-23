@@ -1861,6 +1861,27 @@ async function executeSmsAction(action, crmSnapshot) {
       });
       modified = true;
     }
+  } else if (action.action === 'log_mileage') {
+    const IRS_RATE = 0.70; // 2025 IRS standard mileage rate
+    const miles = parseFloat(action.miles) || 0;
+    const deduction = parseFloat((miles * IRS_RATE).toFixed(2));
+    const expense = {
+      id: 'exp' + Date.now(),
+      date: action.date || today,
+      amt: deduction,
+      category: 'Mileage / Gas',
+      desc: action.purpose || action.destination || 'Business miles',
+      vendor: '',
+      notes: `${miles} miles @ $${IRS_RATE}/mi${action.destination ? ' — ' + action.destination : ''}`,
+      bucket: 'work',
+      miles: miles,
+      irsRate: IRS_RATE,
+      source: 'sms_mileage',
+      status: 'paid'
+    };
+    crm.expenses = crm.expenses || [];
+    crm.expenses.push(expense);
+    modified = true;
   } else if (action.action === 'log_call') {
     const lead = findLead(crm, action.lead);
     if (lead) {
@@ -3912,6 +3933,9 @@ RENT VS BUY (use when Matt or a client asks "rent vs buy", "should I buy or rent
 VIDEO HOOK MACHINE (use when Matt says "hook", "video hook", "write me hooks", "content idea", "reel idea", "script for", "video about"):
 {"action":"video_hooks","topic":"[Matt's video topic or idea]","format":"reel"}
 → format options: reel, story, tiktok, youtube, carousel. Returns 5 hooks + full script + caption + hashtags.
+LOG MILEAGE (use when Matt mentions miles driven, driving to a showing/meeting/client, or says "drove", "miles", "mileage"):
+{"action":"log_mileage","miles":14,"purpose":"showing at 456 Oak Ave","destination":"456 Oak Ave, Silver Lake","date":"2026-06-23"}
+→ Extract miles (number), purpose (what it was for), destination (address if mentioned). IRS rate ($0.70/mile) is auto-applied. date defaults to today.
 LOG CALL (use when Matt says "called", "just called", "spoke with", "left voicemail", "no answer", "talked to", "got off the phone with", "rang", "dialed"):
 {"action":"log_call","lead":"Sarah Kim","outcome":"connected","notes":"Very interested in Silver Lake, wants to see 2-beds under $800K. Sending listings.","followupDate":"2026-06-25","followupMethod":"call","temp":"hot","stage":"active","direction":"outbound"}
 → outcome options: connected, voicemail, no_answer, left_message. temp options: hot, warm, cold (only set if call revealed new info). stage only set if it changed. followupDate in YYYY-MM-DD. Extract as much as Matt tells you. If he just says "called Sarah, left voicemail" that's enough — outcome=voicemail, no notes needed.
@@ -4358,7 +4382,7 @@ Use real numbers. If snippets are thin, use your market knowledge and say so bri
 
         } else if (action.action !== 'none') {
           // Actions that don't need an existing lead — always succeed
-          const noLookupActions = ['add_lead', 'create_task', 'create_appointment', 'create_calendar_event', 'send_email_template', 'log_expense', 'send_digest', 'log_call'];
+          const noLookupActions = ['add_lead', 'create_task', 'create_appointment', 'create_calendar_event', 'send_email_template', 'log_expense', 'send_digest', 'log_call', 'log_mileage'];
           const result = await executeSmsAction(action, crm);
           if (!result.ok && !noLookupActions.includes(action.action)) {
             const leadName = action.lead || action.leadName;
@@ -8106,6 +8130,90 @@ app.get('/api/ig-poll/:containerId', async (req, res) => {
     res.json({ ok: true, status: 'processing', statusCode });
   } catch(e) {
     console.error('IG poll error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/mileage-report?year=2025  — PDF mileage log for taxes
+app.get('/api/mileage-report', async (req, res) => {
+  try {
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const crm = await readCRM();
+    const entries = (crm.expenses || [])
+      .filter(e => e.category === 'Mileage / Gas' && e.miles && e.date && e.date.startsWith(String(year)))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const IRS_RATE = 0.70;
+    const totalMiles = entries.reduce((s, e) => s + (parseFloat(e.miles) || 0), 0);
+    const totalDeduction = parseFloat((totalMiles * IRS_RATE).toFixed(2));
+
+    const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="MG-Realty-Mileage-${year}.pdf"`);
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text('MG Realty — Business Mileage Log', { align: 'center' });
+    doc.fontSize(12).font('Helvetica').text(`Tax Year ${year}   ·   Agent: Matt Golden   ·   DRE #02130422`, { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(11).text(`IRS Standard Mileage Rate: $${IRS_RATE.toFixed(2)}/mile`, { align: 'center' });
+    doc.moveDown(1);
+
+    // Summary box
+    doc.rect(50, doc.y, 515, 52).fill('#f8f8f8').stroke('#e0e0e0');
+    const sumY = doc.y + 8;
+    doc.fill('#000').font('Helvetica-Bold').fontSize(11);
+    doc.text(`Total Miles Driven: ${totalMiles.toFixed(1)} mi`, 70, sumY);
+    doc.text(`Total Tax Deduction: $${totalDeduction.toFixed(2)}`, 70, sumY + 18);
+    doc.text(`Total Trips: ${entries.length}`, 300, sumY);
+    doc.text(`Rate Used: $${IRS_RATE}/mile (IRS ${year})`, 300, sumY + 18);
+    doc.moveDown(3.5);
+
+    // Table header
+    const colX = [50, 115, 290, 380, 450];
+    const headers = ['Date', 'Purpose / Destination', 'Miles', 'Rate', 'Deduction'];
+    doc.font('Helvetica-Bold').fontSize(10);
+    doc.rect(50, doc.y, 515, 18).fill('#2d2d2d');
+    const hY = doc.y + 4;
+    headers.forEach((h, i) => doc.fill('#ffffff').text(h, colX[i], hY, { width: colX[i+1] ? colX[i+1] - colX[i] - 4 : 100 }));
+    doc.fill('#000');
+    doc.moveDown(1.2);
+
+    // Rows
+    doc.font('Helvetica').fontSize(9);
+    entries.forEach((e, idx) => {
+      const rowY = doc.y;
+      if (idx % 2 === 0) doc.rect(50, rowY, 515, 16).fill('#f9f9f9').stroke('#efefef');
+      const miles = parseFloat(e.miles) || 0;
+      const ded = (miles * IRS_RATE).toFixed(2);
+      const purpose = (e.desc || e.notes || '').substring(0, 45);
+      doc.fill('#000');
+      doc.text(e.date, colX[0], rowY + 3, { width: 60 });
+      doc.text(purpose, colX[1], rowY + 3, { width: 170 });
+      doc.text(miles.toFixed(1), colX[2], rowY + 3, { width: 80 });
+      doc.text(`$${IRS_RATE}`, colX[3], rowY + 3, { width: 60 });
+      doc.text(`$${ded}`, colX[4], rowY + 3, { width: 80 });
+      doc.moveDown(1.05);
+      if (doc.y > 700) { doc.addPage(); }
+    });
+
+    // Totals row
+    doc.moveDown(0.5);
+    doc.rect(50, doc.y, 515, 20).fill('#1a1a1a');
+    const totY = doc.y + 4;
+    doc.fill('#fff').font('Helvetica-Bold').fontSize(10);
+    doc.text('TOTAL', colX[0], totY);
+    doc.text(`${totalMiles.toFixed(1)} mi`, colX[2], totY);
+    doc.text(`$${totalDeduction.toFixed(2)}`, colX[4], totY);
+
+    doc.moveDown(3);
+    doc.fill('#888').font('Helvetica').fontSize(8)
+      .text(`Generated ${new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })} · MG Realty · Keep this log with your tax records`, { align: 'center' });
+
+    doc.end();
+    console.log(`MILEAGE REPORT: year=${year} trips=${entries.length} miles=${totalMiles} deduction=$${totalDeduction}`);
+  } catch(e) {
+    console.error('Mileage report error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
