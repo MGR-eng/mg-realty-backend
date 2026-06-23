@@ -1535,6 +1535,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <div class="ce-tab" data-tab="listingwriter" onclick="showCeTab('listingwriter')"><i class="ti ti-home-edit" style="font-size:12px"></i> Listing Writer</div>
       <div class="ce-tab" data-tab="videohooks" onclick="showCeTab('videohooks')"><i class="ti ti-movie" style="font-size:12px"></i> Video Hooks</div>
       <div class="ce-tab" data-tab="openhousequr" onclick="showCeTab('openhousequr')"><i class="ti ti-qrcode" style="font-size:12px"></i> Open House QR</div>
+      <div class="ce-tab" data-tab="instagram" onclick="showCeTab('instagram')"><i class="ti ti-brand-instagram" style="font-size:12px"></i> Post to Instagram</div>
     </div>
 
     <!-- GENERATE VIEW -->
@@ -2100,6 +2101,84 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <div style="margin-top:24px">
         <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Recent Open House Leads</div>
         <div id="oh-leads-list" style="font-size:12px;color:var(--text3)">Loading...</div>
+      </div>
+    </div>
+
+    <!-- INSTAGRAM POSTER VIEW -->
+    <div id="ce-instagram-view" style="display:none;padding:20px 0">
+      <div style="display:grid;grid-template-columns:420px 1fr;gap:20px;align-items:start">
+
+        <!-- LEFT: upload + caption -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="tw" style="padding:18px">
+            <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:4px">📱 Post to Instagram</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Upload a video or image, write your caption, and post directly to your Reels or Feed.</div>
+
+            <!-- Upload zone -->
+            <div id="ig-drop-zone" onclick="document.getElementById('ig-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="igHandleDrop(event)"
+              style="border:2px dashed var(--border);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s;margin-bottom:2px">
+              <div id="ig-drop-preview" style="display:none;margin-bottom:10px">
+                <video id="ig-video-preview" controls style="max-width:100%;max-height:180px;border-radius:8px;display:none"></video>
+                <img id="ig-image-preview" style="max-width:100%;max-height:180px;border-radius:8px;display:none">
+              </div>
+              <div id="ig-drop-text">
+                <i class="ti ti-upload" style="font-size:28px;color:var(--text3);display:block;margin-bottom:8px"></i>
+                <div style="font-size:13px;font-weight:600;color:var(--text2)">Drop video or image here</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">MP4, MOV, JPG, PNG — max 100MB</div>
+              </div>
+              <input id="ig-file-input" type="file" accept="video/mp4,video/quicktime,image/jpeg,image/png,image/webp" style="display:none" onchange="igHandleFile(this.files[0])">
+            </div>
+
+            <!-- Media type -->
+            <div style="display:flex;gap:8px;margin-bottom:12px;margin-top:12px">
+              <button id="ig-type-reel" class="btn btn-gold" onclick="igSetType('REELS')" style="font-size:11px;padding:5px 12px"><i class="ti ti-movie"></i> Reel</button>
+              <button id="ig-type-feed" class="btn" onclick="igSetType('IMAGE')" style="font-size:11px;padding:5px 12px"><i class="ti ti-photo"></i> Feed Post</button>
+            </div>
+
+            <!-- Caption -->
+            <div class="fg" style="margin-bottom:10px">
+              <label style="display:flex;justify-content:space-between;align-items:center">
+                Caption
+                <span onclick="igImportCaption()" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:600">↑ Import from Video Hooks</span>
+              </label>
+              <textarea id="ig-caption" rows="6" placeholder="Write your caption here, or click 'Import from Video Hooks' to auto-fill..." style="width:100%;font-size:12px;line-height:1.6;resize:vertical;box-sizing:border-box"></textarea>
+            </div>
+
+            <!-- Post button -->
+            <button class="btn btn-gold" onclick="igPost()" style="width:100%;font-weight:700;padding:10px" id="ig-post-btn">
+              <i class="ti ti-brand-instagram"></i> Post to Instagram
+            </button>
+          </div>
+        </div>
+
+        <!-- RIGHT: status + tips -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <!-- Status card -->
+          <div class="tw" style="padding:18px" id="ig-status-card" style="display:none">
+            <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">Status</div>
+            <div id="ig-status-msg" style="font-size:13px;color:var(--text1)">—</div>
+            <div id="ig-permalink-row" style="display:none;margin-top:12px">
+              <a id="ig-permalink" href="#" target="_blank" class="btn btn-gold" style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><i class="ti ti-external-link"></i> View Post on Instagram</a>
+            </div>
+          </div>
+
+          <!-- Tips -->
+          <div class="tw" style="padding:18px">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Tips for Reels</div>
+            <div style="font-size:12px;color:var(--text3);line-height:1.9">
+              📐 Film vertical (9:16 ratio)<br>
+              ⏱ Keep it under 60 seconds<br>
+              🎯 Hook in the first 2 seconds<br>
+              🔇 Add captions — 70% watch without sound<br>
+              📅 Best times: Tue–Fri, 9am–12pm
+            </div>
+          </div>
+
+          <!-- Token note -->
+          <div style="font-size:11px;color:var(--text3);padding:10px 14px;background:var(--surface2);border-radius:8px;line-height:1.7">
+            ⚠️ Your Instagram access token expires every 60 days. If posting stops working, go to the Meta Developer Portal and regenerate the token, then update <strong>INSTAGRAM_ACCESS_TOKEN</strong> in Render.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -6962,6 +7041,7 @@ function showCeTab(tab) {
   document.getElementById('ce-listingwriter-view').style.display = tab === 'listingwriter' ? '' : 'none';
   document.getElementById('ce-videohooks-view').style.display    = tab === 'videohooks'    ? '' : 'none';
   document.getElementById('ce-openhousequr-view').style.display  = tab === 'openhousequr'  ? '' : 'none';
+  document.getElementById('ce-instagram-view').style.display     = tab === 'instagram'     ? '' : 'none';
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
@@ -7084,6 +7164,153 @@ function vhCopy(id) {
 }
 
 // ── Open House QR Generator ───────────────────────────────────
+// ── Instagram Poster ─────────────────────────────────────────
+var igFile = null;
+var igMediaType = 'REELS';
+var igPollingInterval = null;
+
+function igSetType(type) {
+  igMediaType = type;
+  document.getElementById('ig-type-reel').className = type === 'REELS' ? 'btn btn-gold' : 'btn';
+  document.getElementById('ig-type-feed').className = type === 'IMAGE' ? 'btn btn-gold' : 'btn';
+}
+
+function igHandleFile(file) {
+  if (!file) return;
+  igFile = file;
+  var isVideo = file.type.startsWith('video/');
+  document.getElementById('ig-drop-preview').style.display = '';
+  document.getElementById('ig-drop-text').style.display = 'none';
+  if (isVideo) {
+    var vid = document.getElementById('ig-video-preview');
+    vid.src = URL.createObjectURL(file);
+    vid.style.display = '';
+    document.getElementById('ig-image-preview').style.display = 'none';
+    igSetType('REELS');
+  } else {
+    var img = document.getElementById('ig-image-preview');
+    img.src = URL.createObjectURL(file);
+    img.style.display = '';
+    document.getElementById('ig-video-preview').style.display = 'none';
+    igSetType('IMAGE');
+  }
+}
+
+function igHandleDrop(e) {
+  e.preventDefault();
+  document.getElementById('ig-drop-zone').style.borderColor = 'var(--border)';
+  var file = e.dataTransfer.files[0];
+  if (file) igHandleFile(file);
+}
+
+function igImportCaption() {
+  var hooks = document.getElementById('vhHooks');
+  var caption = document.getElementById('vhCaption');
+  var hashtags = document.getElementById('vhHashtags');
+  var parts = [];
+  if (caption && caption.innerText && caption.innerText.trim()) parts.push(caption.innerText.trim());
+  if (hashtags && hashtags.innerText && hashtags.innerText.trim()) parts.push(hashtags.innerText.trim());
+  if (parts.length) {
+    document.getElementById('ig-caption').value = parts.join('\n\n');
+    if(typeof toast==='function') toast('Caption imported from Video Hooks ✓');
+  } else {
+    if(typeof toast==='function') toast('Generate Video Hooks first, then import', 'error');
+  }
+}
+
+function igSetStatus(msg, type) {
+  var card = document.getElementById('ig-status-card');
+  card.style.display = '';
+  var el = document.getElementById('ig-status-msg');
+  el.style.color = type === 'error' ? 'var(--danger)' : type === 'success' ? 'var(--green)' : 'var(--text1)';
+  el.textContent = msg;
+}
+
+async function igPost() {
+  if (!igFile) { if(typeof toast==='function') toast('Upload a video or image first', 'error'); return; }
+  var caption = document.getElementById('ig-caption').value.trim();
+  if (!caption) { if(typeof toast==='function') toast('Add a caption before posting', 'error'); return; }
+
+  var btn = document.getElementById('ig-post-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Uploading...';
+  igSetStatus('📤 Uploading to server...', 'info');
+
+  try {
+    // Convert file to base64
+    var base64 = await new Promise((resolve, reject) => {
+      var reader = new FileReader();
+      reader.onload = e => resolve(e.target.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(igFile);
+    });
+
+    var resp = await fetch(BACKEND + '/api/post-instagram', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mediaBase64: base64,
+        mediaFilename: igFile.name,
+        mediaType: igMediaType,
+        caption: caption
+      })
+    }).then(r => r.json());
+
+    if (!resp.ok) throw new Error(resp.error || 'Post failed');
+
+    if (resp.status === 'published') {
+      igSetStatus('✅ Posted! Your content is live on Instagram.', 'success');
+      if (resp.permalink) {
+        document.getElementById('ig-permalink').href = resp.permalink;
+        document.getElementById('ig-permalink-row').style.display = '';
+      }
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-brand-instagram"></i> Post to Instagram';
+    } else if (resp.containerId) {
+      igSetStatus('⏳ Processing video... this takes 30–60 seconds.', 'info');
+      btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Processing...';
+      igPollStatus(resp.containerId, btn);
+    }
+  } catch(e) {
+    igSetStatus('❌ Error: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-brand-instagram"></i> Post to Instagram';
+  }
+}
+
+function igPollStatus(containerId, btn) {
+  var attempts = 0;
+  igPollingInterval = setInterval(async () => {
+    attempts++;
+    if (attempts > 36) { // 3 min timeout
+      clearInterval(igPollingInterval);
+      igSetStatus('❌ Timed out. Try posting again.', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-brand-instagram"></i> Post to Instagram';
+      return;
+    }
+    try {
+      var r = await fetch(BACKEND + '/api/ig-poll/' + containerId).then(r => r.json());
+      if (r.status === 'published') {
+        clearInterval(igPollingInterval);
+        igSetStatus('✅ Posted! Your content is live on Instagram.', 'success');
+        if (r.permalink) {
+          document.getElementById('ig-permalink').href = r.permalink;
+          document.getElementById('ig-permalink-row').style.display = '';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-brand-instagram"></i> Post to Instagram';
+      } else if (r.status === 'error') {
+        clearInterval(igPollingInterval);
+        igSetStatus('❌ Instagram rejected the video: ' + (r.error || 'Unknown error'), 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-brand-instagram"></i> Post to Instagram';
+      }
+      // else still processing, keep polling
+    } catch(e) { /* keep trying */ }
+  }, 5000);
+}
+
 function generateOpenHouseQR() {
   var address = (document.getElementById('oh-address').value || '').trim();
   if (!address) { if(typeof toast==='function') toast('Enter a property address','err'); return; }

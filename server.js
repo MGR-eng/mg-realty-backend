@@ -8000,6 +8000,116 @@ Full Instagram/TikTok caption. Open strong (repeat the hook), deliver value in 3
   }
 });
 
+// ── Instagram Content Publishing ──────────────────────────────
+import { writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs';
+
+const IG_TOKEN   = process.env.INSTAGRAM_ACCESS_TOKEN;
+const IG_USER_ID = process.env.INSTAGRAM_USER_ID;
+const IG_TEMP_DIR = new URL('./ig-temp', import.meta.url).pathname;
+if (!existsSync(IG_TEMP_DIR)) mkdirSync(IG_TEMP_DIR, { recursive: true });
+
+// Serve ig-temp files publicly
+app.use('/ig-temp', (req, res, next) => {
+  express.static(IG_TEMP_DIR)(req, res, next);
+});
+
+// POST /api/post-instagram  { mediaBase64, mediaFilename, mediaType, caption }
+app.post('/api/post-instagram', async (req, res) => {
+  try {
+    if (!IG_TOKEN || !IG_USER_ID) return res.status(400).json({ ok: false, error: 'Instagram not configured — add INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_USER_ID to Render env vars' });
+    const { mediaBase64, mediaFilename, mediaType = 'REELS', caption } = req.body;
+    if (!mediaBase64 || !caption) return res.status(400).json({ ok: false, error: 'mediaBase64 and caption required' });
+
+    // Save file temporarily
+    const ext = (mediaFilename || 'upload').split('.').pop().toLowerCase();
+    const fname = `ig_${Date.now()}.${ext}`;
+    const fpath = `${IG_TEMP_DIR}/${fname}`;
+    writeFileSync(fpath, Buffer.from(mediaBase64, 'base64'));
+
+    const SERVER_URL = process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com';
+    const publicUrl = `${SERVER_URL}/ig-temp/${fname}`;
+
+    const isVideo = ['mp4','mov','m4v'].includes(ext);
+    const igMediaType = isVideo ? 'REELS' : 'IMAGE';
+    const urlField = isVideo ? 'video_url' : 'image_url';
+
+    // Create media container
+    const containerParams = new URLSearchParams({
+      [urlField]: publicUrl,
+      caption,
+      media_type: igMediaType,
+      access_token: IG_TOKEN
+    });
+    const containerResp = await fetch(`https://graph.instagram.com/v20.0/${IG_USER_ID}/media`, {
+      method: 'POST',
+      body: containerParams
+    }).then(r => r.json());
+
+    if (containerResp.error) {
+      unlinkSync(fpath);
+      return res.status(400).json({ ok: false, error: containerResp.error.message });
+    }
+
+    const containerId = containerResp.id;
+    console.log(`IG container created: ${containerId} type=${igMediaType}`);
+
+    // For images, publish immediately
+    if (!isVideo) {
+      const pubResp = await fetch(`https://graph.instagram.com/v20.0/${IG_USER_ID}/media_publish`, {
+        method: 'POST',
+        body: new URLSearchParams({ creation_id: containerId, access_token: IG_TOKEN })
+      }).then(r => r.json());
+      setTimeout(() => { try { unlinkSync(fpath); } catch(e) {} }, 60000);
+      if (pubResp.error) return res.status(400).json({ ok: false, error: pubResp.error.message });
+      const mediaId = pubResp.id;
+      const mediaInfo = await fetch(`https://graph.instagram.com/v20.0/${mediaId}?fields=permalink&access_token=${IG_TOKEN}`).then(r => r.json());
+      return res.json({ ok: true, status: 'published', mediaId, permalink: mediaInfo.permalink });
+    }
+
+    // For videos, return containerId for polling
+    // Store fname so we can clean up later
+    setTimeout(() => { try { unlinkSync(fpath); } catch(e) {} }, 10 * 60 * 1000); // clean up after 10 min
+    res.json({ ok: true, status: 'processing', containerId, fname });
+  } catch(e) {
+    console.error('Instagram post error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/ig-poll/:containerId — check video processing status + publish when ready
+app.get('/api/ig-poll/:containerId', async (req, res) => {
+  try {
+    if (!IG_TOKEN || !IG_USER_ID) return res.status(400).json({ ok: false, error: 'Instagram not configured' });
+    const { containerId } = req.params;
+
+    const statusResp = await fetch(`https://graph.instagram.com/v20.0/${containerId}?fields=status_code,status&access_token=${IG_TOKEN}`).then(r => r.json());
+
+    if (statusResp.error) return res.status(400).json({ ok: false, error: statusResp.error.message });
+
+    const statusCode = statusResp.status_code;
+    console.log(`IG poll ${containerId}: ${statusCode}`);
+
+    if (statusCode === 'FINISHED') {
+      const pubResp = await fetch(`https://graph.instagram.com/v20.0/${IG_USER_ID}/media_publish`, {
+        method: 'POST',
+        body: new URLSearchParams({ creation_id: containerId, access_token: IG_TOKEN })
+      }).then(r => r.json());
+      if (pubResp.error) return res.json({ ok: false, status: 'error', error: pubResp.error.message });
+      const mediaId = pubResp.id;
+      const mediaInfo = await fetch(`https://graph.instagram.com/v20.0/${mediaId}?fields=permalink&access_token=${IG_TOKEN}`).then(r => r.json());
+      return res.json({ ok: true, status: 'published', mediaId, permalink: mediaInfo.permalink });
+    } else if (statusCode === 'ERROR' || statusCode === 'EXPIRED') {
+      return res.json({ ok: false, status: 'error', error: `Instagram processing failed: ${statusResp.status || statusCode}` });
+    }
+
+    // Still processing
+    res.json({ ok: true, status: 'processing', statusCode });
+  } catch(e) {
+    console.error('IG poll error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // POST /api/restaurant-reservation  { restaurant, partySize, date, time, city }
 app.post('/api/restaurant-reservation', async (req, res) => {
   try {
