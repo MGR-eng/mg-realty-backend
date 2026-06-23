@@ -3883,6 +3883,9 @@ RENT VS BUY (use when Matt or a client asks "rent vs buy", "should I buy or rent
 VIDEO HOOK MACHINE (use when Matt says "hook", "video hook", "write me hooks", "content idea", "reel idea", "script for", "video about"):
 {"action":"video_hooks","topic":"[Matt's video topic or idea]","format":"reel"}
 → format options: reel, story, tiktok, youtube, carousel. Returns 5 hooks + full script + caption + hashtags.
+RESTAURANT RESERVATION (use when Matt says "book a table", "make a reservation", "reserve a table", "get a res", "book [restaurant name]", "reservation at", "table for"):
+{"action":"restaurant_reservation","restaurant":"Nobu Malibu","partySize":2,"date":"Friday","time":"7pm","city":"Los Angeles"}
+→ Extracts restaurant name, party size, date (day name like "Friday" or "this Saturday"), and time from Matt's message. city defaults to "Los Angeles" unless specified. Returns OpenTable + Resy deep links pre-filled with the details.
 CRM QUERY: {"action":"crm_query","question":"when does Alsace close","topic":"transaction"}
 → Use when Matt asks a specific question about a deal, lead, or contact from his CRM. Examples: "when does Alsace close", "what's my commission on Tocco", "who's the escrow officer on Alsace", "what stage is Kim in", "what's Sarah's phone number", "how many active deals do I have". Always use this — never guess from memory.
 NO ACTION: {"action":"none"}
@@ -4300,6 +4303,25 @@ Use real numbers. If snippets are thin, use your market knowledge and say so bri
                 await sendSMS(from, out.substring(0, 1500));
               }
             } catch(e) { console.error('Video hooks SMS error:', e.message); }
+          })();
+
+        } else if (action.action === 'restaurant_reservation') {
+          reply = `🍽️ Finding ${action.restaurant || 'that spot'}...`;
+          (async () => {
+            try {
+              const r = await fetch(`${process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com'}/api/restaurant-reservation`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  restaurant: action.restaurant,
+                  partySize: action.partySize || 2,
+                  date: action.date || '',
+                  time: action.time || '7pm',
+                  city: action.city || 'Los Angeles'
+                })
+              }).then(r => r.json());
+              if (r.ok) await sendSMS(from, r.message.substring(0, 1500));
+              else await sendSMS(from, `Couldn't find that restaurant — try: "book Nobu for 2 Friday 7pm"`);
+            } catch(e) { console.error('Restaurant reservation SMS error:', e.message); }
           })();
 
         } else if (action.action !== 'none') {
@@ -7942,6 +7964,111 @@ Full Instagram/TikTok caption. Open strong (repeat the hook), deliver value in 3
     res.json({ ok: true, hooks, script, caption, hashtags, topic, format });
   } catch(e) {
     console.error('Video hooks error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/restaurant-reservation  { restaurant, partySize, date, time, city }
+app.post('/api/restaurant-reservation', async (req, res) => {
+  try {
+    const { restaurant, partySize = 2, date, time, city = 'Los Angeles' } = req.body;
+    if (!restaurant) return res.status(400).json({ ok: false, error: 'restaurant required' });
+
+    const GPLACES_KEY = process.env.GOOGLE_PLACES_API_KEY;
+
+    // 1. Find the restaurant via Google Places
+    let placeData = null;
+    if (GPLACES_KEY) {
+      const searchQ = encodeURIComponent(`${restaurant} restaurant ${city}`);
+      const searchResp = await fetch(
+        `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${searchQ}&inputtype=textquery&fields=name,place_id,formatted_address,website,formatted_phone_number,url&key=${GPLACES_KEY}`
+      );
+      const searchJson = await searchResp.json();
+      if (searchJson.candidates && searchJson.candidates[0]) {
+        placeData = searchJson.candidates[0];
+        // Fetch details for website + phone
+        if (placeData.place_id) {
+          const detailResp = await fetch(
+            `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeData.place_id}&fields=name,formatted_address,formatted_phone_number,website,url&key=${GPLACES_KEY}`
+          );
+          const detailJson = await detailResp.json();
+          if (detailJson.result) placeData = { ...placeData, ...detailJson.result };
+        }
+      }
+    }
+
+    // 2. Parse date/time into datetime string for booking links
+    // Expect date like "Friday", "2026-06-25", "this Saturday", time like "7pm", "7:30 PM"
+    const now = new Date();
+    let bookingDate = date || '';
+    let bookingTime = time || '7:00 PM';
+
+    // Simple day-of-week resolver
+    const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const lowerDate = (bookingDate || '').toLowerCase().replace('this ','').replace('next ','');
+    const dayIdx = days.indexOf(lowerDate);
+    if (dayIdx !== -1) {
+      const diff = (dayIdx - now.getDay() + 7) % 7 || 7;
+      const d = new Date(now);
+      d.setDate(d.getDate() + diff);
+      bookingDate = d.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+
+    // Normalize time to HH:MM (24h) for URL params
+    const timeMatch = bookingTime.match(/(\d+)(?::(\d+))?\s*(am|pm)?/i);
+    let hour = 19, minute = 0;
+    if (timeMatch) {
+      hour = parseInt(timeMatch[1]);
+      minute = parseInt(timeMatch[2] || '0');
+      const meridiem = (timeMatch[3] || '').toLowerCase();
+      if (meridiem === 'pm' && hour < 12) hour += 12;
+      if (meridiem === 'am' && hour === 12) hour = 0;
+    }
+    const timeStr = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+    const dateTimeStr = bookingDate ? `${bookingDate}T${timeStr}` : '';
+
+    // 3. Build booking links
+    const restaurantEncoded = encodeURIComponent(restaurant);
+    const cityEncoded = encodeURIComponent(city);
+
+    // OpenTable search with pre-filled params
+    const otBase = 'https://www.opentable.com/s/';
+    const otParams = new URLSearchParams({
+      covers: String(partySize),
+      ...(dateTimeStr ? { datetime: dateTimeStr } : {}),
+      term: `${restaurant} ${city}`,
+      metroId: '4', // Los Angeles
+    });
+    const openTableUrl = `${otBase}?${otParams.toString()}`;
+
+    // Resy search
+    const resyUrl = `https://resy.com/cities/la?seats=${partySize}&date=${bookingDate || ''}&query=${restaurantEncoded}`;
+
+    // Yelp reservations
+    const yelpUrl = `https://www.yelp.com/search?find_desc=${restaurantEncoded}+restaurant&find_loc=${cityEncoded}&attrs=reservation`;
+
+    // 4. Compose the reply
+    const displayDate = bookingDate
+      ? new Date(bookingDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      : (date || 'requested date');
+    const displayTime = bookingTime;
+
+    const name = (placeData && placeData.name) || restaurant;
+    const address = (placeData && placeData.formatted_address) || '';
+    const phone = (placeData && placeData.formatted_phone_number) || '';
+    const website = (placeData && placeData.website) || '';
+
+    let msg = `🍽️ ${name}\n`;
+    if (address) msg += `📍 ${address.split(',').slice(0,2).join(',')}\n`;
+    msg += `👥 ${partySize} people · ${displayDate} · ${displayTime}\n\n`;
+    msg += `📲 Book on OpenTable:\n${openTableUrl}\n\n`;
+    msg += `📲 Book on Resy:\n${resyUrl}\n`;
+    if (phone) msg += `\n📞 Call to book: ${phone}`;
+
+    console.log(`RESTAURANT RESERVATION: "${restaurant}" party=${partySize} date=${bookingDate} time=${timeStr}`);
+    res.json({ ok: true, restaurant: name, address, phone, openTableUrl, resyUrl, message: msg });
+  } catch(e) {
+    console.error('Restaurant reservation error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
