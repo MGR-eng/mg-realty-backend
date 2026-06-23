@@ -501,6 +501,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item nav-sub" onclick="showPane('sellers',this)"><span>Sellers</span></button>
     <button class="nav-item nav-sub" onclick="showPane('agents',this)"><span>Agents</span></button>
     <button class="nav-item nav-sub" onclick="showPane('vendors',this)"><span>Vendors</span></button>
+    <button class="nav-item nav-sub" onclick="showPane('response-tracker',this)"><span>Response Tracker</span><span class="nb red" id="nb-cold" style="display:none">0</span></button>
 
     <button class="nav-item" onclick="showPane('transactions',this)"><i class="ti ti-home-move"></i><span>Transactions</span></button>
     <button class="nav-item" onclick="showPane('pipeline',this)"><i class="ti ti-layout-kanban"></i><span>Pipeline</span></button>
@@ -1279,6 +1280,29 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     </div>
   </div>
   <div class="content"><div id="vendor-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:16px"></div></div>
+</div>
+
+<!-- Response Tracker pane -->
+<div id="pane-response-tracker" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-antenna-bars-1" style="margin-right:6px;color:var(--accent)"></i>Response Tracker</div>
+    <div class="tba">
+      <select id="rt-days" onchange="renderResponseTracker()" style="width:auto">
+        <option value="3">Gone cold: 3+ days</option>
+        <option value="7" selected>Gone cold: 7+ days</option>
+        <option value="14">Gone cold: 14+ days</option>
+        <option value="30">Gone cold: 30+ days</option>
+      </select>
+    </div>
+  </div>
+  <div class="content" style="padding:20px">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div class="stat-card"><div class="stat-val" id="rt-no-response">0</div><div class="stat-lbl">No Response</div></div>
+      <div class="stat-card"><div class="stat-val" id="rt-overdue">0</div><div class="stat-lbl">Follow-up Overdue</div></div>
+      <div class="stat-card"><div class="stat-val" id="rt-hot-cold">0</div><div class="stat-lbl">Hot Gone Cold</div></div>
+    </div>
+    <div id="rt-list"></div>
+  </div>
 </div>
 
 <!-- Finance pane — Expenses & Invoices -->
@@ -3763,6 +3787,7 @@ function showPane(id,el){
   if(id==='leads') syncFromBackend();
   if(id==='gci') initGCI();
   if(id==='settings') loadSettingsPane();
+  if(id==='response-tracker') renderResponseTracker();
 }
 function toggleMoreSheet(){
   document.getElementById('moreSheet').classList.toggle('open');
@@ -3781,6 +3806,11 @@ function updateBadges(){
   const fuDue=leads.filter(l=>l.temp!=='done'&&l.followup&&du(l.followup)<=0).length;
   const fuBadge=document.getElementById('nb-followups');
   if(fuBadge){fuBadge.textContent=fuDue;fuBadge.style.display=fuDue?'':'none';}
+  // Cold leads badge
+  const now7=new Date();
+  const coldCount=(leads||[]).filter(l=>{if(l.temp==='done')return false;if(!l.lastcontact)return true;return(now7-new Date(l.lastcontact))/86400000>=7;}).length;
+  const nbCold=document.getElementById('nb-cold');
+  if(nbCold){nbCold.textContent=coldCount;nbCold.style.display=coldCount?'':'none';}
   // Leases badge — show count expiring within 60 days
   const today=new Date().toISOString().split('T')[0];
   const exp60=new Date();exp60.setDate(exp60.getDate()+60);
@@ -5245,6 +5275,87 @@ function renderMileageLog() {
 function downloadMileagePdf() {
   const year = document.getElementById('mi-year-select')?.value || new Date().getFullYear();
   window.open(BACKEND + '/api/mileage-report?year=' + year, '_blank');
+}
+
+function renderResponseTracker() {
+  const crm = getCrm();
+  const days = parseInt(document.getElementById('rt-days')?.value || '7');
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const active = (crm.leads||[]).filter(l => l.temp !== 'done');
+
+  // No response: never contacted or last contact > N days ago
+  const noResponse = active.filter(l => {
+    if (!l.lastcontact) return true;
+    const ms = now - new Date(l.lastcontact);
+    return ms / 86400000 >= days;
+  });
+  // Overdue follow-ups
+  const overdue = active.filter(l => l.followup && l.followup < todayStr);
+  // Previously hot/warm leads with no recent contact
+  const hotCold = noResponse.filter(l => l.temp === 'hot' || l.temp === 'warm');
+
+  document.getElementById('rt-no-response').textContent = noResponse.length;
+  document.getElementById('rt-overdue').textContent = overdue.length;
+  document.getElementById('rt-hot-cold').textContent = hotCold.length;
+
+  // Update nav badge
+  const nb = document.getElementById('nb-cold');
+  if (nb) { nb.textContent = noResponse.length; nb.style.display = noResponse.length ? '' : 'none'; }
+
+  const el = document.getElementById('rt-list');
+  if (!noResponse.length) {
+    el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px 0;font-size:13px">🎉 All leads have been contacted recently!</div>';
+    return;
+  }
+
+  // Sort: hot first, then warm, then cold; then by days since contact desc
+  noResponse.sort((a,b) => {
+    const tempOrder = {hot:0,warm:1,cold:2,'':3};
+    const ta = tempOrder[a.temp||''] ?? 3, tb = tempOrder[b.temp||''] ?? 3;
+    if (ta !== tb) return ta - tb;
+    const da = a.lastcontact ? (now - new Date(a.lastcontact)) / 86400000 : 9999;
+    const db = b.lastcontact ? (now - new Date(b.lastcontact)) / 86400000 : 9999;
+    return db - da;
+  });
+
+  const tempColors = {hot:'#F87171',warm:'#FBBF24',cold:'#60A5FA','':'var(--text3)'};
+  const tempLabels = {hot:'🔥 Hot',warm:'🌡️ Warm',cold:'❄️ Cold','':'—'};
+
+  el.innerHTML = '<div style="display:grid;gap:8px">' + noResponse.map(l => {
+    const daysSince = l.lastcontact ? Math.floor((now - new Date(l.lastcontact)) / 86400000) : null;
+    const sinceLabel = daysSince === null ? 'Never contacted' : `Last contact: ${daysSince}d ago`;
+    const tempColor = tempColors[l.temp||''] || 'var(--text3)';
+    const tempLabel = tempLabels[l.temp||''] || '—';
+    const suggestedText = l.temp === 'hot'
+      ? `"Hey ${l.first}, just checking in — still thinking about ${l.type === 'buyer' ? 'finding a place' : 'selling'}?"`
+      : l.lcmethod === 'email'
+      ? `"Hey ${l.first}, wanted to follow up on my last email!"`
+      : `"Hey ${l.first}, just touching base!"`;
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:14px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-weight:600;font-size:14px">${l.first} ${l.last}</span>
+          <span style="font-size:11px;font-weight:600;color:${tempColor}">${tempLabel}</span>
+          ${l.followup && l.followup < todayStr ? '<span style="font-size:11px;background:rgba(239,68,68,0.12);color:#F87171;border-radius:4px;padding:1px 6px">⚠️ Overdue</span>' : ''}
+        </div>
+        <div style="font-size:12px;color:var(--text3)">${sinceLabel} · ${l.type||'lead'} · ${l.stage||'new'}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px;font-style:italic">${suggestedText}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        <button class="btn btn-sm" onclick="openSmsComposerForLead('${l.id}')" style="font-size:11px"><i class="ti ti-message"></i> Text</button>
+        <button class="btn btn-sm" onclick="openLead('${l.id}')" style="font-size:11px"><i class="ti ti-user"></i> View</button>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function openSmsComposerForLead(leadId) {
+  const crm = getCrm();
+  const lead = (crm.leads||[]).find(l => l.id === leadId);
+  if (!lead) return;
+  showPane('leads', document.querySelector('[onclick*="leads"]'));
+  setTimeout(() => openLead(leadId), 100);
 }
 
 function switchFinBucket(bucket) {

@@ -3941,6 +3941,11 @@ LOG CALL (use when Matt says "called", "just called", "spoke with", "left voicem
 → outcome options: connected, voicemail, no_answer, left_message. temp options: hot, warm, cold (only set if call revealed new info). stage only set if it changed. followupDate in YYYY-MM-DD. Extract as much as Matt tells you. If he just says "called Sarah, left voicemail" that's enough — outcome=voicemail, no notes needed.
 RESTAURANT RESERVATION (use when Matt says "book a table", "make a reservation", "reserve a table", "get a res", "book [restaurant name]", "reservation at", "table for"):
 {"action":"restaurant_reservation","restaurant":"Nobu Malibu","partySize":2,"date":"Friday","time":"7pm","city":"Los Angeles"}
+DRAFT EMAIL (use when Matt says "draft an email", "write an email", "email [name] about", "draft a note to", "write [name] an email"):
+{"action":"draft_email","lead":"Sarah Kim","subject":"Following up on the Culver City showing","context":"Matt wants to follow up after a showing at 456 Oak Ave. Buyer loved the layout but was concerned about the street noise."}
+→ Extract the lead name, infer a subject line, and capture all context Matt provides. Creates a real Gmail draft for Matt to review and send.
+MORNING DIGEST (use when Matt says "morning digest", "what's my day", "what do I have today", "who should I call", "daily briefing"):
+{"action":"morning_digest"}
 → Extracts restaurant name, party size, date (day name like "Friday" or "this Saturday"), and time from Matt's message. city defaults to "Los Angeles" unless specified. Returns OpenTable + Resy deep links pre-filled with the details.
 CRM QUERY: {"action":"crm_query","question":"when does Alsace close","topic":"transaction"}
 → Use when Matt asks a specific question about a deal, lead, or contact from his CRM. Examples: "when does Alsace close", "what's my commission on Tocco", "who's the escrow officer on Alsace", "what stage is Kim in", "what's Sarah's phone number", "how many active deals do I have". Always use this — never guess from memory.
@@ -4369,9 +4374,95 @@ Use real numbers. If snippets are thin, use your market knowledge and say so bri
             } catch(e) { console.error('Restaurant reservation SMS error:', e.message); }
           })();
 
+        } else if (action.action === 'draft_email') {
+          reply = `✍️ Drafting email to ${action.lead || 'them'}...`;
+          const callerPhone = from;
+          (async () => {
+            try {
+              const lead = findLead(crm, action.lead);
+              const toEmail = lead?.email || '';
+              const toName = lead ? `${lead.first} ${lead.last}` : (action.lead || 'them');
+              // Generate email body with Claude
+              const draftMsg = await anthropic.messages.create({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 600,
+                system: `You are drafting a professional but warm real estate email for Matt Golden, a LA-based realtor. Write in Matt's voice: friendly, direct, personal. No fluff. Sign off as "Matt Golden | MG Realty". Return ONLY the email body (no subject line), plain text.`,
+                messages: [{ role: 'user', content: `Write an email to ${toName}. Context: ${action.context || action.subject || 'following up'}` }]
+              });
+              const emailBody = draftMsg.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+              const subject = action.subject || `Following up — Matt Golden`;
+              // Build RFC 2822 message for Gmail draft
+              const rawMsg = [
+                `From: Matt Golden <goldenmb@gmail.com>`,
+                `To: ${toEmail ? `${toName} <${toEmail}>` : toName}`,
+                `Subject: ${subject}`,
+                `Content-Type: text/plain; charset=utf-8`,
+                ``,
+                emailBody
+              ].join('\r\n');
+              const encoded = Buffer.from(rawMsg).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+              const token = await googleToken();
+              const draftRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: { raw: encoded } })
+              });
+              const draftData = await draftRes.json();
+              if (draftData.error) throw new Error(draftData.error.message);
+              await sendSMS(callerPhone, `📧 Draft saved to Gmail!\nTo: ${toName}${toEmail ? '' : ' (no email on file)'}\nSubject: ${subject}\n\nCheck Gmail to review and send.`);
+            } catch(e) {
+              console.error('Draft email SMS error:', e.message);
+              try { await sendSMS(callerPhone, `⚠️ Couldn't create draft: ${e.message}`); } catch(_) {}
+            }
+          })();
+
+        } else if (action.action === 'morning_digest') {
+          reply = `☀️ Pulling your day...`;
+          const callerPhone = from;
+          (async () => {
+            try {
+              const now2 = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+              const today3 = now2.toISOString().split('T')[0];
+              const yesterday = new Date(now2); yesterday.setDate(yesterday.getDate()-1);
+              const yesterdayStr = yesterday.toISOString().split('T')[0];
+              // Follow-ups due today
+              const dueToday = (crm.leads||[]).filter(l => l.temp !== 'done' && l.followup === today3);
+              // Overdue follow-ups
+              const overdue = (crm.leads||[]).filter(l => l.temp !== 'done' && l.followup && l.followup < today3);
+              // Cold leads — no contact in 7+ days and still active
+              const coldLeads = (crm.leads||[]).filter(l => {
+                if (l.temp === 'done') return false;
+                const lc = l.lastcontact || '';
+                if (!lc) return false;
+                const daysSince = Math.floor((now2 - new Date(lc)) / 86400000);
+                return daysSince >= 7 && l.temp !== 'cold';
+              });
+              // Tasks due today
+              const tasksDue = (crm.tasks||[]).filter(t => t.status !== 'done' && t.due === today3);
+              // Build message
+              const lines = [`☀️ Good morning, Matt! Here's your day:\n`];
+              if (dueToday.length) {
+                lines.push(`📞 Follow up today (${dueToday.length}):`);
+                dueToday.slice(0,5).forEach(l => lines.push(`  • ${l.first} ${l.last} — ${l.method || 'call'}`));
+                if (dueToday.length > 5) lines.push(`  + ${dueToday.length-5} more`);
+              }
+              if (overdue.length) lines.push(`\n⚠️ Overdue: ${overdue.slice(0,3).map(l=>`${l.first} ${l.last}`).join(', ')}${overdue.length>3?` + ${overdue.length-3} more`:''}`);
+              if (tasksDue.length) {
+                lines.push(`\n✅ Tasks due:`);
+                tasksDue.slice(0,3).forEach(t => lines.push(`  • ${t.title}`));
+              }
+              if (coldLeads.length) lines.push(`\n🧊 Going cold (${coldLeads.length}): ${coldLeads.slice(0,3).map(l=>`${l.first} ${l.last}`).join(', ')}`);
+              if (!dueToday.length && !overdue.length && !tasksDue.length) lines.push(`✨ No follow-ups due today — great time to prospect!`);
+              await sendSMS(callerPhone, lines.join('\n').substring(0, 1500));
+            } catch(e) {
+              console.error('Morning digest SMS error:', e.message);
+              try { await sendSMS(callerPhone, `⚠️ Couldn't pull digest: ${e.message}`); } catch(_) {}
+            }
+          })();
+
         } else if (action.action !== 'none') {
           // Actions that don't need an existing lead — always succeed
-          const noLookupActions = ['add_lead', 'create_task', 'create_appointment', 'create_calendar_event', 'send_email_template', 'log_expense', 'send_digest', 'log_call', 'log_mileage'];
+          const noLookupActions = ['add_lead', 'create_task', 'create_appointment', 'create_calendar_event', 'send_email_template', 'log_expense', 'send_digest', 'log_call', 'log_mileage', 'draft_email', 'morning_digest'];
           const result = await executeSmsAction(action, crm);
           if (!result.ok && !noLookupActions.includes(action.action)) {
             const leadName = action.lead || action.leadName;
