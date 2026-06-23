@@ -1861,6 +1861,35 @@ async function executeSmsAction(action, crmSnapshot) {
       });
       modified = true;
     }
+  } else if (action.action === 'log_call') {
+    const lead = findLead(crm, action.lead);
+    if (lead) {
+      const act = {
+        id: 'a' + Date.now(),
+        leadId: lead.id,
+        leadName: `${lead.first} ${lead.last}`,
+        date: today,
+        time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        type: 'call',
+        direction: action.direction || 'outbound',
+        outcome: action.outcome || 'connected',
+        notes: action.notes || '',
+        fuDate: action.followupDate || '',
+        fuMethod: action.followupMethod || 'call'
+      };
+      crm.activities.push(act);
+      const leadUpdate = {
+        ...lead,
+        lastcontact: today,
+        lcmethod: 'call',
+        ...(act.fuDate ? { followup: act.fuDate, method: act.fuMethod } : {}),
+        ...(action.temp ? { temp: action.temp } : {}),
+        ...(action.stage ? { stage: action.stage } : {}),
+        ...(action.notes ? { notes: (lead.notes ? lead.notes + '\n' : '') + `[${today}] Call: ${action.notes}` } : {})
+      };
+      crm.leads = crm.leads.map(l => l.id === lead.id ? leadUpdate : l);
+      modified = true;
+    }
   } else if (action.action === 'update_stage') {
     const lead = findLead(crm, action.lead);
     if (lead && action.stage) {
@@ -3883,6 +3912,9 @@ RENT VS BUY (use when Matt or a client asks "rent vs buy", "should I buy or rent
 VIDEO HOOK MACHINE (use when Matt says "hook", "video hook", "write me hooks", "content idea", "reel idea", "script for", "video about"):
 {"action":"video_hooks","topic":"[Matt's video topic or idea]","format":"reel"}
 → format options: reel, story, tiktok, youtube, carousel. Returns 5 hooks + full script + caption + hashtags.
+LOG CALL (use when Matt says "called", "just called", "spoke with", "left voicemail", "no answer", "talked to", "got off the phone with", "rang", "dialed"):
+{"action":"log_call","lead":"Sarah Kim","outcome":"connected","notes":"Very interested in Silver Lake, wants to see 2-beds under $800K. Sending listings.","followupDate":"2026-06-25","followupMethod":"call","temp":"hot","stage":"active","direction":"outbound"}
+→ outcome options: connected, voicemail, no_answer, left_message. temp options: hot, warm, cold (only set if call revealed new info). stage only set if it changed. followupDate in YYYY-MM-DD. Extract as much as Matt tells you. If he just says "called Sarah, left voicemail" that's enough — outcome=voicemail, no notes needed.
 RESTAURANT RESERVATION (use when Matt says "book a table", "make a reservation", "reserve a table", "get a res", "book [restaurant name]", "reservation at", "table for"):
 {"action":"restaurant_reservation","restaurant":"Nobu Malibu","partySize":2,"date":"Friday","time":"7pm","city":"Los Angeles"}
 → Extracts restaurant name, party size, date (day name like "Friday" or "this Saturday"), and time from Matt's message. city defaults to "Los Angeles" unless specified. Returns OpenTable + Resy deep links pre-filled with the details.
@@ -4326,7 +4358,7 @@ Use real numbers. If snippets are thin, use your market knowledge and say so bri
 
         } else if (action.action !== 'none') {
           // Actions that don't need an existing lead — always succeed
-          const noLookupActions = ['add_lead', 'create_task', 'create_appointment', 'create_calendar_event', 'send_email_template', 'log_expense', 'send_digest'];
+          const noLookupActions = ['add_lead', 'create_task', 'create_appointment', 'create_calendar_event', 'send_email_template', 'log_expense', 'send_digest', 'log_call'];
           const result = await executeSmsAction(action, crm);
           if (!result.ok && !noLookupActions.includes(action.action)) {
             const leadName = action.lead || action.leadName;
