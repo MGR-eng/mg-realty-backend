@@ -1587,6 +1587,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <div class="ce-tab" data-tab="videohooks" onclick="showCeTab('videohooks')"><i class="ti ti-movie" style="font-size:12px"></i> Video Hooks</div>
       <div class="ce-tab" data-tab="openhousequr" onclick="showCeTab('openhousequr')"><i class="ti ti-qrcode" style="font-size:12px"></i> Open House QR</div>
       <div class="ce-tab" data-tab="instagram" onclick="showCeTab('instagram')"><i class="ti ti-brand-instagram" style="font-size:12px"></i> Post to Instagram</div>
+      <div class="ce-tab" data-tab="gifmaker" onclick="showCeTab('gifmaker')"><i class="ti ti-gif" style="font-size:12px"></i> GIF Maker</div>
     </div>
 
     <!-- GENERATE VIEW -->
@@ -2229,6 +2230,124 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
           <div style="font-size:11px;color:var(--text3);padding:10px 14px;background:var(--surface2);border-radius:8px;line-height:1.7">
             ⚠️ Your Instagram access token expires every 60 days. If posting stops working, go to the Meta Developer Portal and regenerate the token, then update <strong>INSTAGRAM_ACCESS_TOKEN</strong> in Render.
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GIF Maker view -->
+    <div id="ce-gifmaker-view" style="display:none;padding:20px 0">
+      <div style="display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start">
+
+        <!-- LEFT: controls -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="tw" style="padding:18px">
+            <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:4px">🎬 GIF Maker</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Upload photos, set your specs, download a GIF ready for your newsletter.</div>
+
+            <!-- Upload zone -->
+            <div id="gif-drop-zone" onclick="document.getElementById('gif-file-input').click()"
+              ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+              ondragleave="this.style.borderColor=''"
+              ondrop="gifHandleDrop(event)"
+              style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:14px">
+              <i class="ti ti-photo-plus" style="font-size:28px;color:var(--text3);display:block;margin-bottom:6px"></i>
+              <div style="font-size:12px;color:var(--text3)">Drop photos here or <span style="color:var(--accent)">browse</span></div>
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">JPG, PNG — any number of frames</div>
+            </div>
+            <input type="file" id="gif-file-input" accept="image/*" multiple style="display:none" onchange="gifHandleFiles(this.files)">
+
+            <!-- Settings grid -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+              <div class="fgg">
+                <label>Width (px)</label>
+                <input type="number" id="gif-width" value="600" min="100" max="1920" step="10">
+              </div>
+              <div class="fgg">
+                <label>Height (px)</label>
+                <input type="number" id="gif-height" value="400" min="100" max="1080" step="10">
+              </div>
+              <div class="fgg">
+                <label>Frame delay (ms)</label>
+                <input type="number" id="gif-delay" value="800" min="100" max="5000" step="100">
+              </div>
+              <div class="fgg">
+                <label>Quality</label>
+                <select id="gif-quality">
+                  <option value="1">Best (slow)</option>
+                  <option value="5" selected>High</option>
+                  <option value="10">Medium</option>
+                  <option value="20">Fast</option>
+                </select>
+              </div>
+              <div class="fgg">
+                <label>Loop</label>
+                <select id="gif-loop">
+                  <option value="0" selected>Loop forever</option>
+                  <option value="-1">Play once</option>
+                  <option value="3">3 times</option>
+                  <option value="5">5 times</option>
+                </select>
+              </div>
+              <div class="fgg">
+                <label>Preset size</label>
+                <select onchange="gifApplyPreset(this.value)">
+                  <option value="">— choose —</option>
+                  <option value="600x400">Newsletter (600×400)</option>
+                  <option value="800x400">Wide banner (800×400)</option>
+                  <option value="1080x1080">Square (1080×1080)</option>
+                  <option value="1080x566">Facebook (1080×566)</option>
+                  <option value="600x315">Email header (600×315)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="fgg" style="margin-bottom:14px">
+              <label>Filename</label>
+              <input type="text" id="gif-filename" value="mg-realty-newsletter" placeholder="filename (no extension)">
+            </div>
+
+            <button class="btn btn-gold" onclick="gifGenerate()" id="gif-generate-btn" style="width:100%">
+              <i class="ti ti-sparkles"></i> Generate GIF
+            </button>
+          </div>
+
+          <!-- Tips -->
+          <div class="tw" style="padding:14px 16px;font-size:12px;color:var(--text3);line-height:1.8">
+            <div style="font-weight:700;color:var(--text2);margin-bottom:6px">💡 Tips</div>
+            <div>• 3–5 frames makes a clean loop</div>
+            <div>• 600–800ms delay feels natural</div>
+            <div>• Use 600px wide for most email clients</div>
+            <div>• Square (1080×1080) works best for social</div>
+            <div>• Higher quality = bigger file size</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: frame strip + preview -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Frame strip -->
+          <div class="tw" style="padding:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:13px;font-weight:700;color:var(--text1)">Frames <span id="gif-frame-count" style="color:var(--text3);font-weight:400">(0)</span></div>
+              <button class="btn btn-sm" onclick="gifClearFrames()" style="font-size:11px"><i class="ti ti-trash"></i> Clear all</button>
+            </div>
+            <div id="gif-frames-strip" style="display:flex;flex-wrap:wrap;gap:10px;min-height:80px;align-items:flex-start">
+              <div style="color:var(--text3);font-size:12px;padding:20px 0;width:100%;text-align:center">Upload images to see frames here</div>
+            </div>
+          </div>
+
+          <!-- Preview / output -->
+          <div class="tw" style="padding:16px">
+            <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:12px">Preview</div>
+            <div id="gif-preview-area" style="min-height:160px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border-radius:8px;overflow:hidden">
+              <div style="color:var(--text3);font-size:12px">Your GIF will appear here</div>
+            </div>
+            <div id="gif-output-actions" style="display:none;margin-top:12px;display:none;gap:10px;flex-wrap:wrap">
+              <a id="gif-download-link" class="btn btn-gold" download style="text-decoration:none"><i class="ti ti-download"></i> Download GIF</a>
+              <div id="gif-file-size" style="font-size:12px;color:var(--text3);align-self:center"></div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -7223,6 +7342,7 @@ function showCeTab(tab) {
   document.getElementById('ce-videohooks-view').style.display    = tab === 'videohooks'    ? '' : 'none';
   document.getElementById('ce-openhousequr-view').style.display  = tab === 'openhousequr'  ? '' : 'none';
   document.getElementById('ce-instagram-view').style.display     = tab === 'instagram'     ? '' : 'none';
+  document.getElementById('ce-gifmaker-view').style.display      = tab === 'gifmaker'      ? '' : 'none';
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
@@ -7490,6 +7610,112 @@ function igPollStatus(containerId, btn) {
       // else still processing, keep polling
     } catch(e) { /* keep trying */ }
   }, 5000);
+}
+
+// ── GIF Maker ─────────────────────────────────────────────────
+var gifFrames = []; // array of { dataUrl, name }
+
+function gifApplyPreset(val) {
+  if (!val) return;
+  const [w, h] = val.split('x').map(Number);
+  document.getElementById('gif-width').value = w;
+  document.getElementById('gif-height').value = h;
+}
+
+function gifHandleDrop(e) {
+  e.preventDefault();
+  document.getElementById('gif-drop-zone').style.borderColor = '';
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  gifHandleFiles(files);
+}
+
+function gifHandleFiles(files) {
+  const arr = Array.from(files);
+  arr.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      gifFrames.push({ dataUrl: ev.target.result, name: file.name });
+      gifRenderStrip();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function gifRenderStrip() {
+  const strip = document.getElementById('gif-frames-strip');
+  document.getElementById('gif-frame-count').textContent = '(' + gifFrames.length + ')';
+  if (!gifFrames.length) {
+    strip.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:20px 0;width:100%;text-align:center">Upload images to see frames here</div>';
+    return;
+  }
+  strip.innerHTML = gifFrames.map((f, i) => `
+    <div style="position:relative;flex-shrink:0" title="${f.name}">
+      <img src="${f.dataUrl}" style="width:90px;height:70px;object-fit:cover;border-radius:6px;border:2px solid var(--border);display:block">
+      <div style="position:absolute;top:2px;left:4px;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)">${i+1}</div>
+      <button onclick="gifRemoveFrame(${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;color:#fff;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+  `).join('');
+}
+
+function gifRemoveFrame(i) {
+  gifFrames.splice(i, 1);
+  gifRenderStrip();
+}
+
+function gifClearFrames() {
+  gifFrames = [];
+  gifRenderStrip();
+  document.getElementById('gif-preview-area').innerHTML = '<div style="color:var(--text3);font-size:12px">Your GIF will appear here</div>';
+  document.getElementById('gif-output-actions').style.display = 'none';
+}
+
+async function gifGenerate() {
+  if (!gifFrames.length) { toast('Add at least one image first', 'error'); return; }
+  const btn = document.getElementById('gif-generate-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Generating…';
+
+  const width   = parseInt(document.getElementById('gif-width').value) || 600;
+  const height  = parseInt(document.getElementById('gif-height').value) || 400;
+  const delay   = parseInt(document.getElementById('gif-delay').value) || 800;
+  const quality = parseInt(document.getElementById('gif-quality').value) || 5;
+  const loop    = parseInt(document.getElementById('gif-loop').value);
+  const filename = document.getElementById('gif-filename').value.trim() || 'mg-realty';
+
+  try {
+    const resp = await fetch(BACKEND + '/api/create-gif', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ frames: gifFrames.map(f => f.dataUrl), width, height, delay, quality, loop, filename })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || 'Server error');
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+
+    // Show preview
+    const preview = document.getElementById('gif-preview-area');
+    preview.innerHTML = `<img src="${url}" style="max-width:100%;max-height:360px;border-radius:6px;display:block">`;
+
+    // Show download link
+    const dl = document.getElementById('gif-download-link');
+    dl.href = url;
+    dl.download = filename + '.gif';
+    const kb = (blob.size / 1024).toFixed(1);
+    document.getElementById('gif-file-size').textContent = `${kb} KB · ${gifFrames.length} frames · ${width}×${height}`;
+    document.getElementById('gif-output-actions').style.display = 'flex';
+
+    toast('GIF created! ✨', 'success');
+  } catch(e) {
+    toast('GIF error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate GIF';
+  }
 }
 
 function generateOpenHouseQR() {

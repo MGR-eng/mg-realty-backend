@@ -8214,6 +8214,51 @@ app.get('/api/ig-poll/:containerId', async (req, res) => {
   }
 });
 
+// POST /api/create-gif — generate animated GIF from uploaded frames
+// body: { frames: ['data:image/jpeg;base64,...', ...], width, height, delay, quality, loop, filename }
+app.post('/api/create-gif', async (req, res) => {
+  try {
+    const { frames, width = 600, height = 400, delay = 500, quality = 10, loop = 0, filename = 'mg-realty' } = req.body;
+    if (!frames || !frames.length) return res.status(400).json({ ok: false, error: 'No frames provided' });
+
+    const GIFEncoder = (await import('gif-encoder-2')).default;
+    const sharp = (await import('sharp')).default;
+
+    const encoder = new GIFEncoder(width, height, 'neuquant', false);
+    const readStream = encoder.createReadStream();
+
+    encoder.setDelay(delay);
+    encoder.setQuality(quality);       // 1 = best, 20 = fastest
+    encoder.setRepeat(loop);           // 0 = loop forever, -1 = play once
+
+    encoder.start();
+
+    for (const frame of frames) {
+      const base64 = frame.replace(/^data:image\/\w+;base64,/, '');
+      const buf = Buffer.from(base64, 'base64');
+      const { data } = await sharp(buf)
+        .resize(width, height, { fit: 'cover', position: 'centre' })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      encoder.addFrame(data);
+    }
+
+    encoder.end();
+
+    const chunks = [];
+    for await (const chunk of readStream) chunks.push(chunk);
+    const gifBuffer = Buffer.concat(chunks);
+
+    res.setHeader('Content-Type', 'image/gif');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}.gif"`);
+    res.send(gifBuffer);
+  } catch (e) {
+    console.error('GIF create error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // GET /api/mileage-report?year=2025  — PDF mileage log for taxes
 app.get('/api/mileage-report', async (req, res) => {
   try {
