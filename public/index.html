@@ -12849,6 +12849,29 @@ function nlAddCustomHood() {
   nlToggleHood(name, chip);
 }
 
+function nlAddSaleRow(stackId) {
+  var stack = document.getElementById(stackId);
+  if (!stack) return;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center';
+  row.innerHTML = '<input class="nl-sale-addr" placeholder="Address" style="font-size:12px">' +
+    '<input class="nl-sale-price" placeholder="Price" style="font-size:12px">' +
+    '<button type="button" onclick="this.closest(\'div\').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0 4px;line-height:1">×</button>';
+  stack.appendChild(row);
+}
+
+function nlCollectSaleRows(stackId) {
+  var rows = [];
+  var stack = document.getElementById(stackId);
+  if (!stack) return rows;
+  stack.querySelectorAll('div').forEach(function(row) {
+    var addr = (row.querySelector('.nl-sale-addr') || {}).value || '';
+    var price = (row.querySelector('.nl-sale-price') || {}).value || '';
+    if (addr) rows.push({ address: addr, price: price });
+  });
+  return rows;
+}
+
 function nlRenderHoodPicker() {
   nlSelectedHoods = [];
   return '<div class="tw" style="padding:14px;margin-bottom:14px">' +
@@ -12877,11 +12900,12 @@ function nlPullLiveData() {
 
   // Use selected chips, fall back to default list if none chosen
   var neighborhoods = nlSelectedHoods.length ? nlSelectedHoods.slice() : NL_HOODS_DEFAULT.slice(0, 6);
+  var zips = nlGV('nl-zips') || '';
 
   fetch('/api/newsletter-market-data', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ neighborhoods: neighborhoods })
+    body: JSON.stringify({ neighborhoods: neighborhoods, zips: zips })
   })
   .then(function(r) { return r.json(); })
   .then(function(res) {
@@ -12895,8 +12919,11 @@ function nlPullLiveData() {
       if (d.medianPrice && document.getElementById('nl-med-price')) document.getElementById('nl-med-price').value = d.medianPrice;
       if (d.priceChange && document.getElementById('nl-price-chg')) document.getElementById('nl-price-chg').value = d.priceChange;
       if (d.daysOnMarket && document.getElementById('nl-dom')) document.getElementById('nl-dom').value = d.daysOnMarket;
-      if (d.homesSold && document.getElementById('nl-sold')) document.getElementById('nl-sold').value = d.homesSold;
       if (d.inventory && document.getElementById('nl-inventory')) document.getElementById('nl-inventory').value = d.inventory;
+      if (d.pendingSFH && document.getElementById('nl-pending-sfh')) document.getElementById('nl-pending-sfh').value = d.pendingSFH;
+      if (d.pendingCondo && document.getElementById('nl-pending-condo')) document.getElementById('nl-pending-condo').value = d.pendingCondo;
+      if (d.soldSFH && document.getElementById('nl-sold-sfh')) document.getElementById('nl-sold-sfh').value = d.soldSFH;
+      if (d.soldCondo && document.getElementById('nl-sold-condo')) document.getElementById('nl-sold-condo').value = d.soldCondo;
       if (d.marketTemp && document.getElementById('nl-market-temp')) {
         var sel = document.getElementById('nl-market-temp');
         for (var i = 0; i < sel.options.length; i++) {
@@ -12947,21 +12974,50 @@ function nlSwitchType(type) {
 
   if (type === 'monthly') {
     fields.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">' +
+        '<div><label>Month &amp; year</label><input id="nl-month" placeholder="e.g. July 2026"></div>' +
+        '<div><label>Zip code(s) for data pull</label><input id="nl-zips" placeholder="e.g. 90046, 90069"></div>' +
+      '</div>' +
       nlRenderHoodPicker() +
-      '<div style="margin-bottom:16px"><label>Month &amp; year</label><input id="nl-month" placeholder="e.g. June 2026"></div>' +
       '<div class="tw" style="padding:16px;margin-bottom:14px">' +
         '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Market Stats</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">' +
-          '<div><label>Median sale price</label><input id="nl-med-price" placeholder="$1,250,000"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">' +
+          '<div><label>Active listings</label><input id="nl-inventory" placeholder="287"></div>' +
+          '<div><label>Median list price</label><input id="nl-med-price" placeholder="$1,275,000"></div>' +
+          '<div><label>Avg days on market</label><input id="nl-dom" placeholder="79"></div>' +
           '<div><label>vs. last month</label><input id="nl-price-chg" placeholder="+3.2%"></div>' +
-          '<div><label>Avg days on market</label><input id="nl-dom" placeholder="18"></div>' +
-          '<div><label>Homes sold</label><input id="nl-sold" placeholder="142"></div>' +
-          '<div><label>Active inventory</label><input id="nl-inventory" placeholder="87 homes"></div>' +
           '<div><label>Market temp</label><select id="nl-market-temp"><option>Hot seller\'s market</option><option>Balanced market</option><option>Buyer\'s market</option></select></div>' +
+        '</div>' +
+        '<div style="height:1px;background:var(--border);margin:12px 0"></div>' +
+        '<div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Pending Sales</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">' +
+          '<div><label>Pending SFH</label><input id="nl-pending-sfh" placeholder="19"></div>' +
+          '<div><label>Pending Condos</label><input id="nl-pending-condo" placeholder="21"></div>' +
+        '</div>' +
+        '<div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Closed / Sold (this month)</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+          '<div><label>Sold SFH</label><input id="nl-sold-sfh" placeholder="24"></div>' +
+          '<div><label>Sold Condos</label><input id="nl-sold-condo" placeholder="33"></div>' +
         '</div>' +
       '</div>' +
       '<div class="tw" style="padding:16px;margin-bottom:14px">' +
-        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Featured Listings (up to 2)</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Top Pending Sales</div>' +
+          '<button class="btn" onclick="nlAddSaleRow(\'nl-pending-stack\')" style="font-size:11px;padding:4px 9px"><i class="ti ti-plus"></i> Add row</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Paste from Matrix — address + list price of top pending deals</div>' +
+        '<div id="nl-pending-stack"></div>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Closed Sales This Month</div>' +
+          '<button class="btn" onclick="nlAddSaleRow(\'nl-closed-stack\')" style="font-size:11px;padding:4px 9px"><i class="ti ti-plus"></i> Add row</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Paste from Matrix — address + closed price</div>' +
+        '<div id="nl-closed-stack"></div>' +
+      '</div>' +
+      '<div class="tw" style="padding:16px;margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">My Active Listings (Featured)</div>' +
         '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px"><input id="nl-l1-addr" placeholder="Address"><input id="nl-l1-price" placeholder="Price"><input id="nl-l1-beds" placeholder="Bed/Bath"><input id="nl-l1-sqft" placeholder="Sqft"></div>' +
         '<input id="nl-l1-link" placeholder="Listing URL" style="width:100%;box-sizing:border-box;margin-bottom:6px">' +
         '<textarea id="nl-l1-notes" placeholder="Key highlights" style="height:52px;resize:none;width:100%;box-sizing:border-box;margin-bottom:14px"></textarea>' +
@@ -12972,7 +13028,7 @@ function nlSwitchType(type) {
       '<div class="tw" style="padding:16px;margin-bottom:14px">' +
         '<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Neighborhood Spotlight</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">' +
-          '<div><label>Neighborhood</label><input id="nl-hood" placeholder="e.g. Silver Lake"></div>' +
+          '<div><label>Neighborhood</label><input id="nl-hood" placeholder="e.g. West Hollywood"></div>' +
           '<div><label>Price range</label><input id="nl-hood-price" placeholder="e.g. $900K–$1.4M"></div>' +
         '</div>' +
         '<textarea id="nl-hood-notes" placeholder="What\'s happening there — activity, vibe, notable sales..." style="height:60px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
@@ -12984,6 +13040,8 @@ function nlSwitchType(type) {
         '</div>' +
         '<textarea id="nl-personal-note" placeholder="Write it rough and Ace will polish it — or click Ace Generate..." style="height:80px;resize:none;width:100%;box-sizing:border-box"></textarea>' +
       '</div>';
+    // Pre-populate 5 rows in each sales stack
+    for (var i = 0; i < 5; i++) { nlAddSaleRow('nl-pending-stack'); nlAddSaleRow('nl-closed-stack'); }
 
   } else if (type === 'westside') {
     fields.innerHTML =
@@ -13549,7 +13607,19 @@ function nlGenerate() {
 
   if (type === 'monthly') {
     payload.month = nlGV('nl-month');
-    payload.marketStats = { medianPrice:nlGV('nl-med-price'), priceChange:nlGV('nl-price-chg'), daysOnMarket:nlGV('nl-dom'), homesSold:nlGV('nl-sold'), inventory:nlGV('nl-inventory'), marketTemp:nlGV('nl-market-temp') };
+    payload.marketStats = {
+      activeListings: nlGV('nl-inventory'),
+      medianPrice: nlGV('nl-med-price'),
+      priceChange: nlGV('nl-price-chg'),
+      daysOnMarket: nlGV('nl-dom'),
+      marketTemp: nlGV('nl-market-temp'),
+      pendingSFH: nlGV('nl-pending-sfh'),
+      pendingCondo: nlGV('nl-pending-condo'),
+      soldSFH: nlGV('nl-sold-sfh'),
+      soldCondo: nlGV('nl-sold-condo')
+    };
+    payload.pendingSales = nlCollectSaleRows('nl-pending-stack');
+    payload.closedSales = nlCollectSaleRows('nl-closed-stack');
     payload.listings = [
       { address:nlGV('nl-l1-addr'), price:nlGV('nl-l1-price'), beds:nlGV('nl-l1-beds'), sqft:nlGV('nl-l1-sqft'), link:nlGV('nl-l1-link'), notes:nlGV('nl-l1-notes') },
       { address:nlGV('nl-l2-addr'), price:nlGV('nl-l2-price'), beds:nlGV('nl-l2-beds'), sqft:nlGV('nl-l2-sqft'), link:nlGV('nl-l2-link'), notes:nlGV('nl-l2-notes') }

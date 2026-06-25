@@ -6973,38 +6973,45 @@ app.delete('/api/admin/appointment', async (req, res) => {
 // ── Live LA Market Data Pull ──────────────────────────────────────────────────
 app.post('/api/newsletter-market-data', async (req, res) => {
   try {
-    const { neighborhoods } = req.body;
+    const { neighborhoods, zips } = req.body;
     const hoodList = (neighborhoods && neighborhoods.length)
       ? neighborhoods.join(', ')
-      : 'Silver Lake, Los Feliz, Echo Park, West Hollywood, Brentwood, Santa Monica, Highland Park';
+      : 'West Hollywood, Silver Lake, Los Feliz, Echo Park, Brentwood, Santa Monica';
 
     const month = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const zipContext = zips ? `Focus specifically on zip code(s): ${zips}. ` : '';
 
-    const prompt = `Search for the most current Los Angeles real estate market data available for ${month}.
+    const prompt = `Search for the most current Los Angeles real estate market data available for ${month}. ${zipContext}
 
-Find these stats for the overall LA / Westside market:
-1. Median home sale price (single family homes)
-2. Price change vs last month (%)
-3. Average days on market
-4. Number of homes sold (or closed) this month
-5. Active inventory (number of homes listed)
-6. Market temperature (hot seller's, balanced, or buyer's market)
+Find these stats for the ${zips ? 'zip code(s) ' + zips + ' area' : 'LA Westside / Hollywood Hills market'}:
+1. Active listings count
+2. Median list price
+3. Price change vs last month (%)
+4. Average days on market
+5. Number of SFH (single family homes) currently pending
+6. Number of condos currently pending
+7. Number of SFH sold/closed this month
+8. Number of condos sold/closed this month
+9. Overall market temperature (hot seller's, balanced, or buyer's market)
 
 Also find a one-line market update for each of these neighborhoods: ${hoodList}
-For each neighborhood: current median price or price range, and one notable trend (inventory up/down, prices rising/falling, days on market).
+For each neighborhood: current median price or price range, and one notable trend.
 
 Return ONLY a JSON object in this exact format (no markdown, no explanation):
 {
   "month": "${month}",
-  "medianPrice": "$X,XXX,XXX",
-  "priceChange": "+X.X% vs last month",
-  "daysOnMarket": "XX days",
-  "homesSold": "XXX",
-  "inventory": "XXX homes",
-  "marketTemp": "Hot seller's market",
+  "inventory": "287",
+  "medianPrice": "$1,275,000",
+  "priceChange": "-3.2% vs last month",
+  "daysOnMarket": "79",
+  "pendingSFH": "19",
+  "pendingCondo": "21",
+  "soldSFH": "24",
+  "soldCondo": "33",
+  "marketTemp": "Balanced market",
   "source": "Redfin / Zillow / [source used]",
   "neighborhoods": [
-    { "name": "Silver Lake", "priceRange": "$X–$X", "update": "one-line trend" }
+    { "name": "West Hollywood", "priceRange": "$X–$X", "update": "one-line trend" }
   ]
 }`;
 
@@ -7152,20 +7159,34 @@ app.post('/api/newsletter-generate', async (req, res) => {
     if (mode === 'monthly') {
       const ms = body.marketStats || {};
       const nb = body.neighborhood || {};
+      const pendingSales = (body.pendingSales || []);
+      const closedSales = (body.closedSales || []);
+      const pendingBlock = pendingSales.length
+        ? pendingSales.map(s => `  ${s.address}${s.price ? ' — ' + s.price : ''}`).join('\n')
+        : null;
+      const closedBlock = closedSales.length
+        ? closedSales.map(s => `  ${s.address}${s.price ? ' — ' + s.price : ''}`).join('\n')
+        : null;
       prompt = `You are writing a monthly real estate newsletter for Matt Golden, a Los Angeles real estate agent with MG Realty. ${VOICE}
 
 Write TWO things:
 1. A compelling subject line (conversational, not salesy, under 60 characters)
 2. The full newsletter body
 
-Details:
-- Month: ${body.month || 'this month'}
-- Market: Median price ${ms.medianPrice||'N/A'}, ${ms.priceChange||''} vs last month, avg ${ms.daysOnMarket||'N/A'} days on market, ${ms.homesSold||'N/A'} homes sold, inventory: ${ms.inventory||'N/A'}, ${ms.marketTemp||''}
-${(body.listings||[]).length ? '\nFeatured Listings:\n' + body.listings.map(listingBlock).join('\n\n') : ''}
+Market data for ${body.month || 'this month'}:
+- Active listings: ${ms.activeListings||'N/A'}
+- Median list price: ${ms.medianPrice||'N/A'} (${ms.priceChange||''} vs last month)
+- Avg days on market: ${ms.daysOnMarket||'N/A'}
+- Market temp: ${ms.marketTemp||''}
+- Pending: ${ms.pendingSFH||'?'} SFH / ${ms.pendingCondo||'?'} condos
+- Sold this month: ${ms.soldSFH||'?'} SFH / ${ms.soldCondo||'?'} condos
+${pendingBlock ? '\nTop Pending Sales:\n' + pendingBlock : ''}
+${closedBlock ? '\nClosed Sales This Month:\n' + closedBlock : ''}
+${(body.listings||[]).length ? '\nMatt\'s Featured Listings:\n' + body.listings.map(listingBlock).join('\n\n') : ''}
 ${nb.name ? `\nNeighborhood Spotlight: ${nb.name}${nb.priceRange ? ', '+nb.priceRange : ''}${nb.notes ? '\n'+nb.notes : ''}` : ''}
 ${body.personalNote ? `\nMatt's personal note (polish into his voice): ${body.personalNote}` : ''}
 
-Format: plain text, no HTML, no markdown headers. Sections: opening personal note → market update (narrative, not bullets) ${(body.listings||[]).length?'→ featured listings':''} ${nb.name?'→ neighborhood spotlight':''} → closing CTA.
+Format: plain text, no HTML, no markdown headers. Sections: opening personal note → market update narrative → stats summary (weave in pending/sold numbers naturally)${pendingBlock||closedBlock?' → key sales activity':''} ${(body.listings||[]).length?'→ featured listings':''} ${nb.name?'→ neighborhood spotlight':''} → closing CTA.
 Sign off as: ${SIGN}
 Return ONLY valid JSON: {"subject":"...","body":"..."}`;
 
