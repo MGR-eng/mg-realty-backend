@@ -1588,6 +1588,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
       <div class="ce-tab" data-tab="openhousequr" onclick="showCeTab('openhousequr')"><i class="ti ti-qrcode" style="font-size:12px"></i> Open House QR</div>
       <div class="ce-tab" data-tab="instagram" onclick="showCeTab('instagram')"><i class="ti ti-brand-instagram" style="font-size:12px"></i> Post to Instagram</div>
       <div class="ce-tab" data-tab="gifmaker" onclick="showCeTab('gifmaker')"><i class="ti ti-gif" style="font-size:12px"></i> GIF Maker</div>
+      <div class="ce-tab" data-tab="fbposts" onclick="showCeTab('fbposts')"><i class="ti ti-brand-facebook" style="font-size:12px"></i> Facebook Posts</div>
     </div>
 
     <!-- GENERATE VIEW -->
@@ -2623,6 +2624,141 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
   <div style="padding:14px 16px;display:flex;gap:8px">
     <button class="btn btn-primary" style="flex:1" onclick="openEditLease(currentLeaseId)"><i class="ti ti-edit"></i> Edit</button>
     <button class="btn" style="flex:1;background:var(--red-bg);color:var(--red);border-color:var(--red-bd)" onclick="deleteLease(currentLeaseId)"><i class="ti ti-trash"></i> Delete</button>
+  </div>
+</div>
+
+<!-- ── Facebook Post Generator View ── -->
+<div id="ce-fbposts-view" style="display:none;padding:4px 0">
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start">
+
+    <!-- LEFT: Controls -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Area + Data Pull -->
+      <div class="tw" style="padding:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Area</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <label>Neighborhood</label>
+            <input id="fb-neighborhood" placeholder="West Hollywood, Silver Lake…">
+          </div>
+          <div>
+            <label>Zip code <span style="font-weight:400;color:var(--text3)">(optional, improves accuracy)</span></label>
+            <input id="fb-zip" placeholder="90046">
+          </div>
+          <button class="btn" id="fb-pull-btn" onclick="fbPullData()" style="color:var(--accent);border-color:var(--accent);justify-content:center">
+            <i class="ti ti-refresh"></i> Pull Live Market Data
+          </button>
+          <div id="fb-data-status" style="font-size:11px;color:var(--text3);display:none;line-height:1.5"></div>
+        </div>
+      </div>
+
+      <!-- Post type -->
+      <div class="tw" style="padding:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Post Type</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
+            <input type="radio" name="fb-type" value="market" checked onchange="fbSwitchType('market')" style="width:auto"> 📊 Market Update
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
+            <input type="radio" name="fb-type" value="listing" onchange="fbSwitchType('listing')" style="width:auto"> 🏠 Featured Property
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
+            <input type="radio" name="fb-type" value="sold" onchange="fbSwitchType('sold')" style="width:auto"> 🔑 Just Sold
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
+            <input type="radio" name="fb-type" value="commentary" onchange="fbSwitchType('commentary')" style="width:auto"> 💬 Market Commentary
+          </label>
+        </div>
+      </div>
+
+      <!-- Tone -->
+      <div class="tw" style="padding:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Tone</div>
+        <select id="fb-tone">
+          <option value="expert">Expert + approachable</option>
+          <option value="direct">Direct + data-first</option>
+          <option value="storytelling">Storytelling / narrative</option>
+          <option value="conversational">Casual conversation</option>
+        </select>
+      </div>
+
+      <button class="btn btn-gold" id="fb-gen-btn" onclick="fbGenerate()" style="justify-content:center;padding:11px">
+        <i class="ti ti-sparkles"></i> Generate Post
+      </button>
+    </div>
+
+    <!-- RIGHT: Dynamic fields + output -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- Market Stats card (shown for market/commentary types) -->
+      <div class="tw" id="fb-stats-card" style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Market Stats <span style="font-weight:400;color:var(--text3)">(auto-filled when you pull data)</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div><label>Active listings</label><input id="fb-active" placeholder="287"></div>
+          <div><label>Median list price</label><input id="fb-med-price" placeholder="$1,275,000"></div>
+          <div><label>Avg days on market</label><input id="fb-dom" placeholder="79"></div>
+          <div><label>vs. last month</label><input id="fb-price-chg" placeholder="-3.2%"></div>
+          <div><label>Pending SFH / Condo</label><input id="fb-pending" placeholder="19 / 21"></div>
+          <div><label>Sold this month</label><input id="fb-sold" placeholder="24 SFH / 33 condo"></div>
+        </div>
+        <div style="margin-top:10px">
+          <label>Your take / angle <span style="font-weight:400;color:var(--text3)">(optional — makes it sharper)</span></label>
+          <textarea id="fb-market-angle" placeholder="e.g. Prices have pulled back but equity is holding — this is actually a great window for buyers who've been sitting on the sidelines." style="height:60px;resize:none"></textarea>
+        </div>
+      </div>
+
+      <!-- Property details card (shown for listing/sold types) -->
+      <div class="tw" id="fb-property-card" style="padding:16px;display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Property Details</div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="fb-prop-addr" placeholder="Address">
+          <input id="fb-prop-price" placeholder="Price">
+          <input id="fb-prop-beds" placeholder="Bed/Bath">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="fb-prop-sqft" placeholder="Sq ft">
+          <input id="fb-prop-type" placeholder="Property type (SFH, condo…)">
+        </div>
+        <div style="margin-bottom:8px">
+          <input id="fb-prop-link" placeholder="Listing URL (optional)">
+        </div>
+        <div>
+          <label>What makes this property special?</label>
+          <textarea id="fb-prop-story" placeholder="e.g. Mid-century on a quiet street, original terrazzo floors, guest house, walking distance to the Reservoir…" style="height:70px;resize:none"></textarea>
+        </div>
+        <div id="fb-sold-extra" style="margin-top:10px;display:none">
+          <label>The story behind the sale</label>
+          <textarea id="fb-sold-story" placeholder="e.g. Multiple offers, listed Friday, in escrow by Monday, sold $85k over ask. Here's what made the difference…" style="height:60px;resize:none"></textarea>
+        </div>
+      </div>
+
+      <!-- Output -->
+      <div class="tw" id="fb-output" style="display:none">
+        <div style="padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em"><i class="ti ti-brand-facebook"></i> Facebook Post — Ready to Copy</div>
+          <button class="btn btn-sm" onclick="fbCopy()" id="fb-copy-btn"><i class="ti ti-copy"></i> Copy</button>
+        </div>
+        <div id="fb-out-text" style="padding:16px;font-size:14px;line-height:1.8;white-space:pre-wrap;color:var(--text)"></div>
+        <div style="padding:0 16px 14px;display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="fbGenerate()" style="font-size:11px"><i class="ti ti-refresh"></i> Regenerate</button>
+          <button class="btn btn-sm" onclick="fbAddToCalendar()" style="font-size:11px;color:var(--blue);border-color:var(--blue-bd)"><i class="ti ti-calendar-plus"></i> Add to Calendar</button>
+        </div>
+      </div>
+
+      <!-- Tips card -->
+      <div class="tw" style="padding:14px 16px;background:rgba(232,104,26,0.04);border-color:rgba(232,104,26,0.15)">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">What works on Facebook</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">
+          ✓ First line is the hook — Facebook cuts off after 2-3 lines<br>
+          ✓ Data + story = engagement. Don't just post numbers<br>
+          ✓ End with a question or direct CTA ("Thinking about buying in WeHo? Reply to this post")<br>
+          ✓ Best posting times: Tue–Thu 10am–2pm
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -7344,6 +7480,7 @@ function showCeTab(tab) {
   document.getElementById('ce-openhousequr-view').style.display  = tab === 'openhousequr'  ? '' : 'none';
   document.getElementById('ce-instagram-view').style.display     = tab === 'instagram'     ? '' : 'none';
   document.getElementById('ce-gifmaker-view').style.display      = tab === 'gifmaker'      ? '' : 'none';
+  document.getElementById('ce-fbposts-view').style.display       = tab === 'fbposts'       ? '' : 'none';
   document.querySelectorAll('.ce-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'calendar')    { if (!calWeekStart) calWeekStart = getWeekStart(new Date()); renderCalendar(); }
   if (tab === 'performance') { renderPerformance(); }
@@ -13708,6 +13845,151 @@ document.addEventListener('DOMContentLoaded', function() {
     var sel = document.getElementById('nl-type');
     if (sel) nlSwitchType(sel.value);
   }, 400);
+});
+
+// ── Facebook Post Generator ─────────────────────────────────────
+var fbMarketData = null;
+
+function fbSwitchType(type) {
+  var statsCard = document.getElementById('fb-stats-card');
+  var propCard = document.getElementById('fb-property-card');
+  var soldExtra = document.getElementById('fb-sold-extra');
+  if (!statsCard) return;
+  statsCard.style.display = (type === 'market' || type === 'commentary') ? '' : 'none';
+  propCard.style.display = (type === 'listing' || type === 'sold') ? '' : 'none';
+  if (soldExtra) soldExtra.style.display = type === 'sold' ? '' : 'none';
+  document.getElementById('fb-output').style.display = 'none';
+}
+
+function fbPullData() {
+  var neighborhood = document.getElementById('fb-neighborhood').value.trim();
+  var zip = document.getElementById('fb-zip').value.trim();
+  if (!neighborhood && !zip) { toast('Enter a neighborhood or zip first'); return; }
+
+  var btn = document.getElementById('fb-pull-btn');
+  var status = document.getElementById('fb-data-status');
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Pulling data...';
+  btn.disabled = true;
+  status.style.display = 'none';
+
+  fetch('/api/newsletter-market-data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ neighborhoods: neighborhood ? [neighborhood] : [], zips: zip })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    btn.innerHTML = '<i class="ti ti-refresh"></i> Pull Live Market Data';
+    btn.disabled = false;
+    if (!res.ok || !res.data) { toast('Could not pull data — try again'); return; }
+    var d = res.data;
+    fbMarketData = d;
+    if (d.inventory) document.getElementById('fb-active').value = d.inventory;
+    if (d.medianPrice) document.getElementById('fb-med-price').value = d.medianPrice;
+    if (d.daysOnMarket) document.getElementById('fb-dom').value = d.daysOnMarket;
+    if (d.priceChange) document.getElementById('fb-price-chg').value = d.priceChange;
+    if (d.pendingSFH || d.pendingCondo) document.getElementById('fb-pending').value = (d.pendingSFH||'?') + ' / ' + (d.pendingCondo||'?');
+    if (d.soldSFH || d.soldCondo) document.getElementById('fb-sold').value = (d.soldSFH||'?') + ' SFH / ' + (d.soldCondo||'?') + ' condo';
+    status.style.display = '';
+    status.innerHTML = '✓ Data pulled' + (d.source ? ' · Source: ' + d.source : '');
+    toast('Market data pulled ✓');
+  })
+  .catch(function() {
+    btn.innerHTML = '<i class="ti ti-refresh"></i> Pull Live Market Data';
+    btn.disabled = false;
+    toast('Failed to pull data — try again');
+  });
+}
+
+function fbGenerate() {
+  var type = document.querySelector('input[name="fb-type"]:checked');
+  if (!type) return;
+  var postType = type.value;
+  var neighborhood = document.getElementById('fb-neighborhood').value.trim();
+  var zip = document.getElementById('fb-zip').value.trim();
+  var tone = document.getElementById('fb-tone').value;
+
+  var payload = { postType: postType, neighborhood: neighborhood || zip || 'Los Angeles', tone: tone };
+
+  if (postType === 'market' || postType === 'commentary') {
+    payload.stats = {
+      active: document.getElementById('fb-active').value,
+      medianPrice: document.getElementById('fb-med-price').value,
+      dom: document.getElementById('fb-dom').value,
+      priceChange: document.getElementById('fb-price-chg').value,
+      pending: document.getElementById('fb-pending').value,
+      sold: document.getElementById('fb-sold').value,
+      angle: document.getElementById('fb-market-angle').value
+    };
+  } else {
+    payload.property = {
+      address: document.getElementById('fb-prop-addr').value,
+      price: document.getElementById('fb-prop-price').value,
+      beds: document.getElementById('fb-prop-beds').value,
+      sqft: document.getElementById('fb-prop-sqft').value,
+      type: document.getElementById('fb-prop-type').value,
+      link: document.getElementById('fb-prop-link').value,
+      story: document.getElementById('fb-prop-story').value
+    };
+    if (postType === 'sold') payload.saleStory = document.getElementById('fb-sold-story').value;
+  }
+
+  var btn = document.getElementById('fb-gen-btn');
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Generating...';
+  btn.disabled = true;
+
+  fetch('/api/fb-post-generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Post';
+    btn.disabled = false;
+    if (data.error) { toast('Error: ' + data.error); return; }
+    document.getElementById('fb-out-text').innerText = data.post || '';
+    document.getElementById('fb-output').style.display = '';
+    document.getElementById('fb-output').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  })
+  .catch(function() {
+    btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Post';
+    btn.disabled = false;
+    toast('Generation failed — try again');
+  });
+}
+
+function fbCopy() {
+  var text = document.getElementById('fb-out-text').innerText;
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.getElementById('fb-copy-btn');
+    btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
+    btn.style.color = 'var(--green)';
+    setTimeout(function() { btn.innerHTML = '<i class="ti ti-copy"></i> Copy'; btn.style.color = ''; }, 2000);
+  });
+}
+
+function fbAddToCalendar() {
+  var text = document.getElementById('fb-out-text').innerText;
+  var neighborhood = document.getElementById('fb-neighborhood').value.trim() || 'Facebook Post';
+  var type = (document.querySelector('input[name="fb-type"]:checked') || {}).value || 'market';
+  var labels = { market: 'Market Update', listing: 'Featured Property', sold: 'Just Sold', commentary: 'Market Commentary' };
+  if (window.crm && window.crm.contentCalendar !== undefined) {
+    var entry = { id: Date.now(), date: new Date().toISOString().slice(0,10), platform: 'Facebook', type: labels[type] || 'Post', caption: text, neighborhood: neighborhood, hashtags: '', status: 'draft' };
+    if (!window.crm.contentCalendar) window.crm.contentCalendar = [];
+    window.crm.contentCalendar.push(entry);
+    pushToBackend();
+    toast('Added to content calendar ✓');
+    showCeTab('calendar');
+  } else {
+    toast('Copied — paste into calendar manually');
+    navigator.clipboard.writeText(text);
+  }
+}
+
+// Initialize FB post type on tab open
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() { fbSwitchType('market'); }, 500);
 });
 </script>
 

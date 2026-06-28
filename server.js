@@ -7318,6 +7318,122 @@ Return ONLY valid JSON: {"subject":"...","body":"..."}`;
   }
 });
 
+// ── Facebook Post Generator ───────────────────────────────────
+app.post('/api/fb-post-generate', async (req, res) => {
+  try {
+    const { postType, neighborhood, tone, stats, property, saleStory } = req.body;
+    const VOICE = `Matt Golden is a Los Angeles real estate agent with MG Realty. He's knowledgeable, warm, direct, and speaks like a trusted friend in the industry — not a corporate agent. Never salesy or hype-y. Always useful and human.`;
+
+    const toneGuide = {
+      expert: 'Confident and authoritative but approachable — like the smartest person at a dinner party who also happens to be your friend.',
+      direct: 'Lead with the data. Short sentences. No fluff. The numbers tell the story.',
+      storytelling: 'Paint a picture. Open with a scene or moment, connect it to the market, end with a human insight.',
+      conversational: 'Like texting a friend who happens to know everything about LA real estate. Casual, warm, direct.'
+    };
+
+    const month = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    let prompt = '';
+
+    if (postType === 'market' || postType === 'commentary') {
+      const s = stats || {};
+      prompt = `Write a Facebook post for Matt Golden, LA real estate agent, about the ${neighborhood} real estate market for ${month}.
+
+Tone: ${toneGuide[tone] || toneGuide.expert}
+
+Market data:
+- Active listings: ${s.active || 'N/A'}
+- Median list price: ${s.medianPrice || 'N/A'} (${s.priceChange || ''} vs last month)
+- Avg days on market: ${s.dom || 'N/A'}
+- Pending: ${s.pending || 'N/A'}
+- Sold this month: ${s.sold || 'N/A'}
+${s.angle ? '\nMatt\'s angle / take: ' + s.angle : ''}
+
+Write a Facebook post that:
+- Opens with a hook in the first line (Facebook cuts off after 2-3 lines — this line must make people click "See more")
+- Weaves the data into a narrative, not a bullet-point dump
+- Gives readers a clear "so what" — what does this mean for buyers or sellers right now?
+- Ends with a direct CTA (reply, DM, call — one clear ask)
+- Is 150-250 words
+- Reads like it came from a real person, not a marketing department
+- Plain text only, no hashtags (Matt adds those separately)
+
+Return ONLY the post text, nothing else.`;
+
+    } else if (postType === 'listing') {
+      const p = property || {};
+      prompt = `Write a Facebook post for Matt Golden, LA real estate agent, showcasing a property listing.
+
+Tone: ${toneGuide[tone] || toneGuide.expert}
+
+Property details:
+- Address: ${p.address || 'N/A'}
+- Price: ${p.price || 'N/A'}
+- Beds/Baths: ${p.beds || 'N/A'}
+- Sq ft: ${p.sqft || 'N/A'}
+- Type: ${p.type || 'N/A'}
+${p.link ? '- Link: ' + p.link : ''}
+${p.story ? '- What makes it special: ' + p.story : ''}
+
+Write a Facebook post that:
+- Opens with something that makes you want to keep reading — NOT "Just listed!" or "Check out this amazing home!" (too generic)
+- Tells the story of this property — who would love it and why
+- Includes key details naturally, not as a spec sheet
+- Ends with a clear CTA (DM, call, link to listing)
+- Is 100-180 words
+- Plain text only, no hashtags
+
+Return ONLY the post text, nothing else.`;
+
+    } else if (postType === 'sold') {
+      const p = property || {};
+      prompt = `Write a "Just Sold" Facebook post for Matt Golden, LA real estate agent.
+
+Tone: ${toneGuide[tone] || toneGuide.expert}
+
+Property:
+- Address: ${p.address || 'N/A'}
+- Sale price: ${p.price || 'N/A'}
+- Beds/Baths: ${p.beds || 'N/A'}
+- Sq ft: ${p.sqft || 'N/A'}
+${p.story ? '- Property story: ' + p.story : ''}
+${saleStory ? '- Sale story: ' + saleStory : ''}
+
+Write a Facebook post that:
+- Opens with something compelling — the outcome, a surprising detail, or what the sale signals about the market
+- Tells the story of the sale — not just the specs but what happened and why it matters
+- Includes a market insight (what does this sale say about the neighborhood right now?)
+- Ends with a CTA for people thinking about buying or selling
+- Is 120-200 words
+- Plain text only, no hashtags
+
+Return ONLY the post text, nothing else.`;
+    }
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const aiData = await aiRes.json();
+    const post = aiData.content?.[0]?.text?.trim() || '';
+    if (!post) throw new Error('No content from AI');
+    res.json({ post });
+
+  } catch(e) {
+    console.error('FB post generate error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Neighborhood Morning Brief ────────────────────────────────
 app.post('/api/neighborhood-brief', async (req, res) => {
   try {
