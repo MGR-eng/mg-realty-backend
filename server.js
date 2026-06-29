@@ -8303,11 +8303,112 @@ import { writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs';
 
 const IG_TOKEN   = process.env.INSTAGRAM_ACCESS_TOKEN;
 const IG_USER_ID = process.env.INSTAGRAM_USER_ID;
-const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN;
-const FB_PAGE_ID    = process.env.FB_PAGE_ID;
+// Facebook Page credentials — stored in Supabase so they survive redeploys
+async function readFBCreds() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/crm_state?id=eq.main&select=fb_page_token,fb_page_id`, {
+      headers: { 'Authorization': `Bearer ${SB_KEY}`, 'apikey': SB_KEY }
+    });
+    const rows = await r.json();
+    return { token: rows[0]?.fb_page_token || process.env.FB_PAGE_TOKEN, pageId: rows[0]?.fb_page_id || process.env.FB_PAGE_ID };
+  } catch(e) { return { token: process.env.FB_PAGE_TOKEN, pageId: process.env.FB_PAGE_ID }; }
+}
+
+async function saveFBCreds(token, pageId) {
+  await fetch(`${SB_URL}/rest/v1/crm_state`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${SB_KEY}`, 'apikey': SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+    body: JSON.stringify({ id: 'main', fb_page_token: token, fb_page_id: pageId, updated_at: new Date().toISOString() })
+  });
+}
+
+// ── Facebook OAuth ─────────────────────────────────────────────
+const FB_APP_ID     = process.env.FB_APP_ID;
+const FB_APP_SECRET = process.env.FB_APP_SECRET;
+const FB_CALLBACK   = 'https://mg-realty-backend.onrender.com/auth/facebook/callback';
+
+app.get('/auth/facebook', (req, res) => {
+  const params = new URLSearchParams({
+    client_id:     FB_APP_ID,
+    redirect_uri:  FB_CALLBACK,
+    scope:         'pages_manage_posts,pages_read_engagement',
+    response_type: 'code',
+  });
+  res.redirect(`https://www.facebook.com/dialog/oauth?${params}`);
+});
+
+app.get('/auth/facebook/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error) return res.send(`<h2 style="color:red">Auth error: ${error}</h2>`);
+  try {
+    // Exchange code for user access token
+    const tokenResp = await fetch(`https://graph.facebook.com/v20.0/oauth/access_token?` + new URLSearchParams({
+      client_id: FB_APP_ID, client_secret: FB_APP_SECRET, redirect_uri: FB_CALLBACK, code
+    })).then(r => r.json());
+
+    if (tokenResp.error) return res.send(`<h2 style="color:red">Token error: ${tokenResp.error.message}</h2>`);
+
+    const userToken = tokenResp.access_token;
+
+    // Get all pages this user manages
+    const pagesResp = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${userToken}`).then(r => r.json());
+
+    if (pagesResp.error) return res.send(`<h2 style="color:red">Pages error: ${pagesResp.error.message}</h2>`);
+
+    const pages = pagesResp.data || [];
+    if (pages.length === 0) return res.send(`<h2 style="color:red">No Facebook Pages found for this account.</h2>`);
+
+    // If only one page, auto-select it. Otherwise show a picker.
+    if (pages.length === 1) {
+      const page = pages[0];
+      await saveFBCreds(page.access_token, page.id);
+      return res.send(`
+        <html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:60px auto;padding:20px">
+          <h2 style="color:#1877f2">✅ Facebook Page connected!</h2>
+          <p><strong>${page.name}</strong> (ID: ${page.id}) is now wired up.</p>
+          <p style="color:#555;font-size:13px">You can close this tab and head back to the CRM. The "Also post to Facebook Page" checkbox will now work.</p>
+        </body></html>
+      `);
+    }
+
+    // Multiple pages — show picker
+    const pageButtons = pages.map(p => `
+      <form method="GET" action="/auth/facebook/select">
+        <input type="hidden" name="token" value="${p.access_token}">
+        <input type="hidden" name="id" value="${p.id}">
+        <input type="hidden" name="name" value="${p.name}">
+        <button type="submit" style="display:block;width:100%;margin-bottom:8px;padding:12px;font-size:14px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:left">
+          📄 ${p.name} <span style="color:#888;font-size:12px">(${p.id})</span>
+        </button>
+      </form>`).join('');
+
+    res.send(`
+      <html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:60px auto;padding:20px">
+        <h2>Which Facebook Page should we post to?</h2>
+        ${pageButtons}
+      </body></html>
+    `);
+  } catch(e) {
+    res.send(`<h2 style="color:red">Error: ${e.message}</h2>`);
+  }
+});
+
+app.get('/auth/facebook/select', async (req, res) => {
+  const { token, id, name } = req.query;
+  if (!token || !id) return res.send('<h2>Missing params</h2>');
+  await saveFBCreds(token, id);
+  res.send(`
+    <html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:60px auto;padding:20px">
+      <h2 style="color:#1877f2">✅ Facebook Page connected!</h2>
+      <p><strong>${name}</strong> (ID: ${id}) is now wired up.</p>
+      <p style="color:#555;font-size:13px">You can close this tab and head back to the CRM. The "Also post to Facebook Page" checkbox will now work.</p>
+    </body></html>
+  `);
+});
 
 // Helper: post image or video to Facebook Page after Instagram publishes
 async function postToFacebook(publicUrl, caption, isVideo) {
+  const { token: FB_PAGE_TOKEN, pageId: FB_PAGE_ID } = await readFBCreds();
   if (!FB_PAGE_TOKEN || !FB_PAGE_ID) return null;
   try {
     const endpoint = isVideo
