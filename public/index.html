@@ -2202,6 +2202,12 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
             <button class="btn btn-gold" onclick="igPost()" style="width:100%;font-weight:700;padding:10px" id="ig-post-btn">
               <i class="ti ti-brand-instagram"></i> Post to Instagram
             </button>
+
+            <!-- Facebook cross-post toggle -->
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--text2)">
+              <input type="checkbox" id="ig-fb-crosspost" style="width:15px;height:15px;accent-color:#1877f2;cursor:pointer">
+              <span><span style="color:#1877f2;font-weight:600">Also post to Facebook Page</span> — same image/video + caption</span>
+            </label>
           </div>
         </div>
 
@@ -2211,8 +2217,9 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
           <div class="tw" style="padding:18px" id="ig-status-card" style="display:none">
             <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">Status</div>
             <div id="ig-status-msg" style="font-size:13px;color:var(--text1)">—</div>
-            <div id="ig-permalink-row" style="display:none;margin-top:12px">
+            <div id="ig-permalink-row" style="display:none;margin-top:12px;display:flex;flex-direction:column;gap:6px">
               <a id="ig-permalink" href="#" target="_blank" class="btn btn-gold" style="display:inline-flex;align-items:center;gap:6px;font-size:12px"><i class="ti ti-external-link"></i> View Post on Instagram</a>
+              <a id="fb-permalink" href="#" target="_blank" class="btn" style="display:none;align-items:center;gap:6px;font-size:12px;background:#1877f2;color:#fff;border-color:#1877f2"><i class="ti ti-external-link"></i> View Post on Facebook</a>
             </div>
           </div>
 
@@ -7685,6 +7692,8 @@ async function igPost() {
       reader.readAsDataURL(igFile);
     });
 
+    var crosspostFB = document.getElementById('ig-fb-crosspost').checked;
+
     var resp = await fetch(BACKEND + '/api/post-instagram', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -7692,24 +7701,31 @@ async function igPost() {
         mediaBase64: base64,
         mediaFilename: igFile.name,
         mediaType: igMediaType,
-        caption: caption
+        caption: caption,
+        crosspostFacebook: crosspostFB
       })
     }).then(r => r.json());
 
     if (!resp.ok) throw new Error(resp.error || 'Post failed');
 
     if (resp.status === 'published') {
-      igSetStatus('✅ Posted! Your content is live on Instagram.', 'success');
+      var platforms = crosspostFB ? 'Instagram' + (resp.fbPermalink ? ' + Facebook' : ' (Facebook failed — check FB_PAGE_TOKEN)') : 'Instagram';
+      igSetStatus('✅ Posted! Your content is live on ' + platforms + '.', 'success');
       if (resp.permalink) {
         document.getElementById('ig-permalink').href = resp.permalink;
         document.getElementById('ig-permalink-row').style.display = '';
+      }
+      if (resp.fbPermalink) {
+        var fbLink = document.getElementById('fb-permalink');
+        fbLink.href = resp.fbPermalink;
+        fbLink.style.display = 'inline-flex';
       }
       btn.disabled = false;
       btn.innerHTML = '<i class="ti ti-brand-instagram"></i> Post to Instagram';
     } else if (resp.containerId) {
       igSetStatus('⏳ Processing video... this takes 30–60 seconds.', 'info');
       btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Processing...';
-      igPollStatus(resp.containerId, btn);
+      igPollStatus(resp.containerId, btn, crosspostFB);
     }
   } catch(e) {
     igSetStatus('❌ Error: ' + e.message, 'error');
@@ -7718,7 +7734,7 @@ async function igPost() {
   }
 }
 
-function igPollStatus(containerId, btn) {
+function igPollStatus(containerId, btn, crosspostFB) {
   var attempts = 0;
   igPollingInterval = setInterval(async () => {
     attempts++;
@@ -7730,13 +7746,21 @@ function igPollStatus(containerId, btn) {
       return;
     }
     try {
-      var r = await fetch(BACKEND + '/api/ig-poll/' + containerId).then(r => r.json());
+      var pollUrl = BACKEND + '/api/ig-poll/' + containerId;
+      if (crosspostFB) pollUrl += '?crosspostFacebook=1';
+      var r = await fetch(pollUrl).then(r => r.json());
       if (r.status === 'published') {
         clearInterval(igPollingInterval);
-        igSetStatus('✅ Posted! Your content is live on Instagram.', 'success');
+        var platforms = crosspostFB ? 'Instagram' + (r.fbPermalink ? ' + Facebook' : ' (Facebook failed)') : 'Instagram';
+        igSetStatus('✅ Posted! Your content is live on ' + platforms + '.', 'success');
         if (r.permalink) {
           document.getElementById('ig-permalink').href = r.permalink;
           document.getElementById('ig-permalink-row').style.display = '';
+        }
+        if (r.fbPermalink) {
+          var fbLink = document.getElementById('fb-permalink');
+          fbLink.href = r.fbPermalink;
+          fbLink.style.display = 'inline-flex';
         }
         btn.disabled = false;
         btn.innerHTML = '<i class="ti ti-brand-instagram"></i> Post to Instagram';

@@ -8303,6 +8303,32 @@ import { writeFileSync, mkdirSync, unlinkSync, existsSync } from 'fs';
 
 const IG_TOKEN   = process.env.INSTAGRAM_ACCESS_TOKEN;
 const IG_USER_ID = process.env.INSTAGRAM_USER_ID;
+const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN;
+const FB_PAGE_ID    = process.env.FB_PAGE_ID;
+
+// Helper: post image or video to Facebook Page after Instagram publishes
+async function postToFacebook(publicUrl, caption, isVideo) {
+  if (!FB_PAGE_TOKEN || !FB_PAGE_ID) return null;
+  try {
+    const endpoint = isVideo
+      ? `https://graph.facebook.com/v20.0/${FB_PAGE_ID}/videos`
+      : `https://graph.facebook.com/v20.0/${FB_PAGE_ID}/photos`;
+    const params = isVideo
+      ? { file_url: publicUrl, description: caption, access_token: FB_PAGE_TOKEN }
+      : { url: publicUrl, caption, access_token: FB_PAGE_TOKEN };
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      body: new URLSearchParams(params)
+    }).then(r => r.json());
+    if (r.error) { console.error('FB post error:', r.error.message); return null; }
+    // Return a link to the page (FB doesn't return a post permalink directly for video)
+    const postId = r.id || r.post_id;
+    return postId ? `https://www.facebook.com/${postId.replace('_','/')}` : `https://www.facebook.com/${FB_PAGE_ID}`;
+  } catch(e) {
+    console.error('FB post exception:', e.message);
+    return null;
+  }
+}
 const IG_TEMP_DIR = new URL('./ig-temp', import.meta.url).pathname;
 if (!existsSync(IG_TEMP_DIR)) mkdirSync(IG_TEMP_DIR, { recursive: true });
 
@@ -8311,11 +8337,11 @@ app.use('/ig-temp', (req, res, next) => {
   express.static(IG_TEMP_DIR)(req, res, next);
 });
 
-// POST /api/post-instagram  { mediaBase64, mediaFilename, mediaType, caption }
+// POST /api/post-instagram  { mediaBase64, mediaFilename, mediaType, caption, crosspostFacebook }
 app.post('/api/post-instagram', async (req, res) => {
   try {
     if (!IG_TOKEN || !IG_USER_ID) return res.status(400).json({ ok: false, error: 'Instagram not configured — add INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_USER_ID to Render env vars' });
-    const { mediaBase64, mediaFilename, mediaType = 'REELS', caption } = req.body;
+    const { mediaBase64, mediaFilename, mediaType = 'REELS', caption, crosspostFacebook } = req.body;
     if (!mediaBase64 || !caption) return res.status(400).json({ ok: false, error: 'mediaBase64 and caption required' });
 
     // Save file temporarily
@@ -8361,24 +8387,26 @@ app.post('/api/post-instagram', async (req, res) => {
       if (pubResp.error) return res.status(400).json({ ok: false, error: pubResp.error.message });
       const mediaId = pubResp.id;
       const mediaInfo = await fetch(`https://graph.instagram.com/v20.0/${mediaId}?fields=permalink&access_token=${IG_TOKEN}`).then(r => r.json());
-      return res.json({ ok: true, status: 'published', mediaId, permalink: mediaInfo.permalink });
+      // Cross-post to Facebook if requested
+      const fbPermalink = crosspostFacebook ? await postToFacebook(publicUrl, caption, false) : null;
+      return res.json({ ok: true, status: 'published', mediaId, permalink: mediaInfo.permalink, fbPermalink });
     }
 
-    // For videos, return containerId for polling
-    // Store fname so we can clean up later
-    setTimeout(() => { try { unlinkSync(fpath); } catch(e) {} }, 10 * 60 * 1000); // clean up after 10 min
-    res.json({ ok: true, status: 'processing', containerId, fname });
+    // For videos, return containerId for polling (FB cross-post happens in the poll endpoint when processing finishes)
+    setTimeout(() => { try { unlinkSync(fpath); } catch(e) {} }, 10 * 60 * 1000);
+    res.json({ ok: true, status: 'processing', containerId, fname, publicUrl, crosspostFacebook });
   } catch(e) {
     console.error('Instagram post error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
 
-// GET /api/ig-poll/:containerId — check video processing status + publish when ready
+// GET /api/ig-poll/:containerId?crosspostFacebook=1&publicUrl=...
 app.get('/api/ig-poll/:containerId', async (req, res) => {
   try {
     if (!IG_TOKEN || !IG_USER_ID) return res.status(400).json({ ok: false, error: 'Instagram not configured' });
     const { containerId } = req.params;
+    const crosspostFacebook = req.query.crosspostFacebook === '1';
 
     const statusResp = await fetch(`https://graph.instagram.com/v20.0/${containerId}?fields=status_code,status&access_token=${IG_TOKEN}`).then(r => r.json());
 
@@ -8395,7 +8423,11 @@ app.get('/api/ig-poll/:containerId', async (req, res) => {
       if (pubResp.error) return res.json({ ok: false, status: 'error', error: pubResp.error.message });
       const mediaId = pubResp.id;
       const mediaInfo = await fetch(`https://graph.instagram.com/v20.0/${mediaId}?fields=permalink&access_token=${IG_TOKEN}`).then(r => r.json());
-      return res.json({ ok: true, status: 'published', mediaId, permalink: mediaInfo.permalink });
+      // Cross-post video to Facebook if requested (use the same public temp URL)
+      const publicUrl = req.query.publicUrl;
+      const caption   = req.query.caption || '';
+      const fbPermalink = (crosspostFacebook && publicUrl) ? await postToFacebook(publicUrl, caption, true) : null;
+      return res.json({ ok: true, status: 'published', mediaId, permalink: mediaInfo.permalink, fbPermalink });
     } else if (statusCode === 'ERROR' || statusCode === 'EXPIRED') {
       return res.json({ ok: false, status: 'error', error: `Instagram processing failed: ${statusResp.status || statusCode}` });
     }
