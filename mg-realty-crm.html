@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MG Realty CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#F7F6F2;--surface:#FFFFFF;--surface2:#F0EEE9;--border:#E4E1D9;
+  --text:#1A1A1A;--text2:#6B6860;--text3:#9B9890;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-border:#B5D4F4;
+  --green:#27500A;--green-bg:#EAF3DE;--green-border:#C0DD97;
+  --amber:#633806;--amber-bg:#FAEEDA;--amber-border:#FAC775;
+  --red:#791F1F;--red-bg:#FCEBEB;--red-border:#F7C1C1;
+  --purple:#3C3489;--purple-bg:#EEEDFE;--purple-border:#CECBF6;
+  --hot-bg:#FAECE7;--hot-txt:#993C1D;
+  --warm-bg:#FAEEDA;--warm-txt:#854F0B;
+  --cold-bg:#E6F1FB;--cold-txt:#185FA5;
+  --done-bg:#EAF3DE;--done-txt:#3B6D11;
+  --radius:8px;--radius-lg:12px;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* Sidebar */
+.sidebar{background:#1A1914;padding:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.logo-mark{display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;background:#C8A96E;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#1A1914;flex-shrink:0}
+.logo-text{font-size:14px;font-weight:600;color:#fff;letter-spacing:0.02em}
+.logo-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;font-family:var(--mono)}
+.nav{padding:16px 12px;flex:1}
+.nav-label{font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase;padding:0 8px;margin-bottom:6px;margin-top:12px}
+.nav-label:first-child{margin-top:0}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius);color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;transition:all 0.15s;margin-bottom:2px;border:none;background:transparent;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.9)}
+.nav-item.active{background:rgba(200,169,110,0.18);color:#C8A96E}
+.nav-item i{font-size:16px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:rgba(200,169,110,0.25);color:#C8A96E;font-size:10px;font-weight:600;padding:1px 6px;border-radius:20px;font-family:var(--mono)}
+.nav-badge.red{background:rgba(226,75,74,0.2);color:#F09595}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,0.08)}
+.sync-status{display:flex;align-items:center;gap:7px;font-size:11px;color:rgba(255,255,255,0.35);font-family:var(--mono)}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#639922;flex-shrink:0}
+.sync-dot.busy{background:#EF9F27;animation:pulse 1s infinite}
+.sync-dot.err{background:#E24B4A}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* Main */
+.main{overflow-y:auto;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.page-title{font-size:16px;font-weight:600;color:var(--text)}
+.topbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.content{padding:24px 28px}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px}
+.stat-card-label{font-size:11px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px}
+.stat-card-val{font-size:28px;font-weight:300;color:var(--text);line-height:1}
+.stat-card-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.stat-card.alert .stat-card-val{color:var(--red)}
+.stat-card.warn .stat-card-val{color:var(--amber)}
+
+/* Panes */
+.pane{display:none}.pane.active{display:block}
+
+/* Table */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.table-toolbar{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+thead th{text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;cursor:pointer}
+tbody tr:hover{background:var(--bg)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:11px 14px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-row{background:#FFF5F5!important}.ov-row td{color:var(--red)!important}
+.td-row{background:#FFFBF0!important}.td-row td{color:var(--amber)!important}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.b-hot{background:var(--hot-bg);color:var(--hot-txt)}.b-warm{background:var(--warm-bg);color:var(--warm-txt)}
+.b-cold{background:var(--cold-bg);color:var(--cold-txt)}.b-done{background:var(--done-bg);color:var(--done-txt)}
+.b-call{background:var(--blue-bg);color:var(--blue)}.b-text{background:var(--green-bg);color:var(--green)}
+.b-email{background:var(--amber-bg);color:var(--amber)}.b-showing{background:var(--purple-bg);color:var(--purple)}
+.b-open{background:var(--hot-bg);color:var(--hot-txt)}.b-offer{background:#E1F5EE;color:#085041}
+.b-neutral{background:var(--surface2);color:var(--text2)}
+
+/* Buttons */
+.btn{font-size:12px;padding:7px 13px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:var(--font);font-weight:500;transition:all 0.15s;white-space:nowrap;line-height:1}
+.btn:hover{background:var(--surface2)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-primary{background:#1A1914;color:#fff;border-color:#1A1914}.btn-primary:hover{background:#2d2c24}
+.btn-blue{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}.btn-blue:hover{background:var(--blue-border)}
+.btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}.btn-green:hover{background:var(--green-border)}
+.btn-amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}.btn-amber:hover{background:var(--amber-border)}
+.btn-red{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}.btn-red:hover{background:var(--red-border)}
+.btn-purple{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border)}.btn-purple:hover{background:var(--purple-border)}
+.btn-sm{padding:4px 8px;font-size:11px}
+.btn-gold{background:#C8A96E;color:#1A1914;border-color:#C8A96E;font-weight:600}.btn-gold:hover{background:#b8975c}
+
+/* Forms */
+input,select,textarea{font-family:var(--font);font-size:13px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none;width:100%;transition:border-color 0.15s}
+input:focus,select:focus,textarea:focus{border-color:#888}
+textarea{resize:vertical;min-height:65px}
+label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:24px;width:min(560px,100%);max-height:calc(100vh - 80px);overflow-y:auto}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:18px;color:var(--text)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column}
+.form-group.full{grid-column:1/-1}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* Activity */
+.act-feed{display:flex;flex-direction:column}
+.act-item{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.act-item:last-child{border-bottom:none}
+.act-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.act-body{flex:1;min-width:0}
+.act-name{font-weight:600;font-size:13px}
+.act-meta{font-size:11px;color:var(--text3);margin-top:3px;font-family:var(--mono)}
+
+/* Appts */
+.appt-item{display:flex;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border);align-items:flex-start}
+.appt-item:last-child{border-bottom:none}
+.appt-date{min-width:44px;text-align:center;background:var(--surface2);border-radius:var(--radius);padding:6px 4px}
+.appt-day{font-size:22px;font-weight:300;line-height:1}
+.appt-month{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+
+/* Lead card in modal */
+.lead-card{background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;flex-shrink:0}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;padding:10px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:200;transform:translateY(80px);opacity:0;transition:all 0.3s;pointer-events:none;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{background:#1A1914;color:#fff}
+.toast.err{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.toast.info{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+
+/* Utility */
+.empty{text-align:center;padding:40px 20px;color:var(--text2);font-size:13px}
+.sec-hd{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.due-today{color:var(--hot-txt);font-weight:600}.due-soon{color:var(--warm-txt)}.due-ok{color:var(--text2)}
+.nstrong{font-weight:600;font-size:13px}.nsub{font-size:11px;color:var(--text2);margin-top:1px}
+.info-box{background:var(--purple-bg);border-radius:var(--radius);padding:10px 13px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:7px;margin-top:12px}
+
+/* Search */
+.search-wrap{position:relative}
+.search-wrap input{padding-left:32px}
+.search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:15px;pointer-events:none}
+
+/* Responsive */
+@media(max-width:768px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{height:auto;position:relative;flex-direction:row;flex-wrap:wrap}
+  .nav{display:flex;flex-wrap:wrap;padding:8px}
+  .nav-label{display:none}
+  .nav-item span{display:none}
+  .content{padding:16px}
+  .topbar{padding:12px 16px}
+  .form-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<div class="shell">
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">
+      <div class="logo-icon">MG</div>
+      <div>
+        <div class="logo-text">MG Realty</div>
+        <div class="logo-sub">CRM v1.0</div>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-label">Main</div>
+    <button class="nav-item active" data-pane="dashboard" onclick="showPane('dashboard',this)"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></button>
+    <button class="nav-item" data-pane="leads" onclick="showPane('leads',this)"><i class="ti ti-users"></i><span>Leads</span><span class="nav-badge" id="nb-leads">0</span></button>
+    <button class="nav-item" data-pane="activity" onclick="showPane('activity',this)"><i class="ti ti-activity"></i><span>Activity log</span></button>
+    <button class="nav-item" data-pane="appointments" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span><span class="nav-badge" id="nb-appts">0</span></button>
+    <div class="nav-label">Automate</div>
+    <button class="nav-item" onclick="sendDigest()"><i class="ti ti-mail"></i><span>Send digest</span></button>
+    <button class="nav-item" onclick="backupToSheet()"><i class="ti ti-cloud-upload"></i><span>Backup to Sheet</span></button>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sync-status">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncLabel">Ready</span>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+
+<div id="pane-dashboard" class="pane active">
+  <div class="topbar"><div class="page-title">Dashboard</div><div class="topbar-actions"><button class="btn btn-gold" onclick="showPane('leads',document.querySelector('[data-pane=leads]'));document.getElementById('btnAddLead').click()"><i class="ti ti-user-plus"></i> Add lead</button></div></div>
+  <div class="content">
+    <div class="stats-grid" id="statsGrid"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="dashGrids">
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">Overdue + due today</div>
+        <div class="table-wrap" id="dashDue"></div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">Recent activity</div>
+        <div class="table-wrap" id="dashActs"></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">Upcoming appointments</div>
+      <div class="table-wrap" id="dashAppts"></div>
+    </div>
+  </div>
+</div>
+
+<div id="pane-leads" class="pane">
+  <div class="topbar">
+    <div class="page-title">Leads</div>
+    <div class="topbar-actions">
+      <div class="search-wrap"><i class="ti ti-search"></i><input type="text" id="srch" placeholder="Search…" style="width:160px" oninput="renderLeads()"></div>
+      <select id="ftemp" onchange="renderLeads()" style="width:auto"><option value="">All temps</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select>
+      <select id="ftype" onchange="renderLeads()" style="width:auto"><option value="">All types</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select>
+      <button class="btn btn-gold" id="btnAddLead" onclick="openAddLead()"><i class="ti ti-user-plus"></i> Add lead</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:140px">Name</th><th style="width:120px">Property</th><th style="width:65px">Temp</th>
+          <th style="width:60px">Type</th><th style="width:105px">Follow-up</th><th style="width:105px">Last contact</th><th style="width:95px"></th>
+        </tr></thead>
+        <tbody id="ltbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="pane-activity" class="pane">
+  <div class="topbar">
+    <div class="page-title">Activity log</div>
+    <div class="topbar-actions">
+      <select id="fact" onchange="renderActs()" style="width:auto"><option value="">All types</option><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option><option value="showing">Showing</option><option value="open house">Open house</option><option value="offer">Offer</option></select>
+    </div>
+  </div>
+  <div class="content"><div class="table-wrap"><div id="actList"></div></div></div>
+</div>
+
+<div id="pane-appointments" class="pane">
+  <div class="topbar">
+    <div class="page-title">Appointments</div>
+    <div class="topbar-actions"><button class="btn btn-purple" onclick="openApptModal()"><i class="ti ti-calendar-plus"></i> New appointment</button></div>
+  </div>
+  <div class="content"><div class="table-wrap"><div id="apptList"></div></div></div>
+</div>
+
+</main>
+</div>
+
+<!-- Lead Modal -->
+<div class="modal-overlay" id="mLead">
+<div class="modal">
+  <div class="modal-title" id="leadMT">Add lead</div>
+  <div class="form-grid">
+    <div class="form-group"><label>First name</label><input id="lf1" placeholder="Jane"></div>
+    <div class="form-group"><label>Last name</label><input id="lf2" placeholder="Smith"></div>
+    <div class="form-group"><label>Phone</label><input id="lf3" placeholder="(310) 555-0100"></div>
+    <div class="form-group"><label>Email</label><input id="lf4" placeholder="jane@email.com"></div>
+    <div class="form-group"><label>Property interest</label><input id="lf5" placeholder="Address or budget range"></div>
+    <div class="form-group"><label>Open house date</label><input id="lf6" type="date"></div>
+    <div class="form-group"><label>Type</label><select id="lf7"><option value="buyer">Buyer</option><option value="seller">Seller</option></select></div>
+    <div class="form-group"><label>Temp</label><select id="lf8"><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="done">Done</option></select></div>
+    <div class="form-group"><label>Follow-up date</label><input id="lf9" type="date"></div>
+    <div class="form-group"><label>Follow-up method</label><select id="lf10"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
+    <div class="form-group full"><label>Notes</label><textarea id="lf11" placeholder="Pre-approval, motivation, timeline, what they liked…"></textarea></div>
+  </div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('mLead')">Cancel</button><button class="btn btn-gold" onclick="saveLead()">Save lead</button></div>
+</div></div>
+
+<!-- Activity Modal -->
+<div class="modal-overlay" id="mAct">
+<div class="modal">
+  <div class="modal-title">Log activity</div>
+  <div id="actLeadCard" class="lead-card"></div>
+  <div class="form-grid">
+    <div class="form-group"><label>Type</label><select id="af1"><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option><option value="showing">Showing</option><option value="open house">Open house</option><option value="offer">Offer</option></select></div>
+    <div class="form-group"><label>Direction</label><select id="af2"><option value="outbound">Outbound (I reached out)</option><option value="inbound">Inbound (they reached out)</option><option value="n/a">N/A</option></select></div>
+    <div class="form-group full"><label>Outcome</label><select id="af3"><option value="connected">Connected / Spoke</option><option value="no answer">No answer</option><option value="left voicemail">Left voicemail</option><option value="interested">Interested</option><option value="not interested">Not interested</option><option value="needs more time">Needs more time</option><option value="offer accepted">Offer accepted</option><option value="offer rejected">Offer rejected</option><option value="showing completed">Showing completed</option><option value="appointment set">Appointment set</option><option value="other">Other</option></select></div>
+    <div class="form-group full"><label>Notes</label><textarea id="af4" placeholder="What happened? Key details…"></textarea></div>
+    <div class="form-group"><label>Schedule follow-up</label><input id="af5" type="date"></div>
+    <div class="form-group"><label>Follow-up method</label><select id="af6"><option value="">— none —</option><option value="call">Call</option><option value="text">Text</option><option value="email">Email</option></select></div>
+  </div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('mAct')">Cancel</button><button class="btn btn-blue" onclick="saveAct()">Save activity</button></div>
+</div></div>
+
+<!-- Appointment Modal -->
+<div class="modal-overlay" id="mAppt">
+<div class="modal">
+  <div class="modal-title">New appointment</div>
+  <div class="form-grid">
+    <div class="form-group full"><label>Lead</label><select id="apf1"></select></div>
+    <div class="form-group full"><label>Type</label><select id="apf2"><option value="Showing">Showing</option><option value="Open house">Open house</option><option value="Listing appointment">Listing appointment</option><option value="Buyer consultation">Buyer consultation</option><option value="Offer review">Offer review</option><option value="Other">Other</option></select></div>
+    <div class="form-group full"><label>Property / address</label><input id="apf3" placeholder="123 Main St, Los Angeles"></div>
+    <div class="form-group"><label>Date</label><input id="apf4" type="date"></div>
+    <div class="form-group"><label>Time</label><input id="apf5" type="time"></div>
+    <div class="form-group full"><label>Duration</label><select id="apf6"><option value="30">30 min</option><option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option></select></div>
+    <div class="form-group full"><label>Notes</label><textarea id="apf7" placeholder="Access code, directions, what to bring…" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="info-box"><i class="ti ti-calendar-check" style="font-size:14px;flex-shrink:0"></i>Creates a Google Calendar event with 30-min popup + 60-min email reminder automatically.</div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('mAppt')">Cancel</button><button class="btn btn-purple" id="apptSaveBtn" onclick="saveAppt()"><i class="ti ti-calendar-plus"></i> Create appointment</button></div>
+</div></div>
+
+<script>
+const ANTHROPIC_API_KEY = 'PASTE_YOUR_API_KEY_HERE';
+const SHEET_ID = '1QgxWFNbnBjQRsP2xCWpdYNk8OJlzIWtg8l-Nq6Lqkjo';
+const DIGEST_EMAIL = 'goldenmb@gmail.com';
+const SL='mg_leads_v5',SA='mg_act_v2',SAP='mg_appt_v2';
+let leads=[],acts=[],appts=[],actLeadId=null,editLeadId=null;
+
+function load(){
+  try{leads=JSON.parse(localStorage.getItem(SL)||'null')||seed();}catch(e){leads=seed();}
+  try{acts=JSON.parse(localStorage.getItem(SA)||'null')||[];}catch(e){acts=[];}
+  try{appts=JSON.parse(localStorage.getItem(SAP)||'null')||[];}catch(e){appts=[];}
+}
+function persist(){
+  try{localStorage.setItem(SL,JSON.stringify(leads));localStorage.setItem(SA,JSON.stringify(acts));localStorage.setItem(SAP,JSON.stringify(appts));}catch(e){}
+}
+function seed(){
+  const d=n=>{const x=new Date();x.setDate(x.getDate()+n);return x.toISOString().split('T')[0];};
+  return[
+    {id:'1',first:'Sarah',last:'Chen',phone:'(310) 555-0193',email:'schen@gmail.com',prop:'2BR Silver Lake ~$750k',ohdate:d(-3),temp:'hot',type:'buyer',followup:d(0),method:'call',lastcontact:d(-3),lcmethod:'call',notes:'Pre-approved $800k. Loved kitchen. School district matters.'},
+    {id:'2',first:'Marcus',last:'Webb',phone:'(323) 555-0144',email:'mwebb@yahoo.com',prop:'4-unit income property',ohdate:d(-7),temp:'warm',type:'buyer',followup:d(2),method:'email',lastcontact:d(-5),lcmethod:'email',notes:'Investor, cash. Wants 5%+ cap rate.'},
+    {id:'3',first:'Linda',last:'Torres',phone:'(818) 555-0177',email:'ltorres@me.com',prop:'Selling Los Feliz home',ohdate:d(-1),temp:'hot',type:'seller',followup:d(1),method:'text',lastcontact:d(-1),lcmethod:'text',notes:'Needs to sell by March. Divorce — be sensitive.'},
+    {id:'4',first:'Kevin',last:'Park',phone:'(310) 555-0122',email:'kpark@gmail.com',prop:'Condo under $500k',ohdate:d(-14),temp:'cold',type:'buyer',followup:d(5),method:'call',lastcontact:d(-14),lcmethod:'',notes:'First-time buyer. Still browsing.'},
+  ];
+}
+
+function setSyncStatus(state,msg){
+  const dot=document.getElementById('syncDot'),lbl=document.getElementById('syncLabel');
+  dot.className='sync-dot'+(state==='busy'?' busy':state==='err'?' err':'');
+  lbl.textContent=msg;
+}
+
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className=`toast show ${type}`;
+  clearTimeout(el._t);el._t=setTimeout(()=>el.className='toast',3500);
+}
+
+function du(s){if(!s)return null;const t=new Date();t.setHours(0,0,0,0);const d=new Date(s);d.setHours(0,0,0,0);return Math.round((d-t)/86400000);}
+function rel(s){if(!s)return'—';const d=du(s);if(d===0)return'Today';if(d===-1)return'Yesterday';if(d<0)return Math.abs(d)+'d ago';if(d===1)return'Tomorrow';return'In '+d+'d';}
+function ffu(s,m){
+  if(!s)return'<span class="due-ok">—</span>';
+  const d=du(s),ic=m==='call'?'ti-phone':m==='text'?'ti-message':'ti-mail';
+  const lbl=d===0?'Today':d<0?Math.abs(d)+'d overdue':d===1?'Tomorrow':'In '+d+'d';
+  const cls=d<=0?'due-today':d<=2?'due-soon':'due-ok';
+  return`<span class="${cls}"><i class="ti ${ic}" style="font-size:11px;margin-right:2px"></i>${lbl}</span>`;
+}
+function tb(t){const m={hot:'b-hot',warm:'b-warm',cold:'b-cold',done:'b-done'};return`<span class="badge ${m[t]||'b-cold'}">${t}</span>`;}
+function tyb(t){
+  const k=t.toLowerCase().replace(/\s/g,'');
+  const m={call:'b-call',text:'b-text',email:'b-email',showing:'b-showing',openhouse:'b-open',offer:'b-offer'};
+  const ic={call:'ti-phone',text:'ti-message',email:'ti-mail',showing:'ti-key',openhouse:'ti-home',offer:'ti-file-text'};
+  return`<span class="badge ${m[k]||'b-call'}"><i class="ti ${ic[k]||'ti-activity'}" style="font-size:10px;margin-right:2px"></i>${t}</span>`;
+}
+
+function showPane(id,el){
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+  renderAll();
+}
+
+function updateNavBadges(){
+  const ov=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0).length;
+  document.getElementById('nb-leads').textContent=ov||leads.length;
+  document.getElementById('nb-leads').className='nav-badge'+(ov?' red':'');
+  const upAppts=appts.filter(a=>du(a.date)>=0).length;
+  document.getElementById('nb-appts').textContent=upAppts;
+}
+
+function renderStats(){
+  const ov=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0).length;
+  const td=leads.filter(l=>l.temp!=='done'&&du(l.followup)===0).length;
+  const wk=leads.filter(l=>{const d=du(l.followup);return d>0&&d<=7&&l.temp!=='done';}).length;
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card${ov?' alert':''}"><div class="stat-card-label">Overdue</div><div class="stat-card-val">${ov}</div><div class="stat-card-sub">follow-ups past due</div></div>
+    <div class="stat-card${td?' warn':''}"><div class="stat-card-label">Due today</div><div class="stat-card-val">${td}</div><div class="stat-card-sub">need attention now</div></div>
+    <div class="stat-card"><div class="stat-card-label">This week</div><div class="stat-card-val">${wk}</div><div class="stat-card-sub">follow-ups upcoming</div></div>
+    <div class="stat-card"><div class="stat-card-label">Hot leads</div><div class="stat-card-val">${leads.filter(l=>l.temp==='hot').length}</div><div class="stat-card-sub">of ${leads.length} total</div></div>
+    <div class="stat-card"><div class="stat-card-label">Activities logged</div><div class="stat-card-val">${acts.length}</div><div class="stat-card-sub">all time</div></div>
+    <div class="stat-card"><div class="stat-card-label">Upcoming appts</div><div class="stat-card-val">${appts.filter(a=>du(a.date)>=0).length}</div><div class="stat-card-sub">on the calendar</div></div>`;
+}
+
+function renderDashDue(){
+  const urgent=leads.filter(l=>l.temp!=='done'&&du(l.followup)!==null&&du(l.followup)<=0).sort((a,b)=>(du(a.followup)||0)-(du(b.followup)||0));
+  const el=document.getElementById('dashDue');
+  if(!urgent.length){el.innerHTML='<div class="empty">Nothing overdue — great work!</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Name</th><th>Temp</th><th>Follow-up</th></tr></thead><tbody>${urgent.slice(0,6).map(l=>`<tr class="${du(l.followup)<0?'ov-row':'td-row'}" onclick="openAct('${l.id}')"><td><div class="nstrong">${l.first} ${l.last}</div></td><td>${tb(l.temp)}</td><td>${ffu(l.followup,l.method)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderDashActs(){
+  const el=document.getElementById('dashActs');
+  const recent=[...acts].slice(-5).reverse();
+  if(!recent.length){el.innerHTML='<div class="empty">No activity logged yet</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Outcome</th></tr></thead><tbody>${recent.map(a=>`<tr><td><div class="nstrong">${a.leadName}</div><div class="nsub" style="font-family:var(--mono)">${a.date}</div></td><td>${tyb(a.type)}</td><td style="font-size:12px;color:var(--text2)">${a.outcome}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderDashAppts(){
+  const el=document.getElementById('dashAppts');
+  const up=appts.filter(a=>du(a.date)>=0&&du(a.date)<=14).sort((a,b)=>a.date>b.date?1:-1).slice(0,5);
+  if(!up.length){el.innerHTML='<div class="empty">No upcoming appointments</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Lead</th><th>Type</th><th>Date</th><th>Time</th></tr></thead><tbody>${up.map(a=>`<tr><td class="nstrong">${a.leadName}</td><td><span class="badge b-showing">${a.type}</span></td><td style="font-size:12px;font-family:var(--mono)">${a.date}</td><td style="font-size:12px;color:var(--text2)">${a.time}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderLeads(){
+  const s=document.getElementById('srch').value.toLowerCase();
+  const ft=document.getElementById('ftemp').value,fty=document.getElementById('ftype').value;
+  let f=leads.filter(l=>{
+    if(s&&!(l.first+' '+l.last).toLowerCase().includes(s))return false;
+    if(ft&&l.temp!==ft)return false;if(fty&&l.type!==fty)return false;return true;
+  }).sort((a,b)=>(du(a.followup)??9999)-(du(b.followup)??9999));
+  const tbody=document.getElementById('ltbody');
+  if(!f.length){tbody.innerHTML=`<tr><td colspan="7"><div class="empty">No leads match</div></td></tr>`;return;}
+  tbody.innerHTML=f.map(l=>{
+    const d=du(l.followup);
+    const rc=d!==null&&d<0&&l.temp!=='done'?'ov-row':d===0&&l.temp!=='done'?'td-row':'';
+    return`<tr class="${rc}">
+      <td><div class="nstrong">${l.first} ${l.last}</div><div class="nsub">${l.phone||''}</div></td>
+      <td style="font-size:12px;color:var(--text2)">${l.prop||'—'}</td>
+      <td>${tb(l.temp)}</td>
+      <td style="font-size:12px;color:var(--text2);text-transform:capitalize">${l.type}</td>
+      <td>${ffu(l.followup,l.method)}</td>
+      <td style="font-size:12px;color:var(--text2)">${l.lastcontact?rel(l.lastcontact)+(l.lcmethod?' · '+l.lcmethod:''):'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-blue btn-sm" title="Log activity" onclick="openAct('${l.id}');event.stopPropagation()"><i class="ti ti-activity"></i></button>
+        <button class="btn btn-sm" style="margin-left:3px" title="Edit" onclick="openEdit('${l.id}');event.stopPropagation()"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-red btn-sm" style="margin-left:3px" title="Delete" onclick="delLead('${l.id}');event.stopPropagation()"><i class="ti ti-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderActs(){
+  const ft=document.getElementById('fact').value;
+  const f=[...acts].filter(a=>!ft||a.type===ft).reverse();
+  const el=document.getElementById('actList');
+  if(!f.length){el.innerHTML='<div class="empty">No activity logged yet. Click the <strong>activity icon</strong> on any lead to log an interaction.</div>';return;}
+  const icMap={call:'ti-phone',text:'ti-message',email:'ti-mail',showing:'ti-key','open house':'ti-home',offer:'ti-file-text'};
+  const bgMap={call:'#E6F1FB',text:'#EAF3DE',email:'#FAEEDA',showing:'#EEEDFE','open house':'#FAECE7',offer:'#E1F5EE'};
+  const fgMap={call:'#185FA5',text:'#3B6D11',email:'#854F0B',showing:'#3C3489','open house':'#993C1D',offer:'#085041'};
+  el.innerHTML=`<div class="act-feed">${f.map(a=>`
+    <div class="act-item">
+      <div class="act-icon" style="background:${bgMap[a.type]||'#E6F1FB'};color:${fgMap[a.type]||'#185FA5'}"><i class="ti ${icMap[a.type]||'ti-activity'}"></i></div>
+      <div class="act-body">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span class="act-name">${a.leadName}</span>
+          ${tyb(a.type)}
+          <span class="badge b-neutral">${a.direction}</span>
+          <span class="badge b-neutral">${a.outcome}</span>
+        </div>
+        ${a.notes?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${a.notes}</div>`:''}
+        ${a.fuDate?`<div style="font-size:11px;color:var(--warm-txt);margin-top:4px"><i class="ti ti-calendar" style="font-size:11px;margin-right:2px"></i>Follow-up scheduled: ${a.fuDate}${a.fuMethod?' via '+a.fuMethod:''}</div>`:''}
+        <div class="act-meta">${a.date} · ${a.time}</div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function renderAppts(){
+  const el=document.getElementById('apptList');
+  const sorted=[...appts].sort((a,b)=>a.date>b.date?1:-1);
+  if(!sorted.length){el.innerHTML='<div class="empty">No appointments yet. Click "New appointment" — it syncs to Google Calendar automatically.</div>';return;}
+  const up=sorted.filter(a=>du(a.date)>=0),past=sorted.filter(a=>du(a.date)<0);
+  function card(a){
+    const d=du(a.date),lbl=d===0?'Today':d===1?'Tomorrow':d<0?Math.abs(d)+'d ago':'In '+d+'d';
+    return`<div class="appt-item">
+      <div class="appt-date"><div class="appt-day">${new Date(a.date+'T12:00').getDate()}</div><div class="appt-month">${new Date(a.date+'T12:00').toLocaleString('default',{month:'short'})}</div></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-weight:600">${a.leadName}</span>
+          <span class="badge b-showing" style="text-transform:capitalize">${a.type}</span>
+          <span class="badge ${d>=0&&d<=1?'b-hot':'b-neutral'}">${lbl}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px">${a.address||''}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${a.time} · ${a.duration} min${a.notes?' · '+a.notes:''}</div>
+        <div style="font-size:11px;color:var(--purple);margin-top:3px"><i class="ti ti-calendar-check" style="font-size:11px;margin-right:2px"></i>Google Calendar event created</div>
+      </div>
+      <button class="btn btn-red btn-sm" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }
+  el.innerHTML=(up.length?`<div class="sec-hd">Upcoming</div>${up.map(card).join('')}`:'')+(past.length?`<div class="sec-hd">Past</div>${past.map(card).join('')}`:'');
+}
+
+function renderAll(){renderStats();renderDashDue();renderDashActs();renderDashAppts();renderLeads();renderActs();renderAppts();updateNavBadges();}
+
+async function callAPI(prompt,mcpServers=[]){
+  const body={model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:prompt}]};
+  if(mcpServers.length)body.mcp_servers=mcpServers;
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
+  const data=await r.json();
+  return(data.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('');
+}
+
+async function sendDigest(){
+  setSyncStatus('busy','Sending digest…');
+  try{
+    const fmt=l=>`• ${l.first} ${l.last} | ${l.phone||'—'} | ${l.temp.toUpperCase()} | Follow-up: ${l.method} on ${l.followup||'not set'} | Notes: ${(l.notes||'').substring(0,60)}`;
+    const overdue=leads.filter(l=>l.temp!=='done'&&du(l.followup)<0);
+    const dueToday=leads.filter(l=>l.temp!=='done'&&du(l.followup)===0);
+    const dueWeek=leads.filter(l=>{const d=du(l.followup);return d>0&&d<=7&&l.temp!=='done';});
+    const recentActs=[...acts].slice(-5).reverse().map(a=>`• ${a.leadName} | ${a.type} | ${a.outcome} | ${a.date}`);
+    const upAppts=appts.filter(a=>du(a.date)>=0&&du(a.date)<=7).map(a=>`• ${a.leadName} | ${a.type} | ${a.date} ${a.time} | ${a.address||'TBD'}`);
+    if(!overdue.length&&!dueToday.length&&!dueWeek.length){toast('No follow-ups due — digest skipped','info');setSyncStatus('ok','Ready');return;}
+    const prompt=`Send an HTML email to ${DIGEST_EMAIL} with subject: "🏡 MG Realty — Daily Lead Digest ${new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}"
+Make it a clean professional HTML email. Dark header #1A1914, white title text, colored sections.
+
+OVERDUE (${overdue.length}): ${overdue.map(fmt).join('\n')||'None'}
+DUE TODAY (${dueToday.length}): ${dueToday.map(fmt).join('\n')||'None'}
+DUE THIS WEEK (${dueWeek.length}): ${dueWeek.map(fmt).join('\n')||'None'}
+UPCOMING APPOINTMENTS: ${upAppts.join('\n')||'None'}
+RECENT ACTIVITY: ${recentActs.join('\n')||'None'}
+
+Return only: {"ok":true}`;
+    const res=await callAPI(prompt,[{type:'url',url:'https://gmailmcp.googleapis.com/mcp/v1',name:'gmail'}]);
+    if(res.includes('ok')){setSyncStatus('ok','Digest sent');toast('Digest sent to '+DIGEST_EMAIL);}
+    else throw new Error();
+  }catch(e){setSyncStatus('err','Digest failed');toast('Digest failed','err');}
+}
+
+async function backupToSheet(){
+  setSyncStatus('busy','Backing up…');
+  try{
+    const lHdrs=['ID','First','Last','Phone','Email','Property','OH Date','Temp','Type','Follow-up','Method','Last Contact','LC Method','Notes'];
+    const lRows=leads.map(l=>[l.id,l.first,l.last,l.phone||'',l.email||'',l.prop||'',l.ohdate||'',l.temp,l.type,l.followup||'',l.method||'',l.lastcontact||'',l.lcmethod||'',l.notes||'']);
+    const lCsv=[lHdrs,...lRows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const aHdrs=['ID','Lead','Date','Time','Type','Direction','Outcome','Notes','Follow-up'];
+    const aRows=acts.map(a=>[a.id,a.leadName,a.date,a.time,a.type,a.direction,a.outcome,a.notes||'',a.fuDate?(a.fuDate+(a.fuMethod?' via '+a.fuMethod:'')):'']);
+    const aCsv=[aHdrs,...aRows].map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+    const prompt=`Update Google Spreadsheet ID "${SHEET_ID}". Replace "Leads" sheet content with this CSV:\n${lCsv}\n\nReplace "Activity Log" sheet content with this CSV:\n${aCsv}\n\nReturn only: {"ok":true}`;
+    const res=await callAPI(prompt,[{type:'url',url:'https://drivemcp.googleapis.com/mcp/v1',name:'gdrive'}]);
+    if(res.includes('ok')){setSyncStatus('ok','Backed up');toast('Backed up to Google Sheets');}
+    else throw new Error();
+  }catch(e){setSyncStatus('err','Backup failed');toast('Backup failed','err');}
+}
+
+function openAddLead(){editLeadId=null;document.getElementById('leadMT').textContent='Add lead';['lf1','lf2','lf3','lf4','lf5','lf11'].forEach(id=>document.getElementById(id).value='');['lf6','lf9'].forEach(id=>document.getElementById(id).value='');document.getElementById('lf7').value='buyer';document.getElementById('lf8').value='warm';document.getElementById('lf10').value='call';openModal('mLead');}
+function openEdit(id){
+  editLeadId=id;const l=leads.find(x=>x.id===id);
+  document.getElementById('leadMT').textContent='Edit lead';
+  document.getElementById('lf1').value=l.first||'';document.getElementById('lf2').value=l.last||'';
+  document.getElementById('lf3').value=l.phone||'';document.getElementById('lf4').value=l.email||'';
+  document.getElementById('lf5').value=l.prop||'';document.getElementById('lf6').value=l.ohdate||'';
+  document.getElementById('lf7').value=l.type||'buyer';document.getElementById('lf8').value=l.temp||'warm';
+  document.getElementById('lf9').value=l.followup||'';document.getElementById('lf10').value=l.method||'call';
+  document.getElementById('lf11').value=l.notes||'';
+  openModal('mLead');
+}
+function saveLead(){
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g('lf1')){alert('First name required');return;}
+  const existing=editLeadId?leads.find(l=>l.id===editLeadId):{};
+  const lead={id:editLeadId||String(Date.now()),first:g('lf1'),last:g('lf2'),phone:g('lf3'),email:g('lf4'),prop:g('lf5'),ohdate:document.getElementById('lf6').value,type:document.getElementById('lf7').value,temp:document.getElementById('lf8').value,followup:document.getElementById('lf9').value,method:document.getElementById('lf10').value,notes:g('lf11'),lastcontact:existing.lastcontact||'',lcmethod:existing.lcmethod||''};
+  if(editLeadId){leads=leads.map(l=>l.id===editLeadId?lead:l);}else{leads.push(lead);}
+  editLeadId=null;persist();closeModal('mLead');renderAll();toast(editLeadId?'Lead updated':'Lead added');
+}
+function delLead(id){if(confirm('Delete this lead and all their activity?')){leads=leads.filter(l=>l.id!==id);acts=acts.filter(a=>a.leadId!==id);persist();renderAll();}}
+
+function openAct(id){
+  actLeadId=id;const l=leads.find(x=>x.id===id);
+  document.getElementById('actLeadCard').innerHTML=`<div class="avatar">${l.first[0]}${l.last[0]}</div><div><div style="font-weight:600;font-size:13px">${l.first} ${l.last}</div><div style="font-size:11px;color:var(--text2)">${l.phone||''} · ${l.prop||''}</div></div>`;
+  ['af4'].forEach(id=>document.getElementById(id).value='');document.getElementById('af5').value='';document.getElementById('af6').value='';
+  openModal('mAct');
+}
+function saveAct(){
+  const l=leads.find(x=>x.id===actLeadId);const now=new Date();
+  const act={id:'a'+Date.now(),leadId:actLeadId,leadName:`${l.first} ${l.last}`,date:now.toISOString().split('T')[0],time:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),type:document.getElementById('af1').value,direction:document.getElementById('af2').value,outcome:document.getElementById('af3').value,notes:document.getElementById('af4').value.trim(),fuDate:document.getElementById('af5').value,fuMethod:document.getElementById('af6').value};
+  acts.push(act);
+  leads=leads.map(ld=>{if(ld.id!==actLeadId)return ld;const u={...ld,lastcontact:act.date,lcmethod:act.type};if(act.fuDate){u.followup=act.fuDate;if(act.fuMethod)u.method=act.fuMethod;}return u;});
+  persist();closeModal('mAct');renderAll();toast('Activity logged');
+}
+
+function openApptModal(){
+  document.getElementById('apf1').innerHTML=leads.map(l=>`<option value="${l.id}">${l.first} ${l.last} — ${l.prop||l.type}</option>`).join('');
+  openModal('mAppt');
+}
+async function saveAppt(){
+  const leadId=document.getElementById('apf1').value,l=leads.find(x=>x.id===leadId);
+  const date=document.getElementById('apf4').value,time=document.getElementById('apf5').value;
+  if(!date||!time){alert('Date and time required');return;}
+  const appt={id:'ap'+Date.now(),leadId,leadName:`${l.first} ${l.last}`,type:document.getElementById('apf2').value,address:document.getElementById('apf3').value.trim(),date,time,duration:document.getElementById('apf6').value,notes:document.getElementById('apf7').value.trim()};
+  appts.push(appt);persist();closeModal('mAppt');renderAll();
+  setSyncStatus('busy','Creating calendar event…');
+  document.getElementById('apptSaveBtn').disabled=true;
+  try{
+    const endDt=new Date(`${date}T${time}:00`);endDt.setMinutes(endDt.getMinutes()+parseInt(appt.duration));
+    const prompt=`Create a Google Calendar event:
+Title: "🏡 ${appt.type} — ${l.first} ${l.last}"
+Start: ${date}T${time}:00 America/Los_Angeles
+End: ${endDt.toISOString().slice(0,19)} America/Los_Angeles
+Location: ${appt.address||'TBD'}
+Description: Lead: ${l.first} ${l.last} | Phone: ${l.phone||'N/A'} | Email: ${l.email||'N/A'} | Property: ${l.prop||'N/A'}${appt.notes?'\nNotes: '+appt.notes:''}
+Add reminders: popup 30 minutes before, email 60 minutes before.
+Return only: {"ok":true}`;
+    const res=await callAPI(prompt,[{type:'url',url:'https://calendarmcp.googleapis.com/mcp/v1',name:'gcal'}]);
+    if(res.includes('ok')){setSyncStatus('ok','Calendar event created');toast('Appointment saved + calendar event created');}
+    else throw new Error();
+  }catch(e){setSyncStatus('err','Calendar sync failed');toast('Appointment saved — calendar sync failed','err');}
+  document.getElementById('apptSaveBtn').disabled=false;
+}
+function delAppt(id){if(confirm('Remove this appointment?')){appts=appts.filter(a=>a.id!==id);persist();renderAll();}}
+
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+load();renderAll();
+</script>
+</body>
+</html>

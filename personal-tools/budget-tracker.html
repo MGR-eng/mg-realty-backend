@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MG Realty Budget Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #0b0b0b; padding: 2rem; }
+.tracker { max-width: 720px; margin: 0 auto; }
+.month-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.month-label { font-size: 20px; font-weight: 500; }
+.month-nav button { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 4px 12px; font-size: 13px; cursor: pointer; margin-left: 4px; }
+.month-nav button:hover { background: #eee; }
+.sync-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #898781; margin-bottom: 1.25rem; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #1baf7a; flex-shrink: 0; }
+.sync-dot.loading { background: #eda100; animation: pulse 1s infinite; }
+.sync-dot.err { background: #e34948; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+.kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+.kpi { background: #fff; border-radius: 8px; padding: 1rem; border: 1px solid #e5e5e3; }
+.kpi-label { font-size: 12px; color: #898781; margin-bottom: 4px; }
+.kpi-value { font-size: 22px; font-weight: 500; }
+.kpi-value.green { color: #1baf7a; }
+.kpi-value.red { color: #e34948; }
+.tabs { display: flex; gap: 4px; margin-bottom: 1rem; }
+.tab { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 6px 14px; font-size: 13px; color: #52514e; cursor: pointer; }
+.tab.active { background: #fff; border-color: #aaa; color: #0b0b0b; font-weight: 500; }
+.cat-row { display: grid; grid-template-columns: 1fr 80px 90px 90px 80px; align-items: center; gap: 8px; background: #fff; border: 1px solid #e5e5e3; border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; }
+.cat-row.header { background: none; border: none; border-radius: 0; padding: 0 14px 4px; margin-bottom: 0; }
+.col-label { font-size: 11px; color: #898781; text-align: right; }
+.cat-name { font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cat-budget { font-size: 13px; color: #898781; text-align: right; }
+.cat-spent { font-size: 14px; font-weight: 500; text-align: right; }
+.cat-remaining { font-size: 13px; text-align: right; }
+.cat-remaining.ok { color: #1baf7a; }
+.cat-remaining.warn { color: #eda100; }
+.cat-remaining.over { color: #e34948; }
+.bar-wrap { width: 70px; height: 4px; background: #e5e5e3; border-radius: 2px; margin-left: auto; }
+.bar-fill { height: 100%; border-radius: 2px; }
+.add-section { background: #fff; border: 1px solid #e5e5e3; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+.add-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: end; }
+.add-grid label { font-size: 12px; color: #898781; display: block; margin-bottom: 4px; }
+.add-grid input, .add-grid select { width: 100%; font-size: 14px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; }
+.add-btn { background: #2a78d6; color: #fff; border: none; border-radius: 6px; padding: 0 16px; height: 36px; font-size: 14px; cursor: pointer; }
+.add-btn:hover { background: #1a68c6; }
+.add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.txn-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #fff; border: 1px solid #e5e5e3; border-radius: 8px; margin-bottom: 4px; }
+.txn-desc { font-size: 14px; }
+.txn-meta { font-size: 11px; color: #898781; }
+.txn-source { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 99px; margin-left: 4px; background: rgba(27,175,122,0.1); color: #1baf7a; }
+.txn-source.manual { background: rgba(42,120,214,0.1); color: #2a78d6; }
+.txn-amount { font-size: 14px; font-weight: 500; color: #e34948; }
+.del-btn { background: none; border: none; color: #ccc; cursor: pointer; font-size: 16px; padding: 0 4px; margin-left: 12px; }
+.del-btn:hover { color: #e34948; }
+.empty { text-align: center; padding: 2rem; color: #898781; font-size: 14px; }
+.ace-tip { background: rgba(42,120,214,0.06); border: 1px solid rgba(42,120,214,0.15); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #52514e; margin-bottom: 1rem; line-height: 1.6; }
+.ace-tip strong { color: #2a78d6; }
+</style>
+</head>
+<body>
+<div class="tracker">
+  <div class="month-bar">
+    <div class="month-label" id="monthLabel"></div>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">&#8249;</button>
+      <button onclick="changeMonth(1)">&#8250;</button>
+    </div>
+  </div>
+
+  <div class="sync-bar">
+    <div class="sync-dot" id="syncDot"></div>
+    <span id="syncStatus">Loading from CRM...</span>
+    <button onclick="loadData()" style="background:none;border:1px solid #ddd;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px">↻ Refresh</button>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Monthly income</div><div class="kpi-value" id="kpiIncome">$4,400</div></div>
+    <div class="kpi"><div class="kpi-label">Total spent</div><div class="kpi-value red" id="kpiSpent">$0.00</div></div>
+    <div class="kpi"><div class="kpi-label">Remaining</div><div class="kpi-value green" id="kpiLeft">$4,400.00</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('budget', this)">Budget</button>
+    <button class="tab" onclick="setTab('transactions', this)">Transactions</button>
+  </div>
+
+  <div id="budgetView">
+    <div class="cat-row header">
+      <div class="col-label" style="text-align:left;">Category</div>
+      <div class="col-label">Budget</div>
+      <div class="col-label">Spent</div>
+      <div class="col-label">Left</div>
+      <div class="col-label">Progress</div>
+    </div>
+    <div id="catList"></div>
+  </div>
+
+  <div id="txnView" style="display:none;">
+    <div class="ace-tip">
+      <strong>📸 Ace receipt scanning is connected.</strong> Text a photo of any receipt to Ace and it appears here automatically. Label it "personal [receipt]" or "work [receipt]" when texting.
+    </div>
+    <div class="add-section">
+      <div style="font-size:13px;font-weight:500;color:#52514e;margin-bottom:12px;">Add transaction manually</div>
+      <div class="add-grid">
+        <div><label>Description</label><input type="text" id="txnDesc" placeholder="Trader Joe's" /></div>
+        <div><label>Amount ($)</label><input type="number" id="txnAmount" placeholder="0.00" min="0" step="0.01" /></div>
+        <div><label>Category</label>
+          <select id="txnCat">
+            <option>Rent</option><option>Phone</option><option>Groceries</option>
+            <option>Dining</option><option>Transportation</option><option>Fitness</option>
+            <option>Subscriptions</option><option>Business</option><option>Personal</option><option>Other</option>
+          </select>
+        </div>
+        <div><button class="add-btn" id="addBtn" onclick="addTransaction()">Add</button></div>
+      </div>
+    </div>
+    <div id="txnList"></div>
+  </div>
+</div>
+
+<script>
+const BACKEND = 'https://mg-realty-backend.onrender.com';
+const INCOME = 4400;
+const BUDGETS = [
+  { name: 'Rent',           budget: 2600, color: '#2a78d6' },
+  { name: 'Phone',          budget: 245,  color: '#1baf7a' },
+  { name: 'Groceries',      budget: 350,  color: '#eda100' },
+  { name: 'Dining',         budget: 300,  color: '#e34948' },
+  { name: 'Transportation', budget: 150,  color: '#4a3aa7' },
+  { name: 'Fitness',        budget: 70,   color: '#eb6834' },
+  { name: 'Subscriptions',  budget: 175,  color: '#e87ba4' },
+  { name: 'Business',       budget: 150,  color: '#008300' },
+  { name: 'Personal',       budget: 100,  color: '#898781' },
+  { name: 'Other',          budget: 60,   color: '#c3c2b7' },
+];
+
+// Category aliases — map what Ace logs to budget categories
+const CAT_MAP = {
+  'groceries': 'Groceries', 'grocery': 'Groceries', 'supermarket': 'Groceries', 'trader joe': 'Groceries', 'whole foods': 'Groceries',
+  'dining': 'Dining', 'restaurant': 'Dining', 'food': 'Dining', 'coffee': 'Dining', 'lunch': 'Dining', 'dinner': 'Dining',
+  'rent': 'Rent', 'mortgage': 'Rent',
+  'phone': 'Phone', 'mobile': 'Phone', 'cell': 'Phone', 'verizon': 'Phone', 'att': 'Phone', 'tmobile': 'Phone',
+  'gas': 'Transportation', 'uber': 'Transportation', 'lyft': 'Transportation', 'parking': 'Transportation', 'transit': 'Transportation', 'transportation': 'Transportation',
+  'gym': 'Fitness', 'fitness': 'Fitness', 'peloton': 'Fitness', 'equinox': 'Fitness',
+  'netflix': 'Subscriptions', 'spotify': 'Subscriptions', 'subscription': 'Subscriptions', 'software': 'Subscriptions',
+  'business': 'Business', 'marketing': 'Business', 'supplies': 'Business', 'office': 'Business',
+  'personal': 'Personal',
+  'other': 'Other', 'misc': 'Other'
+};
+
+function normalizeCategory(raw) {
+  if (!raw) return 'Other';
+  const lower = raw.toLowerCase();
+  for (const [key, val] of Object.entries(CAT_MAP)) {
+    if (lower.includes(key)) return val;
+  }
+  // Check if it directly matches a budget category name
+  const direct = BUDGETS.find(b => b.name.toLowerCase() === lower);
+  if (direct) return direct.name;
+  return 'Other';
+}
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let currentMonth = new Date().getMonth();
+let currentYear  = new Date().getFullYear();
+let currentTxns  = [];
+
+function setSyncStatus(state, msg) {
+  const dot = document.getElementById('syncDot');
+  dot.className = 'sync-dot' + (state === 'loading' ? ' loading' : state === 'err' ? ' err' : '');
+  document.getElementById('syncStatus').textContent = msg;
+}
+
+async function loadData() {
+  setSyncStatus('loading', 'Loading from CRM...');
+  try {
+    const r = await fetch(`${BACKEND}/api/budget-expenses?year=${currentYear}&month=${currentMonth}`);
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+    currentTxns = data.expenses || [];
+    setSyncStatus('ok', `Synced · ${currentTxns.length} transaction${currentTxns.length !== 1 ? 's' : ''} · ${MONTHS[currentMonth]} ${currentYear}`);
+    render();
+  } catch(e) {
+    setSyncStatus('err', 'Could not reach CRM — ' + e.message);
+  }
+}
+
+function fmt(n) { return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
+  loadData();
+}
+
+function setTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('budgetView').style.display = tab === 'budget' ? 'block' : 'none';
+  document.getElementById('txnView').style.display   = tab === 'transactions' ? 'block' : 'none';
+}
+
+function render() {
+  document.getElementById('monthLabel').textContent = MONTHS[currentMonth] + ' ' + currentYear;
+
+  const spent = currentTxns.reduce((s, t) => s + (parseFloat(t.amt) || 0), 0);
+  const left  = INCOME - spent;
+  document.getElementById('kpiSpent').textContent  = fmt(spent);
+  document.getElementById('kpiLeft').textContent   = (left < 0 ? '-' : '') + fmt(Math.abs(left));
+  document.getElementById('kpiLeft').className     = 'kpi-value ' + (left < 0 ? 'red' : 'green');
+
+  // Build category spend map
+  const bycat = {};
+  currentTxns.forEach(t => {
+    const cat = normalizeCategory(t.category || t.cat || '');
+    bycat[cat] = (bycat[cat] || 0) + (parseFloat(t.amt) || 0);
+  });
+
+  document.getElementById('catList').innerHTML = BUDGETS.map(b => {
+    const s   = bycat[b.name] || 0;
+    const rem = b.budget - s;
+    const pct = Math.min(100, Math.round((s / b.budget) * 100));
+    const remClass  = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+    const barColor  = pct >= 100 ? '#e34948' : pct >= 80 ? '#eda100' : b.color;
+    return `<div class="cat-row">
+      <div class="cat-name"><span class="cat-dot" style="background:${b.color}"></span>${b.name}</div>
+      <div class="cat-budget">${fmt(b.budget)}</div>
+      <div class="cat-spent">${s > 0 ? fmt(s) : '—'}</div>
+      <div class="cat-remaining ${remClass}">${rem < 0 ? '-' : ''}${fmt(Math.abs(rem))}</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+    </div>`;
+  }).join('');
+
+  const sorted = currentTxns.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  document.getElementById('txnList').innerHTML = sorted.length === 0
+    ? '<div class="empty">No transactions this month — text Ace a receipt photo to get started</div>'
+    : sorted.map(t => {
+        const isAce    = t.source === 'mms_scan' || t.source === 'sms_mileage';
+        const isManual = t.source === 'budget_tracker';
+        const srcLabel = isAce ? 'Ace' : isManual ? 'manual' : t.source || '';
+        const srcClass = isAce ? '' : 'manual';
+        const vendor   = t.vendor ? `${t.vendor} · ` : '';
+        const cat      = normalizeCategory(t.category || t.cat || '');
+        return `<div class="txn-row">
+          <div>
+            <div class="txn-desc">${t.desc || t.vendor || 'Expense'}</div>
+            <div class="txn-meta">${vendor}${cat} · ${t.date || ''}${srcLabel ? `<span class="txn-source ${srcClass}">${srcLabel}</span>` : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;">
+            <div class="txn-amount">-${fmt(parseFloat(t.amt) || 0)}</div>
+            <button class="del-btn" onclick="deleteTxn('${t.id}')">✕</button>
+          </div>
+        </div>`;
+      }).join('');
+}
+
+async function addTransaction() {
+  const desc   = document.getElementById('txnDesc').value.trim();
+  const amt    = parseFloat(document.getElementById('txnAmount').value);
+  const cat    = document.getElementById('txnCat').value;
+  if (!desc || isNaN(amt) || amt <= 0) return;
+
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  const today = new Date();
+  const date  = today.toISOString().slice(0, 10);
+
+  try {
+    const r = await fetch(`${BACKEND}/api/budget-expenses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ desc, amt, category: cat, date })
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error);
+    document.getElementById('txnDesc').value   = '';
+    document.getElementById('txnAmount').value = '';
+    await loadData();
+  } catch(e) {
+    alert('Could not save: ' + e.message);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Add';
+}
+
+async function deleteTxn(id) {
+  if (!confirm('Remove this transaction?')) return;
+  try {
+    await fetch(`${BACKEND}/api/budget-expenses/${id}`, { method: 'DELETE' });
+    await loadData();
+  } catch(e) {
+    alert('Could not delete: ' + e.message);
+  }
+}
+
+// Init
+document.getElementById('monthLabel').textContent = MONTHS[currentMonth] + ' ' + currentYear;
+loadData();
+</script>
+</body>
+</html>

@@ -4863,6 +4863,63 @@ app.post('/api/send-invoice', async (req, res) => {
   }
 });
 
+// ── Budget Tracker API ────────────────────────────────────────
+// GET /api/budget-expenses?year=2026&month=6  (month is 0-indexed to match JS Date)
+app.get('/api/budget-expenses', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const year  = parseInt(req.query.year)  || new Date().getFullYear();
+    const month = parseInt(req.query.month); // 0-indexed
+    const expenses = (crm.expenses || []).filter(e => {
+      if (!e.date) return false;
+      const d = new Date(e.date + 'T12:00:00');
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+    res.json({ ok: true, expenses });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/budget-expenses  — add a manual transaction from the budget tracker UI
+app.post('/api/budget-expenses', async (req, res) => {
+  try {
+    const { desc, amt, category, date } = req.body;
+    if (!desc || !amt || !category || !date) return res.status(400).json({ ok: false, error: 'Missing fields' });
+    const crm = await readCRM();
+    crm.expenses = crm.expenses || [];
+    crm.expenses.push({
+      id: 'exp' + Date.now(),
+      date,
+      amt: parseFloat(amt),
+      category,
+      desc,
+      vendor: '',
+      bucket: 'personal',
+      source: 'budget_tracker',
+      status: 'paid'
+    });
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE /api/budget-expenses/:id
+app.delete('/api/budget-expenses/:id', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const before = (crm.expenses || []).length;
+    crm.expenses = (crm.expenses || []).filter(e => e.id !== req.params.id);
+    if (crm.expenses.length === before) return res.status(404).json({ ok: false, error: 'Not found' });
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Finance persistence (expenses + invoices via Supabase) ────
 app.post('/crm/finance', async (req, res) => {
   try {
