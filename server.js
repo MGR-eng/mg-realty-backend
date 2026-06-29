@@ -8331,7 +8331,7 @@ app.get('/auth/facebook', (req, res) => {
   const params = new URLSearchParams({
     client_id:     FB_APP_ID,
     redirect_uri:  FB_CALLBACK,
-    scope:         'pages_manage_posts,pages_read_engagement',
+    scope:         'pages_manage_posts',
     response_type: 'code',
   });
   res.redirect(`https://www.facebook.com/dialog/oauth?${params}`);
