@@ -8327,6 +8327,60 @@ const FB_APP_ID     = process.env.FB_APP_ID;
 const FB_APP_SECRET = process.env.FB_APP_SECRET;
 const FB_CALLBACK   = 'https://mg-realty-backend.onrender.com/auth/facebook/callback';
 
+// Try to get FB Page token from the existing Instagram token (they share the same Meta account)
+app.get('/auth/facebook/from-instagram', async (req, res) => {
+  try {
+    const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+    if (!igToken) return res.send('<h2 style="color:red">INSTAGRAM_ACCESS_TOKEN not set in Render env vars.</h2>');
+
+    const pagesResp = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${igToken}`).then(r => r.json());
+
+    if (pagesResp.error) return res.send(`
+      <html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:60px auto;padding:20px">
+        <h2 style="color:red">Could not get pages from Instagram token</h2>
+        <p>${pagesResp.error.message}</p>
+        <p style="color:#555;font-size:13px">The Instagram token doesn't have page access. Try the standard auth flow at <a href="/auth/facebook">/auth/facebook</a></p>
+      </body></html>
+    `);
+
+    const pages = pagesResp.data || [];
+    if (pages.length === 0) return res.send(`
+      <html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:60px auto;padding:20px">
+        <h2 style="color:orange">No pages found</h2>
+        <p>No Facebook Pages are linked to this Instagram token. Try <a href="/auth/facebook">/auth/facebook</a> instead.</p>
+      </body></html>
+    `);
+
+    if (pages.length === 1) {
+      await saveFBCreds(pages[0].access_token, pages[0].id);
+      return res.send(`
+        <html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:60px auto;padding:20px">
+          <h2 style="color:#1877f2">✅ Facebook Page connected via Instagram!</h2>
+          <p><strong>${pages[0].name}</strong> is now wired up. Close this tab and go back to the CRM.</p>
+        </body></html>
+      `);
+    }
+
+    const buttons = pages.map(p => `
+      <form method="GET" action="/auth/facebook/select">
+        <input type="hidden" name="token" value="${p.access_token}">
+        <input type="hidden" name="id" value="${p.id}">
+        <input type="hidden" name="name" value="${p.name}">
+        <button type="submit" style="display:block;width:100%;margin-bottom:8px;padding:12px;font-size:14px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:left">
+          📄 ${p.name} <span style="color:#888;font-size:12px">(${p.id})</span>
+        </button>
+      </form>`).join('');
+
+    res.send(`
+      <html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:60px auto;padding:20px">
+        <h2>Which Facebook Page should we post to?</h2>${buttons}
+      </body></html>
+    `);
+  } catch(e) {
+    res.send(`<h2 style="color:red">Error: ${e.message}</h2>`);
+  }
+});
+
 app.get('/auth/facebook', (req, res) => {
   const params = new URLSearchParams({
     client_id:     FB_APP_ID,
