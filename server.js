@@ -4923,8 +4923,15 @@ app.delete('/api/budget-expenses/:id', async (req, res) => {
 // ── Finance persistence (expenses + invoices via Supabase) ────
 app.post('/crm/finance', async (req, res) => {
   try {
-    const { expenses, invoices } = req.body;
-    await writeCRM({ expenses, invoices });
+    const { expenses: incoming, invoices } = req.body;
+    // Merge incoming expenses with what's already in Supabase so Twilio/Ace receipts aren't overwritten
+    const crm = await readCRM();
+    const existingById = {};
+    (crm.expenses || []).forEach(e => { if (e.id) existingById[e.id] = e; });
+    // Incoming takes precedence for IDs it knows about; Supabase-only entries (e.g. Twilio) are preserved
+    (incoming || []).forEach(e => { if (e.id) existingById[e.id] = e; });
+    const merged = Object.values(existingById);
+    await writeCRM({ ...crm, expenses: merged, invoices: invoices || crm.invoices });
     res.json({ ok: true });
   } catch(e) {
     res.json({ ok: false, error: e.message });

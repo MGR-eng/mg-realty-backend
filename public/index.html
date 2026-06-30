@@ -3849,9 +3849,9 @@ async function syncFromBackend(){
     if(newOffers.length !== offers.length){offers=newOffers;changed=true;}
     const newProps = restoreIfEmpty(props, data.properties);
     if(newProps.length !== props.length){props=newProps;changed=true;}
-    const newExpenses = restoreIfEmpty(expenses, data.expenses);
+    const newExpenses = mergeIn(expenses, data.expenses, false);
     if(newExpenses.length !== expenses.length){expenses=newExpenses;changed=true;}
-    const newInvoices = restoreIfEmpty(invoices, data.invoices);
+    const newInvoices = mergeIn(invoices, data.invoices, false);
     if(newInvoices.length !== invoices.length){invoices=newInvoices;changed=true;}
 
     if(changed){
