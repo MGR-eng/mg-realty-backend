@@ -5803,15 +5803,15 @@ function renderExpenses() {
   }).sort((a,b)=>b.date.localeCompare(a.date));
 
   // Stats — scoped to bucket
-  const thisMonthTotal = bucketExpenses.filter(e=>{ const d=new Date(e.date+'T00:00:00'); return d.getFullYear()===yr&&d.getMonth()===mo; }).reduce((s,e)=>s+e.amt,0);
-  const ytdTotal = bucketExpenses.filter(e=>new Date(e.date+'T00:00:00').getFullYear()===yr).reduce((s,e)=>s+e.amt,0);
-  const catTotals = {}; bucketExpenses.forEach(e=>{ catTotals[e.category]=(catTotals[e.category]||0)+e.amt; });
+  const thisMonthTotal = bucketExpenses.filter(e=>{ const d=new Date(e.date+'T00:00:00'); return d.getFullYear()===yr&&d.getMonth()===mo; }).reduce((s,e)=>s+(parseFloat(e.amt)||0),0);
+  const ytdTotal = bucketExpenses.filter(e=>new Date(e.date+'T00:00:00').getFullYear()===yr).reduce((s,e)=>s+(parseFloat(e.amt)||0),0);
+  const catTotals = {}; bucketExpenses.forEach(e=>{ catTotals[e.category]=(catTotals[e.category]||0)+(parseFloat(e.amt)||0); });
   const topCat = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
   document.getElementById('exp-total-month').textContent='$'+thisMonthTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   document.getElementById('exp-total-ytd').textContent='$'+ytdTotal.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
   document.getElementById('exp-top-cat').textContent=topCat;
   document.getElementById('exp-count').textContent=bucketExpenses.length;
-  const filteredTotal=filtered.reduce((s,e)=>s+e.amt,0);
+  const filteredTotal=filtered.reduce((s,e)=>s+(parseFloat(e.amt)||0),0);
   const ftEl=document.getElementById('exp-filter-total');
   if(ftEl) ftEl.textContent=filtered.length?`${filtered.length} entries · $${filteredTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} total`:'';
 
@@ -5824,8 +5824,9 @@ function renderExpenses() {
   const CAT_ICON={'Marketing':'ti-brand-instagram','Mileage / Gas':'ti-car','Office Supplies':'ti-clipboard','Technology':'ti-device-laptop','Professional Development':'ti-school','Client Entertainment':'ti-glass-full','Photography / Media':'ti-camera','Signs / Lockboxes':'ti-key','MLS / Dues':'ti-building','Other':'ti-tag'};
 
   list.innerHTML = Object.entries(groups).sort((a,b)=>b[0].localeCompare(a[0])).map(([month,exps])=>{
-    const mTotal = exps.reduce((s,e)=>s+e.amt,0);
-    const mLabel = new Date(month+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const mTotal = exps.reduce((s,e)=>s+(parseFloat(e.amt)||0),0);
+    const [mY,mM] = month.split('-').map(Number);
+    const mLabel = new Date(mY, mM-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
     return `<div style="margin-bottom:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">${mLabel}</div>
@@ -5842,7 +5843,7 @@ function renderExpenses() {
             <div style="font-size:11px;color:var(--text3)">${e.desc&&e.vendor?e.desc+' · ':''}${e.category} · ${e.date}${linked?' · '+linked.first+' '+linked.last:''}${e.driveUrl?` · <a href="${e.driveUrl}" target="_blank" style="color:var(--accent)">📁</a>`:''}
             </div>
           </div>
-          <div style="font-weight:700;font-size:14px;color:var(--text1);margin-right:8px">$${e.amt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div style="font-weight:700;font-size:14px;color:var(--text1);margin-right:8px">$${(parseFloat(e.amt)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
           <button class="btn btn-sm" onclick="delExpense('${e.id}')" style="color:var(--red);flex-shrink:0"><i class="ti ti-trash" style="font-size:11px"></i></button>
         </div>`;
       }).join('')}

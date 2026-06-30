@@ -58,17 +58,32 @@ body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #0b0b0b; 
 .empty { text-align: center; padding: 2rem; color: #898781; font-size: 14px; }
 .ace-tip { background: rgba(42,120,214,0.06); border: 1px solid rgba(42,120,214,0.15); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #52514e; margin-bottom: 1rem; line-height: 1.6; }
 .ace-tip strong { color: #2a78d6; }
+.pdf-btn { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 4px 12px; font-size: 13px; cursor: pointer; color: #52514e; }
+.pdf-btn:hover { background: #f0f0ee; }
+@media print {
+  body { background: #fff; padding: 1rem; }
+  .month-nav, .sync-bar, .tabs, #txnView .add-section, .del-btn, .ace-tip, .pdf-btn { display: none !important; }
+  .tracker { max-width: 100%; }
+  #budgetView, #txnView { display: block !important; }
+  .txn-row, .cat-row { break-inside: avoid; }
+  .print-header { display: block !important; }
+}
+.print-header { display: none; font-size: 13px; color: #898781; margin-bottom: 1rem; }
 </style>
 </head>
 <body>
 <div class="tracker">
   <div class="month-bar">
     <div class="month-label" id="monthLabel"></div>
-    <div class="month-nav">
-      <button onclick="changeMonth(-1)">&#8249;</button>
-      <button onclick="changeMonth(1)">&#8250;</button>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button class="pdf-btn" onclick="exportPDF()">⬇ Download PDF</button>
+      <div class="month-nav">
+        <button onclick="changeMonth(-1)">&#8249;</button>
+        <button onclick="changeMonth(1)">&#8250;</button>
+      </div>
     </div>
   </div>
+  <div class="print-header" id="printHeader"></div>
 
   <div class="sync-bar">
     <div class="sync-dot" id="syncDot"></div>
@@ -297,6 +312,28 @@ async function deleteTxn(id) {
   } catch(e) {
     alert('Could not delete: ' + e.message);
   }
+}
+
+function exportPDF() {
+  // Make both views visible for print, show header, then restore
+  const budgetView = document.getElementById('budgetView');
+  const txnView    = document.getElementById('txnView');
+  const bPrev = budgetView.style.display;
+  const tPrev = txnView.style.display;
+  const ph = document.getElementById('printHeader');
+
+  budgetView.style.display = 'block';
+  txnView.style.display    = 'block';
+  ph.textContent = `MG Realty · Budget Report · ${MONTHS[currentMonth]} ${currentYear} · Generated ${new Date().toLocaleDateString()}`;
+
+  window.print();
+
+  // Restore after print dialog closes
+  setTimeout(() => {
+    budgetView.style.display = bPrev;
+    txnView.style.display    = tPrev;
+    ph.textContent = '';
+  }, 500);
 }
 
 // Init
