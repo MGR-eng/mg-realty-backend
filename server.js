@@ -3573,10 +3573,10 @@ app.post('/sms', async (req, res) => {
     if (mediaUrl && isOwner) {
       // Detect "personal" or "work" prefix → Finance receipt flow
       const msgLower = inboundMsg.toLowerCase().trim();
-      const isFinanceReceipt = msgLower.startsWith('personal') || msgLower.startsWith('work') || msgLower.includes('personal expense') || msgLower.includes('work expense') || msgLower.includes('log as personal') || msgLower.includes('log as work');
+      const isFinanceReceipt = msgLower.startsWith('personal') || msgLower.startsWith('work') || msgLower.startsWith('business') || msgLower.includes('personal expense') || msgLower.includes('work expense') || msgLower.includes('business expense') || msgLower.includes('log as personal') || msgLower.includes('log as work');
       if (isFinanceReceipt) {
-        const bucket = (msgLower.includes('personal')) ? 'personal' : 'work';
-        const hint = inboundMsg.replace(/^(personal|work)[,\s]*/i, '').trim();
+        const bucket = msgLower.includes('personal') ? 'personal' : 'work';
+        const hint = inboundMsg.replace(/^(personal|work|business)[,\s]*/i, '').trim();
         res.set('Content-Type', 'text/xml');
         res.send(twiml(`📸 Got it — scanning ${bucket} receipt...`));
         (async () => {
@@ -3657,7 +3657,7 @@ Return ONLY valid JSON:
           // Fetch image from Twilio with auth
           const twilioAuth = 'Basic ' + Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
           const imgRes = await fetch(mediaUrl, { headers: { Authorization: twilioAuth } });
-          const imgBuffer = await imgRes.buffer();
+          const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
           const b64 = imgBuffer.toString('base64');
           const hint = inboundMsg || '';
 
