@@ -8936,6 +8936,85 @@ app.post('/api/restaurant-reservation', async (req, res) => {
   }
 });
 
+// ── Meeting Notes — Live mic transcription ─────────────────────
+app.post('/api/transcribe-meeting', express.raw({ type: 'audio/*', limit: '50mb' }), async (req, res) => {
+  try {
+    const { leadId, meetingType = 'meeting', date } = req.query;
+    const audioBuffer = req.body;
+    if (!audioBuffer || audioBuffer.length < 1000) {
+      return res.status(400).json({ ok: false, error: 'No audio received' });
+    }
+
+    // Transcribe with Whisper
+    const { OpenAI } = await import('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { Blob } = await import('buffer');
+    const audioBlob = new Blob([audioBuffer], { type: req.headers['content-type'] || 'audio/webm' });
+    const ext = (req.headers['content-type'] || 'audio/webm').includes('mp4') ? 'mp4' : 'webm';
+    const transcription = await openai.audio.transcriptions.create({
+      file: new File([audioBlob], `meeting.${ext}`, { type: audioBlob.type }),
+      model: 'whisper-1',
+    });
+    const transcript = (transcription.text || '').trim();
+    if (!transcript) return res.status(422).json({ ok: false, error: 'No speech detected in recording' });
+
+    // Now run through Claude — same pipeline as brain dump
+    const crm = await readCRM();
+    const lead = leadId ? (crm.leads || []).find(l => l.id === leadId) : null;
+    const leadContext = lead ? `Client: ${lead.firstName||''} ${lead.lastName||''}, ${lead.type||'lead'}, ${lead.status||''}` : 'No specific client linked';
+
+    const result = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: `You are an assistant for Matt Golden, a Los Angeles real estate agent.
+This is a transcript of a ${meetingType}.
+${leadContext}
+Meeting date: ${date || new Date().toLocaleDateString()}
+
+Transcript:
+"${transcript}"
+
+Respond with JSON only:
+{
+  "summary": "2-4 sentence clean summary of what was discussed and decided",
+  "actionItems": [
+    {"task": "description", "priority": "high|medium|low", "dueDate": "YYYY-MM-DD or null"}
+  ],
+  "followUpEmail": "2-3 sentence follow-up email draft, or null if not needed",
+  "sentiment": "positive|neutral|negative",
+  "nextStep": "single most important next action"
+}` }]
+    });
+
+    let parsed = {};
+    try { parsed = JSON.parse(result.content[0].text); }
+    catch(e) { parsed = { summary: transcript.slice(0, 400), actionItems: [], sentiment: 'neutral', nextStep: '' }; }
+
+    const meetingDate = date || new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const noteText = `📋 ${meetingType} (recorded) — ${meetingDate}\n\nSummary: ${parsed.summary}\n\nAction Items:\n${(parsed.actionItems||[]).map(a=>`• ${a.task}${a.dueDate?' (due '+a.dueDate+')':''}`).join('\n') || 'None'}\n\nNext Step: ${parsed.nextStep || ''}\n\nTranscript:\n${transcript}`;
+
+    if (lead) {
+      lead.notes = ((lead.notes || '') + '\n\n' + noteText).trim();
+      lead.lastContact = date || new Date().toISOString().split('T')[0];
+    }
+    const activity = {
+      id: `act_${Date.now()}`,
+      type: meetingType,
+      date: date || new Date().toISOString().split('T')[0],
+      leadId: lead?.id || null,
+      leadName: lead ? `${lead.firstName||''} ${lead.lastName||''}`.trim() : 'General',
+      note: noteText,
+    };
+    crm.activities = [...(crm.activities || []), activity];
+    await writeCRM(crm);
+
+    res.json({ ok: true, transcript, ...parsed, noteText });
+  } catch(e) {
+    console.error('Transcribe-meeting error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Meeting Notes — AI brain dump processor ────────────────────
 app.post('/api/process-meeting-notes', async (req, res) => {
   try {

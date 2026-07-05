@@ -1351,6 +1351,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
           <textarea id="mn-dump" rows="10" placeholder="e.g. Called Sarah about Brentwood showing. She likes the layout but worried about street noise. Budget is firm at 1.2M. Said she wants to decide by end of month. Need to send comps and schedule a second look. Husband hasn't seen it yet..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px;resize:vertical;box-sizing:border-box;line-height:1.5"></textarea>
         </div>
 
+        <!-- Live recording -->
+        <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;background:var(--bg2)">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Live Recording</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <button id="mn-record-btn" onclick="toggleMeetingRecording()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">
+              <i class="ti ti-microphone" style="margin-right:5px"></i>Start Recording
+            </button>
+            <span id="mn-record-timer" style="font-size:13px;color:var(--text3);display:none">⏺ <span id="mn-timer-val">0:00</span></span>
+          </div>
+          <div style="font-size:11px;color:var(--text3)">Put your phone on speaker → hit Start → talk naturally. When the meeting ends, hit Stop and AI does the rest.</div>
+        </div>
+
+        <div style="text-align:center;font-size:11px;color:var(--text3);margin-bottom:10px">— or type notes manually —</div>
+
         <button onclick="processMeetingNotes()" style="width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">
           <i class="ti ti-sparkles" style="margin-right:6px"></i>Process Notes
         </button>
@@ -14403,6 +14417,126 @@ function scanDocOpenTransaction() {
 
 <script>
 // ── Meeting Notes ──────────────────────────────────────────────
+let _mnRecorder = null, _mnChunks = [], _mnTimerInterval = null, _mnSeconds = 0;
+
+async function toggleMeetingRecording() {
+  if (_mnRecorder && _mnRecorder.state === 'recording') {
+    // Stop
+    _mnRecorder.stop();
+    clearInterval(_mnTimerInterval);
+    const btn = document.getElementById('mn-record-btn');
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;margin-right:5px"></i>Processing...';
+    btn.disabled = true;
+    document.getElementById('mn-record-timer').style.display = 'none';
+  } else {
+    // Start
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      _mnChunks = [];
+      _mnSeconds = 0;
+
+      // Pick the best supported format
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
+
+      _mnRecorder = new MediaRecorder(stream, { mimeType });
+      _mnRecorder.ondataavailable = e => { if (e.data.size > 0) _mnChunks.push(e.data); };
+      _mnRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(_mnChunks, { type: mimeType });
+        await uploadMeetingRecording(blob, mimeType);
+        const btn = document.getElementById('mn-record-btn');
+        btn.innerHTML = '<i class="ti ti-microphone" style="margin-right:5px"></i>Start Recording';
+        btn.disabled = false;
+        btn.style.background = 'var(--accent)';
+      };
+      _mnRecorder.start(1000);
+
+      // Timer
+      const timerEl = document.getElementById('mn-record-timer');
+      timerEl.style.display = 'inline-flex';
+      _mnTimerInterval = setInterval(() => {
+        _mnSeconds++;
+        const m = Math.floor(_mnSeconds / 60), s = _mnSeconds % 60;
+        document.getElementById('mn-timer-val').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      }, 1000);
+
+      const btn = document.getElementById('mn-record-btn');
+      btn.innerHTML = '<i class="ti ti-player-stop-filled" style="margin-right:5px"></i>Stop Recording';
+      btn.style.background = '#dc2626';
+    } catch(e) {
+      toast('Mic access denied — allow microphone in browser settings');
+    }
+  }
+}
+
+async function uploadMeetingRecording(blob, mimeType) {
+  const leadId      = document.getElementById('mn-lead').value;
+  const meetingType = document.getElementById('mn-type').value;
+  const date        = document.getElementById('mn-date').value;
+
+  document.getElementById('mn-processing').style.display = 'block';
+  document.getElementById('mn-results').style.display = 'none';
+
+  const params = new URLSearchParams({ leadId, meetingType, date });
+  try {
+    const r = await fetch(`/api/transcribe-meeting?${params}`, {
+      method: 'POST',
+      headers: { 'Content-Type': mimeType },
+      body: blob
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Transcription failed');
+
+    // Show transcript in brain dump box for reference
+    document.getElementById('mn-dump').value = data.transcript || '';
+
+    // Render results using same renderer
+    renderMeetingResults(data);
+    toast('✓ Meeting recorded, transcribed & saved');
+    setTimeout(() => syncFromBackend && syncFromBackend(), 1500);
+  } catch(e) {
+    toast('Error: ' + e.message);
+  } finally {
+    document.getElementById('mn-processing').style.display = 'none';
+  }
+}
+
+function renderMeetingResults(data) {
+  const sentimentColors = { positive:'#d1fae5', neutral:'#f3f4f6', negative:'#fee2e2' };
+  const sentimentLabels = { positive:'😊 Positive', neutral:'😐 Neutral', negative:'😟 Needs attention' };
+  const sb = document.getElementById('mn-sentiment-badge');
+  sb.style.background = sentimentColors[data.sentiment] || '#f3f4f6';
+  sb.style.color = data.sentiment === 'positive' ? '#065f46' : data.sentiment === 'negative' ? '#991b1b' : '#374151';
+  sb.textContent = sentimentLabels[data.sentiment] || data.sentiment || '';
+
+  document.getElementById('mn-summary').textContent = data.summary || '';
+  document.getElementById('mn-next-step').textContent = data.nextStep || '';
+
+  const actionsEl = document.getElementById('mn-actions');
+  if (data.actionItems && data.actionItems.length) {
+    actionsEl.innerHTML = data.actionItems.map(a =>
+      `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+        <span style="color:var(--accent)">•</span>
+        <span>${a.task}${a.dueDate ? ' <span style="color:var(--text3);font-size:11px">· due '+a.dueDate+'</span>' : ''}</span>
+      </div>`
+    ).join('');
+  } else {
+    actionsEl.textContent = 'None identified';
+  }
+
+  const emailWrap = document.getElementById('mn-email-wrap');
+  if (data.followUpEmail) {
+    emailWrap.style.display = 'block';
+    document.getElementById('mn-email').textContent = data.followUpEmail;
+  } else {
+    emailWrap.style.display = 'none';
+  }
+
+  document.getElementById('mn-results').style.display = 'block';
+}
+
 function initMeetingNotes() {
   const dateEl = document.getElementById('mn-date');
   if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
@@ -14438,37 +14572,7 @@ async function processMeetingNotes() {
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Failed');
 
-    const sentimentColors = { positive:'#d1fae5', neutral:'#f3f4f6', negative:'#fee2e2' };
-    const sentimentLabels = { positive:'😊 Positive', neutral:'😐 Neutral', negative:'😟 Needs attention' };
-    const sb = document.getElementById('mn-sentiment-badge');
-    sb.style.background = sentimentColors[data.sentiment] || '#f3f4f6';
-    sb.style.color = data.sentiment === 'positive' ? '#065f46' : data.sentiment === 'negative' ? '#991b1b' : '#374151';
-    sb.textContent = sentimentLabels[data.sentiment] || data.sentiment;
-
-    document.getElementById('mn-summary').textContent = data.summary || '';
-    document.getElementById('mn-next-step').textContent = data.nextStep || '';
-
-    const actionsEl = document.getElementById('mn-actions');
-    if (data.actionItems && data.actionItems.length) {
-      actionsEl.innerHTML = data.actionItems.map(a =>
-        `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
-          <span style="color:var(--accent)">•</span>
-          <span>${a.task}${a.dueDate ? ' <span style="color:var(--text3);font-size:11px">· due '+a.dueDate+'</span>' : ''}</span>
-        </div>`
-      ).join('');
-    } else {
-      actionsEl.textContent = 'None identified';
-    }
-
-    const emailWrap = document.getElementById('mn-email-wrap');
-    if (data.followUpEmail) {
-      emailWrap.style.display = 'block';
-      document.getElementById('mn-email').textContent = data.followUpEmail;
-    } else {
-      emailWrap.style.display = 'none';
-    }
-
-    document.getElementById('mn-results').style.display = 'block';
+    renderMeetingResults(data);
     toast('✓ Notes processed and saved');
     setTimeout(() => syncFromBackend && syncFromBackend(), 1500);
   } catch(e) {
