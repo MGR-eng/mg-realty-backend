@@ -1363,6 +1363,19 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
           <div style="font-size:11px;color:var(--text3)">Put your phone on speaker → hit Start → talk naturally. When the meeting ends, hit Stop and AI does the rest.</div>
         </div>
 
+        <!-- File upload -->
+        <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;background:var(--bg2)">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Upload Recording</div>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <div style="padding:8px 16px;background:var(--bg1);border:1px solid var(--border);border-radius:6px;font-size:13px;font-weight:500;color:var(--text1);white-space:nowrap">
+              <i class="ti ti-upload" style="margin-right:5px"></i>Choose File
+            </div>
+            <span id="mn-file-name" style="font-size:12px;color:var(--text3)">Voice Memo, MP3, M4A, WAV...</span>
+            <input type="file" id="mn-audio-file" accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg" style="display:none" onchange="handleMeetingFileUpload(this)">
+          </label>
+          <div style="font-size:11px;color:var(--text3);margin-top:8px">Record on iPhone Voice Memos → AirDrop or email to yourself → upload here</div>
+        </div>
+
         <div style="text-align:center;font-size:11px;color:var(--text3);margin-bottom:10px">— or type notes manually —</div>
 
         <button onclick="processMeetingNotes()" style="width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">
@@ -14418,6 +14431,40 @@ function scanDocOpenTransaction() {
 <script>
 // ── Meeting Notes ──────────────────────────────────────────────
 let _mnRecorder = null, _mnChunks = [], _mnTimerInterval = null, _mnSeconds = 0;
+
+async function handleMeetingFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('mn-file-name').textContent = file.name;
+
+  const leadId      = document.getElementById('mn-lead').value;
+  const meetingType = document.getElementById('mn-type').value;
+  const date        = document.getElementById('mn-date').value;
+
+  document.getElementById('mn-processing').style.display = 'block';
+  document.getElementById('mn-results').style.display = 'none';
+
+  try {
+    const params = new URLSearchParams({ leadId, meetingType, date });
+    const r = await fetch(`/api/transcribe-meeting?${params}`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'audio/m4a' },
+      body: file
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Transcription failed');
+
+    document.getElementById('mn-dump').value = data.transcript || '';
+    renderMeetingResults(data);
+    toast('✓ Recording transcribed & saved');
+    setTimeout(() => syncFromBackend && syncFromBackend(), 1500);
+  } catch(e) {
+    toast('Error: ' + e.message);
+  } finally {
+    document.getElementById('mn-processing').style.display = 'none';
+    input.value = '';
+  }
+}
 
 async function toggleMeetingRecording() {
   if (_mnRecorder && _mnRecorder.state === 'recording') {
