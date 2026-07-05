@@ -8936,6 +8936,107 @@ app.post('/api/restaurant-reservation', async (req, res) => {
   }
 });
 
+// ── Otter.ai → Zapier → CRM integration ───────────────────────
+app.post('/api/otter-summary', async (req, res) => {
+  res.sendStatus(200); // Respond fast so Zapier doesn't time out
+
+  try {
+    const body = req.body;
+
+    // Otter sends different field names depending on Zapier setup — handle all variants
+    const title      = body.title || body.name || body.meeting_title || 'Meeting';
+    const transcript = body.transcript || body.full_transcript || body.content || '';
+    const otterSummary = body.summary || body.outline || body.notes || '';
+    const attendees  = body.attendees || body.speakers || body.participants || '';
+    const meetingDate = body.date || body.created_at || body.start_time || new Date().toISOString();
+    const duration   = body.duration || body.meeting_duration || '';
+
+    if (!transcript && !otterSummary) {
+      console.log('Otter webhook: no content received', JSON.stringify(body).slice(0, 200));
+      return;
+    }
+
+    const dateStr = new Date(meetingDate).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const content = otterSummary || transcript;
+
+    // Claude structures the note
+    const result = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: `You are an assistant for Matt Golden, a Los Angeles real estate agent.
+This is a meeting summary from Otter.ai.
+
+Meeting: ${title}
+Date: ${dateStr}
+${attendees ? 'Attendees: ' + attendees : ''}
+${duration ? 'Duration: ' + duration : ''}
+
+Content:
+"${content.slice(0, 3000)}"
+
+Extract a structured summary as JSON only:
+{
+  "summary": "2-4 sentence summary of what was discussed",
+  "actionItems": [{"task": "description", "priority": "high|medium|low", "dueDate": "YYYY-MM-DD or null"}],
+  "followUpEmail": "2-3 sentence follow-up email draft or null",
+  "sentiment": "positive|neutral|negative",
+  "nextStep": "single most important next action",
+  "clientName": "first name of the client/other person Matt was meeting with, or null"
+}` }]
+    });
+
+    let parsed = {};
+    try { parsed = JSON.parse(result.content[0].text); }
+    catch(e) { parsed = { summary: content.slice(0, 400), actionItems: [], sentiment: 'neutral', nextStep: '' }; }
+
+    const { summary, actionItems = [], followUpEmail, sentiment, nextStep, clientName } = parsed;
+
+    // Try to match a lead by client name or attendees string
+    const crm = await readCRM();
+    const searchStr = (clientName || attendees || title || '').toLowerCase();
+    let matchedLead = null;
+    if (searchStr) {
+      matchedLead = (crm.leads || []).find(l => {
+        const fullName = `${l.firstName||''} ${l.lastName||''}`.toLowerCase();
+        const first = (l.firstName||'').toLowerCase();
+        return searchStr.includes(first) && first.length > 2 || searchStr.includes(fullName) && fullName.trim().length > 3;
+      });
+    }
+
+    const noteText = `📋 Otter Meeting — ${title} (${dateStr})\n${attendees ? 'With: '+attendees+'\n' : ''}\nSummary: ${summary}\n\nAction Items:\n${actionItems.map(a=>`• ${a.task}${a.dueDate?' (due '+a.dueDate+')':''}`).join('\n') || 'None'}\n\nNext Step: ${nextStep || ''}\n${followUpEmail ? '\nDraft follow-up:\n'+followUpEmail : ''}\n\n---\n${otterSummary ? 'Otter Summary:\n'+otterSummary+'\n\n' : ''}Transcript:\n${transcript.slice(0, 2000)}`;
+
+    if (matchedLead) {
+      matchedLead.notes = ((matchedLead.notes || '') + '\n\n' + noteText).trim();
+      matchedLead.lastContact = new Date(meetingDate).toISOString().split('T')[0];
+    }
+
+    const activity = {
+      id: `act_${Date.now()}`,
+      type: 'meeting',
+      date: new Date(meetingDate).toISOString().split('T')[0],
+      leadId: matchedLead?.id || null,
+      leadName: matchedLead ? `${matchedLead.firstName||''} ${matchedLead.lastName||''}`.trim() : (clientName || 'General'),
+      note: noteText,
+      source: 'otter',
+    };
+    crm.activities = [...(crm.activities || []), activity];
+    await writeCRM(crm);
+
+    // Text Matt the summary
+    const ownerPhone = process.env.OWNER_PHONE;
+    if (ownerPhone) {
+      const sentimentEmoji = { positive:'✅', neutral:'📋', negative:'⚠️' }[sentiment] || '📋';
+      const leadLine = matchedLead ? `\nLogged to: ${matchedLead.firstName} ${matchedLead.lastName}` : '';
+      const smsText = `${sentimentEmoji} Otter Meeting Note\n${title} — ${dateStr}${leadLine}\n\n${summary}\n\n📋 Next: ${nextStep || 'See action items'}`;
+      await sendSMS(ownerPhone, smsText).catch(e => console.error('Otter SMS failed:', e.message));
+    }
+
+    console.log(`Otter summary received — "${title}", matched lead: ${matchedLead ? matchedLead.firstName : 'none'}`);
+  } catch(e) {
+    console.error('Otter summary error:', e.message);
+  }
+});
+
 // ── Meeting Notes — Live mic transcription ─────────────────────
 app.post('/api/transcribe-meeting', express.raw({ type: 'audio/*', limit: '50mb' }), async (req, res) => {
   try {
