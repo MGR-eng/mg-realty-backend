@@ -509,6 +509,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('appointments',this)"><i class="ti ti-calendar"></i><span>Appointments</span></button>
     <button class="nav-item" onclick="showPane('offers',this)"><i class="ti ti-file-dollar"></i><span>Offer Tracker</span></button>
     <button class="nav-item" onclick="showPane('scheduled',this)"><i class="ti ti-clock-send"></i><span>Scheduled</span></button>
+    <button class="nav-item" onclick="showPane('meeting-notes',this)"><i class="ti ti-notebook"></i><span>Meeting Notes</span></button>
 
     <button class="nav-item" onclick="showPane('finance',this)"><i class="ti ti-receipt"></i><span>Finance</span></button>
     <button class="nav-item nav-sub" onclick="showPane('gci',this)"><span>GCI Goal</span></button>
@@ -1305,6 +1306,111 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div id="rt-list"></div>
   </div>
 </div>
+
+<!-- Meeting Notes pane -->
+<div id="pane-meeting-notes" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-notebook" style="margin-right:6px;color:#E8681A"></i>Meeting Notes</div>
+  </div>
+  <div class="pane-body" style="max-width:860px;margin:0 auto;padding:24px 20px">
+
+    <!-- Two-column layout -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+      <!-- LEFT: Brain dump form -->
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em">New Note</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Meeting type</label>
+            <select id="mn-type" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px">
+              <option value="phone call">Phone call</option>
+              <option value="in-person meeting">In-person</option>
+              <option value="showing">Showing</option>
+              <option value="listing appointment">Listing appt</option>
+              <option value="offer review">Offer review</option>
+              <option value="video call">Video call</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Date</label>
+            <input type="date" id="mn-date" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Link to lead (optional)</label>
+          <select id="mn-lead" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px">
+            <option value="">— No lead —</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Brain dump — type messy, AI will clean it up</label>
+          <textarea id="mn-dump" rows="10" placeholder="e.g. Called Sarah about Brentwood showing. She likes the layout but worried about street noise. Budget is firm at 1.2M. Said she wants to decide by end of month. Need to send comps and schedule a second look. Husband hasn't seen it yet..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px;resize:vertical;box-sizing:border-box;line-height:1.5"></textarea>
+        </div>
+
+        <button onclick="processMeetingNotes()" style="width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">
+          <i class="ti ti-sparkles" style="margin-right:6px"></i>Process Notes
+        </button>
+
+        <div id="mn-processing" style="display:none;text-align:center;padding:16px;color:var(--text3);font-size:13px">
+          <i class="ti ti-loader-2" style="animation:spin 1s linear infinite;margin-right:6px"></i>Processing...
+        </div>
+      </div>
+
+      <!-- RIGHT: AI output -->
+      <div id="mn-results" style="display:none">
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em">AI Summary</div>
+
+        <!-- Sentiment badge -->
+        <div id="mn-sentiment-badge" style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-bottom:14px"></div>
+
+        <!-- Summary -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:600">SUMMARY</div>
+          <div id="mn-summary" style="font-size:13px;color:var(--text1);line-height:1.6"></div>
+        </div>
+
+        <!-- Next step -->
+        <div style="background:#fff8f0;border:1px solid #fde8d0;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;color:#E8681A;margin-bottom:4px;font-weight:600">⚡ NEXT STEP</div>
+          <div id="mn-next-step" style="font-size:13px;color:var(--text1);font-weight:500"></div>
+        </div>
+
+        <!-- Action items -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600">ACTION ITEMS</div>
+          <div id="mn-actions" style="font-size:13px;color:var(--text1)"></div>
+        </div>
+
+        <!-- Follow-up email -->
+        <div id="mn-email-wrap" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:600">FOLLOW-UP EMAIL DRAFT</div>
+          <div id="mn-email" style="font-size:13px;color:var(--text1);line-height:1.6;font-style:italic"></div>
+        </div>
+
+        <div style="font-size:11px;color:var(--text3);text-align:center">Note saved to lead record automatically</div>
+      </div>
+    </div>
+
+    <!-- Recent call recordings -->
+    <div style="margin-top:32px">
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between">
+        Auto-Recorded Calls
+        <span style="font-size:11px;color:var(--text3);font-weight:400;text-transform:none">Calls through your Twilio line — transcribed automatically</span>
+      </div>
+      <div id="mn-call-log" style="font-size:13px;color:var(--text3);padding:20px;text-align:center;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+        Loading recent calls...
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 
 <!-- Finance pane — Expenses & Invoices -->
 <div id="pane-finance" class="pane">
@@ -4052,6 +4158,7 @@ function showPane(id,el){
   if(id==='gci') initGCI();
   if(id==='settings') loadSettingsPane();
   if(id==='response-tracker') renderResponseTracker();
+  if(id==='meeting-notes') initMeetingNotes();
 }
 function toggleMoreSheet(){
   document.getElementById('moreSheet').classList.toggle('open');
@@ -14291,6 +14398,119 @@ function scanDocOpenTransaction() {
       if (typeof toast === 'function') toast('Transaction form pre-filled from scanned doc');
     }, 300);
   }, 100);
+}
+</script>
+
+<script>
+// ── Meeting Notes ──────────────────────────────────────────────
+function initMeetingNotes() {
+  const dateEl = document.getElementById('mn-date');
+  if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+
+  const sel = document.getElementById('mn-lead');
+  if (sel) {
+    const leads = (JSON.parse(localStorage.getItem('crm_leads') || '[]'))
+      .sort((a,b) => (`${a.firstName||''} ${a.lastName||''}`).localeCompare(`${b.firstName||''} ${b.lastName||''}`));
+    sel.innerHTML = '<option value="">— No lead —</option>' +
+      leads.map(l => `<option value="${l.id}">${l.firstName||''} ${l.lastName||''} ${l.phone ? '('+l.phone+')' : ''}</option>`).join('');
+  }
+
+  loadCallLog();
+}
+
+async function processMeetingNotes() {
+  const brainDump   = document.getElementById('mn-dump').value.trim();
+  const leadId      = document.getElementById('mn-lead').value;
+  const meetingType = document.getElementById('mn-type').value;
+  const date        = document.getElementById('mn-date').value;
+
+  if (!brainDump || brainDump.length < 15) { toast('Add some notes first'); return; }
+
+  document.getElementById('mn-processing').style.display = 'block';
+  document.getElementById('mn-results').style.display = 'none';
+
+  try {
+    const r = await fetch('/api/process-meeting-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brainDump, leadId, meetingType, date })
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'Failed');
+
+    const sentimentColors = { positive:'#d1fae5', neutral:'#f3f4f6', negative:'#fee2e2' };
+    const sentimentLabels = { positive:'😊 Positive', neutral:'😐 Neutral', negative:'😟 Needs attention' };
+    const sb = document.getElementById('mn-sentiment-badge');
+    sb.style.background = sentimentColors[data.sentiment] || '#f3f4f6';
+    sb.style.color = data.sentiment === 'positive' ? '#065f46' : data.sentiment === 'negative' ? '#991b1b' : '#374151';
+    sb.textContent = sentimentLabels[data.sentiment] || data.sentiment;
+
+    document.getElementById('mn-summary').textContent = data.summary || '';
+    document.getElementById('mn-next-step').textContent = data.nextStep || '';
+
+    const actionsEl = document.getElementById('mn-actions');
+    if (data.actionItems && data.actionItems.length) {
+      actionsEl.innerHTML = data.actionItems.map(a =>
+        `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+          <span style="color:var(--accent)">•</span>
+          <span>${a.task}${a.dueDate ? ' <span style="color:var(--text3);font-size:11px">· due '+a.dueDate+'</span>' : ''}</span>
+        </div>`
+      ).join('');
+    } else {
+      actionsEl.textContent = 'None identified';
+    }
+
+    const emailWrap = document.getElementById('mn-email-wrap');
+    if (data.followUpEmail) {
+      emailWrap.style.display = 'block';
+      document.getElementById('mn-email').textContent = data.followUpEmail;
+    } else {
+      emailWrap.style.display = 'none';
+    }
+
+    document.getElementById('mn-results').style.display = 'block';
+    toast('✓ Notes processed and saved');
+    setTimeout(() => syncFromBackend && syncFromBackend(), 1500);
+  } catch(e) {
+    toast('Error: ' + e.message);
+  } finally {
+    document.getElementById('mn-processing').style.display = 'none';
+  }
+}
+
+function loadCallLog() {
+  const logEl = document.getElementById('mn-call-log');
+  if (!logEl) return;
+  try {
+    const activities = JSON.parse(localStorage.getItem('crm_activities') || '[]');
+    const calls = activities
+      .filter(a => a.type === 'call' && a.note && a.note.includes('Call Note'))
+      .sort((a,b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10);
+
+    if (!calls.length) {
+      logEl.innerHTML = '<span style="color:var(--text3)">No recorded calls yet — calls through your Twilio line will appear here automatically after they end.</span>';
+      return;
+    }
+
+    logEl.innerHTML = calls.map(c => {
+      const lines = (c.note || '').split('\n');
+      const summaryLine = lines.find(l => l.startsWith('Summary:')) || '';
+      const summary = summaryLine.replace('Summary: ', '');
+      const actionIdx = lines.findIndex(l => l.includes('Action Items:'));
+      const actions = actionIdx >= 0 ? lines.slice(actionIdx+1).filter(l => l.startsWith('•')).slice(0,2) : [];
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--bg1)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-weight:600;font-size:13px;color:var(--text1)">${c.leadName || c.phone || 'Unknown'}</span>
+          <span style="font-size:11px;color:var(--text3)">${c.date}</span>
+        </div>
+        ${summary ? `<div style="font-size:12px;color:var(--text2);margin-bottom:4px">${summary}</div>` : ''}
+        ${actions.length ? `<div style="font-size:11px;color:var(--text3)">${actions.join(' · ')}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    logEl.textContent = 'Could not load call log.';
+  }
 }
 </script>
 

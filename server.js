@@ -3311,10 +3311,14 @@ Route guide:
     }
 
     if (route === 'connect' && ownerPhone) {
+      const baseUrl = process.env.SERVER_URL || 'https://mg-realty-backend.onrender.com';
       res.send(twimlVoice(`
         ${say(`Thanks ${callerName}. One moment while I connect you with Matt.`)}
         <Play>https://demo.twilio.com/docs/classic.mp3</Play>
-        <Dial callerId="${twilioFrom}" action="/voice/dial-status" timeout="20">
+        <Dial callerId="${twilioFrom}" action="/voice/dial-status" timeout="20"
+              record="record-from-answer"
+              recordingStatusCallback="${baseUrl}/voice/recording-complete"
+              recordingStatusCallbackMethod="POST">
           <Number>${ownerPhone}</Number>
         </Dial>
         ${say("Matt's unavailable right now. Please leave a message after the tone and he'll call you back shortly.")}
@@ -3369,6 +3373,102 @@ app.post('/voice/dial-status', (req, res) => {
       ${say("Matt stepped away. Please leave a message after the tone and he'll call you back shortly.")}
       <Record maxLength="90" action="/voice/message" transcribe="true" transcribeCallback="/voice/transcription"/>
     `));
+  }
+});
+
+// Step 5: Recording complete — transcribe with Whisper, summarize, log to CRM
+app.post('/voice/recording-complete', async (req, res) => {
+  res.sendStatus(200);
+  const recordingUrl = req.body.RecordingUrl;
+  const callerNumber  = req.body.To || req.body.From || ''; // Twilio sends caller as To on outbound leg
+  const callDuration  = req.body.RecordingDuration || '?';
+  const ownerPhone    = process.env.OWNER_PHONE;
+
+  if (!recordingUrl) return;
+
+  try {
+    // Fetch the recording audio from Twilio (MP3)
+    const twilioAuth = 'Basic ' + Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+    const audioRes = await fetch(`${recordingUrl}.mp3`, { headers: { Authorization: twilioAuth } });
+    const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+
+    // Transcribe with OpenAI Whisper
+    const { OpenAI } = await import('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { Blob } = await import('buffer');
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+    const transcription = await openai.audio.transcriptions.create({
+      file: new File([audioBlob], 'call.mp3', { type: 'audio/mpeg' }),
+      model: 'whisper-1',
+    });
+    const transcript = transcription.text || '';
+    if (!transcript.trim()) return;
+
+    // Summarize with Claude
+    const summary = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: `You are an assistant for a real estate agent named Matt Golden (MG Realty, Los Angeles).
+This is a transcript of a business phone call (duration: ${callDuration}s).
+Extract a structured meeting summary as JSON only — no markdown, no explanation.
+
+Transcript:
+"${transcript}"
+
+Respond with:
+{
+  "summary": "2-3 sentence summary of what was discussed",
+  "actionItems": ["action 1", "action 2"],
+  "callerName": "first name or Unknown",
+  "topic": "one of: buyer_inquiry | seller_inquiry | follow_up | agent | vendor | other"
+}` }]
+    });
+
+    let parsed = {};
+    try { parsed = JSON.parse(summary.content[0].text); } catch(e) { parsed = { summary: transcript.slice(0,300), actionItems: [] }; }
+
+    const { summary: callSummary, actionItems = [], callerName = 'Unknown', topic = 'other' } = parsed;
+
+    // Find matching lead by phone number
+    const crm = await readCRM();
+    const cleanCaller = callerNumber.replace(/\D/g,'');
+    const matchedLead = (crm.leads || []).find(l => (l.phone||'').replace(/\D/g,'') === cleanCaller);
+
+    // Build the note to log
+    const noteDate = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const noteText = `📞 Call Note — ${noteDate} (${callDuration}s)\n\nSummary: ${callSummary}\n\nAction Items:\n${actionItems.map(a=>`• ${a}`).join('\n')}\n\nTranscript:\n${transcript}`;
+
+    // Save note to matched lead or create activity log
+    if (matchedLead) {
+      matchedLead.notes = ((matchedLead.notes || '') + '\n\n' + noteText).trim();
+      matchedLead.lastContact = new Date().toISOString().split('T')[0];
+      await writeCRM(crm);
+    }
+
+    // Save as a standalone activity too
+    const activity = {
+      id: `act_${Date.now()}`,
+      type: 'call',
+      date: new Date().toISOString().split('T')[0],
+      leadId: matchedLead?.id || null,
+      leadName: matchedLead ? `${matchedLead.firstName||''} ${matchedLead.lastName||''}`.trim() : callerName,
+      phone: callerNumber,
+      note: noteText,
+      topic,
+    };
+    crm.activities = [...(crm.activities || []), activity];
+    await writeCRM(crm);
+
+    // Text Matt the summary
+    if (ownerPhone) {
+      const topicEmoji = { buyer_inquiry:'🏠', seller_inquiry:'💰', follow_up:'🔄', agent:'🤝', vendor:'🔧', other:'📞' }[topic] || '📞';
+      const smsText = `${topicEmoji} Call Summary — ${callerName} (${callerNumber})\n\n${callSummary}\n\n📋 Action items:\n${actionItems.map(a=>`• ${a}`).join('\n') || 'None'}`;
+      await sendSMS(ownerPhone, smsText).catch(e => console.error('Recording SMS failed:', e.message));
+    }
+
+    console.log(`Call recorded & logged — ${callerName}, ${callDuration}s, ${actionItems.length} action items`);
+  } catch(e) {
+    console.error('Recording-complete error:', e.message);
   }
 });
 
@@ -8832,6 +8932,76 @@ app.post('/api/restaurant-reservation', async (req, res) => {
     res.json({ ok: true, restaurant: name, address, phone, openTableUrl, resyUrl, message: msg });
   } catch(e) {
     console.error('Restaurant reservation error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Meeting Notes — AI brain dump processor ────────────────────
+app.post('/api/process-meeting-notes', async (req, res) => {
+  try {
+    const { brainDump, leadId, meetingType = 'meeting', date } = req.body;
+    if (!brainDump || brainDump.trim().length < 10) {
+      return res.status(400).json({ ok: false, error: 'Notes too short' });
+    }
+
+    const crm = await readCRM();
+    const lead = leadId ? (crm.leads || []).find(l => l.id === leadId) : null;
+    const leadContext = lead ? `Client: ${lead.firstName||''} ${lead.lastName||''}, ${lead.type||'lead'}, ${lead.status||''}` : 'No specific client linked';
+
+    // Claude processes the brain dump
+    const result = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: `You are an assistant for Matt Golden, a Los Angeles real estate agent.
+He just had a ${meetingType} and gave you these rough notes. Structure them into a clean meeting summary.
+
+${leadContext}
+Meeting date: ${date || new Date().toLocaleDateString()}
+
+Raw notes:
+"${brainDump}"
+
+Respond with JSON only:
+{
+  "summary": "2-4 sentence clean summary of what was discussed and decided",
+  "actionItems": [
+    {"task": "description", "priority": "high|medium|low", "dueDate": "YYYY-MM-DD or null"}
+  ],
+  "followUpEmail": "optional 2-3 sentence follow-up email draft, or null if not needed",
+  "sentiment": "positive|neutral|negative",
+  "nextStep": "single most important next action"
+}` }]
+    });
+
+    let parsed = {};
+    try { parsed = JSON.parse(result.content[0].text); }
+    catch(e) { return res.status(500).json({ ok: false, error: 'AI parse error' }); }
+
+    const meetingDate = date || new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const noteText = `📋 ${meetingType.charAt(0).toUpperCase()+meetingType.slice(1)} Note — ${meetingDate}\n\nSummary: ${parsed.summary}\n\nAction Items:\n${(parsed.actionItems||[]).map(a=>`• ${a.task}${a.dueDate?' (due '+a.dueDate+')':''}`).join('\n') || 'None'}\n\nNext Step: ${parsed.nextStep || ''}\n\nRaw Notes:\n${brainDump}`;
+
+    // Save to lead record if one is linked
+    if (lead) {
+      lead.notes = ((lead.notes || '') + '\n\n' + noteText).trim();
+      lead.lastContact = (date || new Date().toISOString().split('T')[0]);
+      await writeCRM(crm);
+    }
+
+    // Always save as activity
+    const activity = {
+      id: `act_${Date.now()}`,
+      type: meetingType,
+      date: date || new Date().toISOString().split('T')[0],
+      leadId: lead?.id || null,
+      leadName: lead ? `${lead.firstName||''} ${lead.lastName||''}`.trim() : 'General',
+      note: noteText,
+    };
+    crm.activities = [...(crm.activities || []), activity];
+    await writeCRM(crm);
+
+    res.json({ ok: true, ...parsed, noteText });
+  } catch(e) {
+    console.error('Meeting notes error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
