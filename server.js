@@ -3675,9 +3675,9 @@ app.post('/sms', async (req, res) => {
       const msgLower = inboundMsg.toLowerCase().trim();
 
       // ── Visual lookup commands ────────────────────────────────
-      const isAmazonSearch = msgLower.includes('amazon') || msgLower.includes('find this on amazon') || msgLower.includes('amazon link');
-      const isIdentify = msgLower.startsWith('what is') || msgLower.startsWith("what's this") || msgLower.startsWith('identify') || msgLower === 'what is this' || msgLower === 'id this';
-      const isWhereBuy = msgLower.includes('where can i buy') || msgLower.includes('where to buy') || msgLower.includes('where do i buy') || msgLower.includes('buy this');
+      const isAmazonSearch = msgLower.includes('amazon') || msgLower.includes('amazing link') || msgLower.includes('find this on amazon') || msgLower.includes('amazon link') || msgLower.includes('give me a link') || msgLower.includes('find a link') || msgLower.includes('link to this') || msgLower === 'link' || msgLower.endsWith(' link');
+      const isIdentify = msgLower.startsWith('what is') || msgLower.startsWith("what's this") || msgLower.startsWith('identify') || msgLower === 'what is this' || msgLower === 'id this' || msgLower === 'what is it' || msgLower.startsWith('what kind');
+      const isWhereBuy = msgLower.includes('where can i buy') || msgLower.includes('where to buy') || msgLower.includes('where do i buy') || msgLower.includes('buy this') || msgLower.includes('where to get') || msgLower.includes('where can i get');
 
       if (isAmazonSearch || isIdentify || isWhereBuy) {
         res.set('Content-Type', 'text/xml');
@@ -3787,6 +3787,14 @@ Return ONLY valid JSON:
             try { await sendSMS(from, `⚠️ Couldn't scan that receipt: ${err.message}`); } catch(_) {}
           }
         })();
+        return;
+      }
+
+      // Default: only scan as a receipt/doc if they include a hint keyword, otherwise ask what to do
+      const hasDocHint = msgLower.includes('receipt') || msgLower.includes('invoice') || msgLower.includes('scan') || msgLower.includes('transaction') || msgLower.includes('doc') || msgLower === '';
+      if (!hasDocHint) {
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml(`📸 Got the photo! What do you want me to do with it?\n• "Amazon link" — find it on Amazon\n• "What is this" — identify it\n• "Where to buy" — best place to get it\n• "Work receipt" or "Personal receipt" — log as expense\n• "Scan" — match to a transaction`));
         return;
       }
 
