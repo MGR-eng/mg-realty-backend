@@ -1080,7 +1080,7 @@ const GCAL_ID   = 'primary';
 app.post('/calendar/create', async (req, res) => {
   try {
     const { title, start, end, location, description, apptId } = req.body;
-    const token = await googleToken();
+    const token = await googleTokenCompass().catch(() => googleToken());
 
     // Build ISO8601 with LA timezone offset
     const toCalDT = (dt) => {
@@ -1224,8 +1224,8 @@ app.get('/calendar/list', async (req, res) => {
       source
     }));
 
-    // Fetch MG Realty calendar
-    const token1 = await googleToken();
+    // Fetch calendar — prefer Compass token (work calendar), fall back to personal Gmail
+    const token1 = await googleTokenCompass().catch(() => googleToken());
     const r1 = await fetch(`${GCAL_BASE}/calendars/${GCAL_ID}/events?${params}`, {
       headers: { 'Authorization': `Bearer ${token1}` }
     });
@@ -1265,7 +1265,7 @@ app.get('/calendar/list', async (req, res) => {
 // Delete a calendar event
 app.delete('/calendar/event/:eventId', async (req, res) => {
   try {
-    const token = await googleToken();
+    const token = await googleTokenCompass().catch(() => googleToken());
     const r = await fetch(`${GCAL_BASE}/calendars/${GCAL_ID}/events/${req.params.eventId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
