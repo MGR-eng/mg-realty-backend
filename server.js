@@ -3673,6 +3673,50 @@ app.post('/sms', async (req, res) => {
     if (mediaUrl && isOwner) {
       // Detect "personal" or "work" prefix → Finance receipt flow
       const msgLower = inboundMsg.toLowerCase().trim();
+
+      // ── Visual lookup commands ────────────────────────────────
+      const isAmazonSearch = msgLower.includes('amazon') || msgLower.includes('find this on amazon') || msgLower.includes('amazon link');
+      const isIdentify = msgLower.startsWith('what is') || msgLower.startsWith("what's this") || msgLower.startsWith('identify') || msgLower === 'what is this' || msgLower === 'id this';
+      const isWhereBuy = msgLower.includes('where can i buy') || msgLower.includes('where to buy') || msgLower.includes('where do i buy') || msgLower.includes('buy this');
+
+      if (isAmazonSearch || isIdentify || isWhereBuy) {
+        res.set('Content-Type', 'text/xml');
+        res.send(twiml('🔍 On it — analyzing image...'));
+        (async () => {
+          try {
+            const twilioAuth = 'Basic ' + Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+            const imgRes = await fetch(mediaUrl, { headers: { Authorization: twilioAuth } });
+            const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+            const b64 = imgBuffer.toString('base64');
+
+            let promptText;
+            if (isAmazonSearch) {
+              promptText = 'Identify the exact product in this image. Give me:\n1. The product name (as specific as possible — brand, model, part number if visible)\n2. A direct Amazon search URL in this format: https://www.amazon.com/s?k=PRODUCT+NAME+URL+ENCODED\n3. One sentence on what it is.\n\nBe concise. Format: Product: [name]\nAmazon: [url]\nWhat it is: [one sentence]';
+            } else if (isWhereBuy) {
+              promptText = 'Identify what is in this image and tell me the best place to buy it. Give me:\n1. What it is (specific name/variety if possible)\n2. Best place to buy it (Amazon, Home Depot, specialty store, nursery, etc.)\n3. Amazon search URL if applicable: https://www.amazon.com/s?k=SEARCH+TERMS\n\nFormat: This is: [name]\nBest place: [store/website]\nSearch: [url or "not on Amazon"]';
+            } else {
+              promptText = 'Identify exactly what is in this image. Be specific — if it\'s a plant/flower, give the common and scientific name. If it\'s a product, give brand and model. If it\'s food, name the dish. If it\'s an animal, name the species.\n\nFormat:\nThis is: [name]\nDetails: [2-3 interesting or useful facts]\nFun fact: [one surprising thing]';
+            }
+
+            const result = await anthropic.messages.create({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 400,
+              messages: [{ role: 'user', content: [
+                { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+                { type: 'text', text: promptText }
+              ]}]
+            });
+
+            const reply = result.content[0].text.trim();
+            await sendSMS(process.env.OWNER_PHONE, reply);
+          } catch(e) {
+            console.error('Visual lookup error:', e.message);
+            await sendSMS(process.env.OWNER_PHONE, 'Could not analyze that image: ' + e.message);
+          }
+        })();
+        return;
+      }
+
       const isFinanceReceipt = msgLower.startsWith('personal') || msgLower.startsWith('work') || msgLower.startsWith('business') || msgLower.includes('personal expense') || msgLower.includes('work expense') || msgLower.includes('business expense') || msgLower.includes('log as personal') || msgLower.includes('log as work');
       if (isFinanceReceipt) {
         const bucket = msgLower.includes('personal') ? 'personal' : 'work';
