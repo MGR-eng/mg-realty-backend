@@ -788,11 +788,16 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <div class="topbar">
       <div class="page-title"><i class="ti ti-home-move" style="margin-right:6px;color:var(--accent)"></i>Transactions</div>
       <div class="tba">
+        <div style="display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+          <button id="tx-tab-active" onclick="switchTxTab('active')" style="padding:6px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--accent);color:#fff">Active</button>
+          <button id="tx-tab-closed" onclick="switchTxTab('closed')" style="padding:6px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--text2)">Closed <span id="tx-closed-count" style="font-size:10px;opacity:.7"></span></button>
+        </div>
         <button class="btn btn-gold" onclick="openNewTx()"><i class="ti ti-plus"></i> New Transaction</button>
       </div>
     </div>
     <div class="content">
       <div id="transactions-pipeline" style="overflow-x:auto;padding-bottom:16px"></div>
+      <div id="transactions-closed" style="display:none;padding:0 20px 20px"></div>
     </div>
   </div>
   <!-- Detail view (full page, hidden by default) -->

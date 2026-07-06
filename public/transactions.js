@@ -1,5 +1,6 @@
 // ── Transaction Tracker ───────────────────────────────────────
-var TX_STAGES = ['Offer Submitted','Under Contract','Inspection','Appraisal','Loan Approval','Clear to Close','Closed'];
+var TX_STAGES = ['Offer Submitted','Under Contract','Inspection','Appraisal','Loan Approval','Clear to Close'];
+var TX_TAB = 'active'; // 'active' or 'closed'
 var TX_COLORS  = {'Offer Submitted':'rgba(96,165,250,0.12)','Under Contract':'rgba(167,139,250,0.12)','Inspection':'rgba(251,191,36,0.12)','Appraisal':'rgba(232,104,26,0.12)','Loan Approval':'rgba(248,113,113,0.12)','Clear to Close':'rgba(74,222,128,0.12)','Closed':'rgba(74,222,128,0.20)'};
 var TX_BORDER  = {'Offer Submitted':'rgba(96,165,250,0.4)','Under Contract':'rgba(167,139,250,0.4)','Inspection':'rgba(251,191,36,0.4)','Appraisal':'rgba(232,104,26,0.4)','Loan Approval':'rgba(248,113,113,0.4)','Clear to Close':'rgba(74,222,128,0.4)','Closed':'rgba(74,222,128,0.6)'};
 
@@ -241,8 +242,20 @@ function renderDashTransactions() {
 }
 
 // ── Transactions kanban board ──────────────────────────────────
+function switchTxTab(tab) {
+  TX_TAB = tab;
+  var activeBtn = document.getElementById('tx-tab-active');
+  var closedBtn = document.getElementById('tx-tab-closed');
+  if (activeBtn) { activeBtn.style.background = tab==='active' ? 'var(--accent)' : 'transparent'; activeBtn.style.color = tab==='active' ? '#fff' : 'var(--text2)'; }
+  if (closedBtn) { closedBtn.style.background = tab==='closed' ? 'var(--accent)' : 'transparent'; closedBtn.style.color = tab==='closed' ? '#fff' : 'var(--text2)'; }
+  var board = document.getElementById('transactions-pipeline');
+  var closedEl = document.getElementById('transactions-closed');
+  if (board) board.style.display = tab==='active' ? '' : 'none';
+  if (closedEl) closedEl.style.display = tab==='closed' ? '' : 'none';
+  if (tab==='closed') renderClosedTransactions();
+}
+
 function renderTransactions() {
-  // Always reset view state when rendering the list
   var listEl = document.getElementById('tx-list-view');
   var detailEl = document.getElementById('tx-detail-view');
   if (listEl) listEl.style.display = 'flex';
@@ -251,30 +264,36 @@ function renderTransactions() {
 
   var board = document.getElementById('transactions-pipeline');
   if (!board) return;
-  var badge = document.getElementById('nb-transactions');
-  var active = (deals||[]).filter(function(d) { return d.txStage && d.txStage !== 'Closed'; }).length;
-  if (badge) { badge.textContent = active; badge.style.display = active ? '' : 'none'; }
 
-  if (!(deals||[]).some(function(d){ return d.txStage; })) {
-    board.innerHTML = '<div class="empty" style="padding:40px 20px;text-align:center">No transactions yet.<br><br><button class="btn btn-gold" onclick="openNewTx()"><i class="ti ti-plus"></i> Start a Transaction</button></div>';
+  var activeTxs = (deals||[]).filter(function(d) { return d.txStage && d.txStage !== 'Closed'; });
+  var closedTxs = (deals||[]).filter(function(d) { return d.txStage === 'Closed'; });
+
+  var badge = document.getElementById('nb-transactions');
+  if (badge) { badge.textContent = activeTxs.length; badge.style.display = activeTxs.length ? '' : 'none'; }
+
+  var closedCount = document.getElementById('tx-closed-count');
+  if (closedCount) closedCount.textContent = closedTxs.length ? '(' + closedTxs.length + ')' : '';
+
+  if (TX_TAB === 'closed') { renderClosedTransactions(); return; }
+
+  if (!activeTxs.length) {
+    board.innerHTML = '<div class="empty" style="padding:40px 20px;text-align:center">No active transactions.<br><br><button class="btn btn-gold" onclick="openNewTx()"><i class="ti ti-plus"></i> Start a Transaction</button></div>';
     return;
   }
-  // Find the first stage that has active deals (for auto-scroll)
+
   var firstActiveStage = null;
   TX_STAGES.forEach(function(stage) {
-    if (!firstActiveStage && (deals||[]).some(function(d) { return (d.txStage || 'Offer Submitted') === stage && d.txStage !== 'Closed'; })) {
-      firstActiveStage = stage;
-    }
+    if (!firstActiveStage && activeTxs.some(function(d) { return (d.txStage||'Offer Submitted') === stage; })) firstActiveStage = stage;
   });
 
   var html = '<div style="display:flex;gap:16px;min-width:max-content;padding:4px 20px 20px">';
   TX_STAGES.forEach(function(stage) {
-    var stageTxs = (deals||[]).filter(function(d) { return (d.txStage || 'Offer Submitted') === stage; });
-    var hasActive = stageTxs.length > 0;
+    var stageTxs = activeTxs.filter(function(d) { return (d.txStage||'Offer Submitted') === stage; });
+    var hasItems = stageTxs.length > 0;
     html += '<div data-stage-col="' + stage.replace(/\s+/g,'-') + '" style="width:290px;flex-shrink:0">';
-    html += '<div style="font-size:11px;font-weight:700;color:' + (hasActive ? 'var(--accent)' : 'var(--text2)') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'
+    html += '<div style="font-size:11px;font-weight:700;color:' + (hasItems?'var(--accent)':'var(--text2)') + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">'
           + '<span>' + stage + '</span>'
-          + '<span style="background:' + (hasActive ? 'rgba(232,104,26,0.12)' : 'var(--surface2)') + ';color:' + (hasActive ? 'var(--accent)' : 'var(--text3)') + ';padding:1px 7px;border-radius:99px;font-size:10px">' + stageTxs.length + '</span>'
+          + '<span style="background:' + (hasItems?'rgba(232,104,26,0.12)':'var(--surface2)') + ';color:' + (hasItems?'var(--accent)':'var(--text3)') + ';padding:1px 7px;border-radius:99px;font-size:10px">' + stageTxs.length + '</span>'
           + '</div>';
     stageTxs.forEach(function(d) { html += renderTxCard(d, true); });
     html += '<button class="btn btn-sm" data-stage="' + stage + '" onclick="openNewTx(this.dataset.stage)" style="width:100%;margin-top:8px;background:var(--surface2);color:var(--text3);border:1px dashed var(--border);font-size:11px">+ Add</button>';
@@ -283,13 +302,56 @@ function renderTransactions() {
   html += '</div>';
   board.innerHTML = html;
 
-  // Auto-scroll to first column with active deals
   if (firstActiveStage) {
     setTimeout(function() {
       var col = board.querySelector('[data-stage-col="' + firstActiveStage.replace(/\s+/g,'-') + '"]');
-      if (col) col.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+      if (col) col.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'start' });
     }, 50);
   }
+}
+
+function renderClosedTransactions() {
+  var el = document.getElementById('transactions-closed');
+  if (!el) return;
+  var closedTxs = (deals||[]).filter(function(d) { return d.txStage === 'Closed'; })
+    .sort(function(a,b) { return new Date(b.closeDate||b.updatedAt||0) - new Date(a.closeDate||a.updatedAt||0); });
+
+  if (!closedTxs.length) {
+    el.innerHTML = '<div class="empty" style="padding:60px 20px;text-align:center;color:var(--text3)">No closed transactions yet.</div>';
+    return;
+  }
+
+  var totalGCI = closedTxs.reduce(function(sum,d) {
+    var price = parseFloat(d.salePrice)||0;
+    var pct = parseFloat(d.commissionPct)||2.5;
+    return sum + price * (pct/100);
+  }, 0);
+
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:14px 16px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:8px">'
+    + '<div style="font-size:13px;font-weight:600;color:var(--text1)">' + closedTxs.length + ' closed transaction' + (closedTxs.length!==1?'s':'') + '</div>'
+    + '<div style="font-size:13px;font-weight:700;color:#16a34a">~$' + Math.round(totalGCI).toLocaleString() + ' total GCI</div>'
+    + '</div>';
+
+  html += closedTxs.map(function(d) {
+    var lead = (leads||[]).find(function(l){ return l.id===d.leadId; });
+    var name = d.txName || (lead ? lead.firstName+' '+lead.lastName : 'Unknown');
+    var price = d.salePrice ? '$'+Number(d.salePrice).toLocaleString() : '—';
+    var closeDate = d.closeDate ? new Date(d.closeDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    var side = d.side === 'buyer' ? '🏠 Buyer' : '💰 Seller';
+    var gci = (parseFloat(d.salePrice)||0) * ((parseFloat(d.commissionPct)||2.5)/100);
+    return '<div onclick="openTxDetail(\'' + d.id + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.08)\'" onmouseout="this.style.boxShadow=\'\'">'
+      + '<div>'
+      + '<div style="font-size:14px;font-weight:600;color:var(--text1);margin-bottom:3px">' + name + '</div>'
+      + '<div style="font-size:12px;color:var(--text3)">' + side + ' · Closed ' + closeDate + '</div>'
+      + '</div>'
+      + '<div style="text-align:right">'
+      + '<div style="font-size:14px;font-weight:700;color:var(--text1)">' + price + '</div>'
+      + (gci ? '<div style="font-size:11px;color:#16a34a;font-weight:600">~$' + Math.round(gci).toLocaleString() + ' GCI</div>' : '')
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  el.innerHTML = html;
 }
 
 function renderTxCard(d, compact) {
