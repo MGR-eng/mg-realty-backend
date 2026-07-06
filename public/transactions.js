@@ -334,7 +334,7 @@ function renderClosedTransactions() {
 
   html += closedTxs.map(function(d) {
     var lead = (leads||[]).find(function(l){ return l.id===d.leadId; });
-    var name = d.txName || (lead ? lead.firstName+' '+lead.lastName : 'Unknown');
+    var name = d.txName || d.address || (lead ? (lead.firstName+' '+lead.lastName).trim() : '') || 'Unknown';
     var price = d.salePrice ? '$'+Number(d.salePrice).toLocaleString() : '—';
     var closeDate = d.closeDate ? new Date(d.closeDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
     var side = d.side === 'buyer' ? '🏠 Buyer' : '💰 Seller';
