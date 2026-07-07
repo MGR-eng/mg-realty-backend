@@ -9238,6 +9238,207 @@ Respond with JSON only:
   }
 });
 
+// ── Budget Tracker ────────────────────────────────────────────────────────────
+
+// GET /api/budget-data?month=YYYY-MM&bucket=work|personal|all
+app.get('/api/budget-data', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const { month, bucket = 'all' } = req.query;
+    const expenses = crm.expenses || [];
+
+    const filtered = expenses.filter(e => {
+      const matchMonth = month ? (e.date || '').startsWith(month) : true;
+      const matchBucket = bucket === 'all' ? true : (e.bucket || 'work') === bucket;
+      return matchMonth && matchBucket;
+    });
+
+    // Group by category
+    const byCategory = {};
+    filtered.forEach(e => {
+      const cat = e.category || 'Other';
+      if (!byCategory[cat]) byCategory[cat] = { total: 0, items: [] };
+      byCategory[cat].total += parseFloat(e.amt) || 0;
+      byCategory[cat].items.push(e);
+    });
+
+    // Budget settings from CRM (with defaults)
+    const budgetSettings = crm.budgetSettings || {};
+
+    res.json({ ok: true, expenses: filtered, byCategory, budgetSettings });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/budget-transaction — manual expense entry
+app.post('/api/budget-transaction', express.json(), async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const { desc, amount, category, bucket, date, vendor } = req.body;
+    if (!amount || !category) return res.status(400).json({ ok: false, error: 'amount and category required' });
+
+    if (!crm.expenses) crm.expenses = [];
+    const entry = {
+      id: 'exp' + Date.now(),
+      date: date || new Date().toISOString().slice(0, 10),
+      amt: parseFloat(amount),
+      category,
+      desc: desc || '',
+      vendor: vendor || '',
+      bucket: bucket || 'work',
+      source: 'manual',
+      notes: ''
+    };
+    crm.expenses.push(entry);
+    await writeCRM(crm);
+    res.json({ ok: true, entry });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE /api/budget-transaction/:id
+app.delete('/api/budget-transaction/:id', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const before = (crm.expenses || []).length;
+    crm.expenses = (crm.expenses || []).filter(e => e.id !== req.params.id);
+    if (crm.expenses.length === before) return res.status(404).json({ ok: false, error: 'not found' });
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET/POST /api/budget-settings — save monthly budget targets per category
+app.get('/api/budget-settings', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    res.json({ ok: true, settings: crm.budgetSettings || {} });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/budget-settings', express.json(), async (req, res) => {
+  try {
+    const crm = await readCRM();
+    crm.budgetSettings = { ...(crm.budgetSettings || {}), ...req.body };
+    await writeCRM(crm);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Plaid Integration ─────────────────────────────────────────────────────────
+// Requires PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV env vars
+const plaidAvailable = !!(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET);
+
+app.post('/api/plaid/link-token', express.json(), async (req, res) => {
+  if (!plaidAvailable) return res.status(503).json({ ok: false, error: 'Plaid not configured. Add PLAID_CLIENT_ID and PLAID_SECRET to environment variables.' });
+  try {
+    const plaidEnv = process.env.PLAID_ENV || 'sandbox';
+    const basePath = plaidEnv === 'production' ? 'https://production.plaid.com' : plaidEnv === 'development' ? 'https://development.plaid.com' : 'https://sandbox.plaid.com';
+    const r = await fetch(`${basePath}/link/token/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: process.env.PLAID_CLIENT_ID,
+        secret: process.env.PLAID_SECRET,
+        client_name: 'MG Realty',
+        country_codes: ['US'],
+        language: 'en',
+        user: { client_user_id: 'matt-golden' },
+        products: ['transactions']
+      })
+    });
+    const data = await r.json();
+    if (data.error_code) return res.status(400).json({ ok: false, error: data.error_message });
+    res.json({ ok: true, link_token: data.link_token });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/plaid/exchange-token', express.json(), async (req, res) => {
+  if (!plaidAvailable) return res.status(503).json({ ok: false, error: 'Plaid not configured' });
+  try {
+    const { public_token, institution_name } = req.body;
+    const plaidEnv = process.env.PLAID_ENV || 'sandbox';
+    const basePath = plaidEnv === 'production' ? 'https://production.plaid.com' : plaidEnv === 'development' ? 'https://development.plaid.com' : 'https://sandbox.plaid.com';
+    const r = await fetch(`${basePath}/item/public_token/exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: process.env.PLAID_CLIENT_ID, secret: process.env.PLAID_SECRET, public_token })
+    });
+    const data = await r.json();
+    if (data.error_code) return res.status(400).json({ ok: false, error: data.error_message });
+    // Store access token in CRM settings
+    const crm = await readCRM();
+    if (!crm.plaidAccounts) crm.plaidAccounts = [];
+    crm.plaidAccounts.push({ institution: institution_name || 'Bank', accessToken: data.access_token, itemId: data.item_id, connectedAt: new Date().toISOString() });
+    await writeCRM(crm);
+    res.json({ ok: true, item_id: data.item_id });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/plaid/sync-transactions', express.json(), async (req, res) => {
+  if (!plaidAvailable) return res.status(503).json({ ok: false, error: 'Plaid not configured' });
+  try {
+    const crm = await readCRM();
+    const accounts = crm.plaidAccounts || [];
+    if (!accounts.length) return res.status(400).json({ ok: false, error: 'No bank accounts connected' });
+    const plaidEnv = process.env.PLAID_ENV || 'sandbox';
+    const basePath = plaidEnv === 'production' ? 'https://production.plaid.com' : plaidEnv === 'development' ? 'https://development.plaid.com' : 'https://sandbox.plaid.com';
+
+    let allNew = 0;
+    for (const acct of accounts) {
+      const startDate = new Date(); startDate.setDate(1);
+      const r = await fetch(`${basePath}/transactions/get`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.PLAID_CLIENT_ID,
+          secret: process.env.PLAID_SECRET,
+          access_token: acct.accessToken,
+          start_date: startDate.toISOString().slice(0, 10),
+          end_date: new Date().toISOString().slice(0, 10),
+          options: { count: 250 }
+        })
+      });
+      const data = await r.json();
+      if (data.error_code) continue;
+      const existing = new Set((crm.expenses || []).map(e => e.plaidId).filter(Boolean));
+      for (const txn of (data.transactions || [])) {
+        if (existing.has(txn.transaction_id)) continue;
+        if (!crm.expenses) crm.expenses = [];
+        crm.expenses.push({
+          id: 'exp' + Date.now() + Math.random().toString(36).slice(2),
+          plaidId: txn.transaction_id,
+          date: txn.date,
+          amt: Math.abs(txn.amount),
+          category: txn.personal_finance_category?.primary || txn.category?.[0] || 'Other',
+          desc: txn.name,
+          vendor: txn.merchant_name || txn.name,
+          bucket: 'personal',
+          source: 'plaid',
+          notes: acct.institution
+        });
+        allNew++;
+      }
+    }
+    await writeCRM(crm);
+    res.json({ ok: true, imported: allNew });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
 // Extend timeout for large file uploads (default is 5min, set to 10min to be safe)

@@ -510,6 +510,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('offers',this)"><i class="ti ti-file-dollar"></i><span>Offer Tracker</span></button>
     <button class="nav-item" onclick="showPane('scheduled',this)"><i class="ti ti-clock-send"></i><span>Scheduled</span></button>
     <button class="nav-item" onclick="showPane('meeting-notes',this)"><i class="ti ti-notebook"></i><span>Meeting Notes</span></button>
+    <button class="nav-item" onclick="showPane('budget',this)"><i class="ti ti-wallet"></i><span>Budget</span></button>
 
     <button class="nav-item" onclick="showPane('finance',this)"><i class="ti ti-receipt"></i><span>Finance</span></button>
     <button class="nav-item nav-sub" onclick="showPane('gci',this)"><span>GCI Goal</span></button>
@@ -1443,6 +1444,16 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 <style>
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
+
+<!-- Budget pane -->
+<div id="pane-budget" class="pane">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-wallet" style="margin-right:6px;color:#E8681A"></i>Budget</div>
+  </div>
+  <div class="pane-body" style="max-width:860px;margin:0 auto;padding:24px 20px">
+    <div id="budget-pane-inner"><div style="text-align:center;padding:3rem;color:#898781">Loading budget...</div></div>
+  </div>
+</div>
 
 <!-- Finance pane — Expenses & Invoices -->
 <div id="pane-finance" class="pane">
@@ -4191,6 +4202,7 @@ function showPane(id,el){
   if(id==='settings') loadSettingsPane();
   if(id==='response-tracker') renderResponseTracker();
   if(id==='meeting-notes') initMeetingNotes();
+  if(id==='budget') initBudget();
 }
 function toggleMoreSheet(){
   document.getElementById('moreSheet').classList.toggle('open');
@@ -12656,6 +12668,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="/budget.js"></script>
 <script src="/transactions.js"></script>
 <script>
 // Inline fallback — ensures openNewTxFromSeller works even if transactions.js
