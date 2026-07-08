@@ -400,13 +400,19 @@ async function openPlaidConnect() {
           body: JSON.stringify({ public_token, institution_name: metadata?.institution?.name })
         });
         const exData = await exR.json();
-        if (exData.ok) {
-          // Immediately sync transactions
-          const syncR = await fetch('/api/plaid/sync-transactions', { method: 'POST' });
-          const syncData = await syncR.json();
-          alert(`✅ Bank connected! Imported ${syncData.imported || 0} transactions from this month.`);
+        if (!exData.ok) {
+          alert('❌ Failed to save bank connection: ' + (exData.error || 'Unknown error'));
+          return;
+        }
+        // Immediately sync transactions
+        const syncR = await fetch('/api/plaid/sync-transactions', { method: 'POST' });
+        const syncData = await syncR.json();
+        if (syncData.ok) {
+          alert(`✅ Bank connected! Imported ${syncData.imported || 0} transactions.`);
           await loadBudgetData();
           renderBudget();
+        } else {
+          alert('✅ Bank connected, but sync failed: ' + (syncData.error || 'Unknown error') + '\nTry the Sync button.');
         }
       },
       onExit: () => {}
