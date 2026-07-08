@@ -488,49 +488,45 @@ function parseBankCsv(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length < 2) return [];
 
-  // Detect header row
-  const header = lines[0].toLowerCase();
-  const rows = [];
-
-  // PNC format: Date,Description,Withdrawals,Deposits,Running Balance
-  const isPNC = header.includes('withdrawal') || header.includes('deposit');
-  // Generic format: Date,Description,Amount
-  const cols = lines[0].split(',').map(c => c.replace(/"/g, '').trim().toLowerCase());
-
-  const dateIdx = cols.findIndex(c => c.includes('date') || c.includes('posted'));
+  const cols = splitCsvLine(lines[0]).map(c => c.replace(/"/g, '').trim().toLowerCase());
+  const dateIdx = cols.findIndex(c => c.includes('date'));
   const descIdx = cols.findIndex(c => c.includes('description') || c.includes('memo') || c.includes('payee') || c.includes('name'));
-  const amtIdx = cols.findIndex(c => c === 'amount' || c === 'debit' || c === 'transaction amount');
-  const withdrawIdx = cols.findIndex(c => c.includes('withdrawal') || c.includes('debit'));
-  const depositIdx = cols.findIndex(c => c.includes('deposit') || c.includes('credit'));
+  const amtIdx  = cols.findIndex(c => c === 'amount' || c === 'transaction amount');
+  const catIdx  = cols.findIndex(c => c === 'category');
+
+  const rows = [];
 
   for (let i = 1; i < lines.length; i++) {
     const parts = splitCsvLine(lines[i]);
     if (!parts.length) continue;
 
-    const rawDate = parts[dateIdx >= 0 ? dateIdx : 0]?.replace(/"/g, '').trim();
-    const rawDesc = parts[descIdx >= 0 ? descIdx : 1]?.replace(/"/g, '').trim();
+    const rawDate = (parts[dateIdx >= 0 ? dateIdx : 0] || '').replace(/"/g, '').trim();
+    const rawDesc = (parts[descIdx >= 0 ? descIdx : 1] || '').replace(/"/g, '').trim();
+    const rawAmt  = (parts[amtIdx  >= 0 ? amtIdx  : 2] || '').replace(/"/g, '').trim();
+    const rawCat  = catIdx >= 0 ? (parts[catIdx] || '').replace(/"/g, '').trim() : '';
 
-    let amount = 0;
-    if (isPNC && withdrawIdx >= 0) {
-      // PNC: withdrawals column (spending)
-      const w = parseFloat((parts[withdrawIdx] || '').replace(/[^0-9.-]/g, ''));
-      if (!isNaN(w) && w > 0) amount = w;
-    } else if (amtIdx >= 0) {
-      // Generic: amount column (negative = spending)
-      const a = parseFloat((parts[amtIdx] || '').replace(/[^0-9.-]/g, ''));
-      if (!isNaN(a)) amount = Math.abs(a); // treat all as expenses; deposits filtered server-side
-    }
+    // Skip pending rows
+    if (rawDate.toUpperCase().includes('PENDING')) continue;
 
-    if (!rawDate || !rawDesc || amount <= 0) continue;
+    // PNC amount format: "- $2591.42" or "+ $10517.1"
+    const isCredit = rawAmt.startsWith('+');
+    const numericAmt = parseFloat(rawAmt.replace(/[^0-9.]/g, ''));
+    if (isNaN(numericAmt) || numericAmt <= 0) continue;
+    if (isCredit) continue; // skip deposits/income
+
+    // Skip pure transfers (internal moves, not real spending)
+    const descLower = rawDesc.toLowerCase();
+    const catLower = rawCat.toLowerCase();
+    if (catLower === 'transfers' || descLower.includes('online transfer') || descLower.includes('jpmorgan chase ext') || descLower.includes('zelle') && descLower.includes('transfer')) continue;
 
     // Normalize date to YYYY-MM-DD
     let date = rawDate;
     try {
       const d = new Date(rawDate);
-      if (!isNaN(d)) date = d.toISOString().slice(0, 10);
+      if (!isNaN(d.getTime())) date = d.toISOString().slice(0, 10);
     } catch(e) {}
 
-    rows.push({ date, description: rawDesc, amount });
+    rows.push({ date, description: rawDesc, amount: numericAmt, pncCategory: rawCat });
   }
 
   return rows;

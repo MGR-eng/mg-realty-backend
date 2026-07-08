@@ -9441,6 +9441,20 @@ app.post('/api/plaid/sync-transactions', express.json(), async (req, res) => {
   }
 });
 
+// DELETE /api/budget-clear-imports?bucket=work — remove all csv_import expenses for a bucket
+app.delete('/api/budget-clear-imports', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const { bucket } = req.query;
+    const before = (crm.expenses || []).length;
+    crm.expenses = (crm.expenses || []).filter(e => !(e.source === 'csv_import' && (!bucket || e.bucket === bucket)));
+    await writeCRM(crm);
+    res.json({ ok: true, removed: before - crm.expenses.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Bank CSV Import ───────────────────────────────────────────────────────────
 // POST /api/budget-import-csv
 // Body: { rows: [{date, description, amount, type}], bucket: 'personal'|'work' }
@@ -9454,32 +9468,40 @@ app.post('/api/budget-import-csv', express.json({ limit: '2mb' }), async (req, r
 
     const existing = crm.expenses || [];
 
-    // Build a dedupe key set: "YYYY-MM-DD|amount" for all existing expenses
+    // Build a dedupe key set: "YYYY-MM-DD|amount|bucket" — bucket-aware so personal/business don't block each other
     const existingKeys = new Set(
-      existing.map(e => `${(e.date || '').slice(0,10)}|${parseFloat(e.amt || 0).toFixed(2)}`)
+      existing.map(e => `${(e.date || '').slice(0,10)}|${parseFloat(e.amt || 0).toFixed(2)}|${e.bucket || 'personal'}`)
     );
 
     let imported = 0, skipped = 0;
     for (const row of rows) {
       if (!row.amount || parseFloat(row.amount) <= 0) continue; // skip credits/income/zero
 
-      const key = `${(row.date || '').slice(0,10)}|${parseFloat(row.amount).toFixed(2)}`;
-      if (existingKeys.has(key)) { skipped++; continue; } // already logged (Ace or prior import)
+      const key = `${(row.date || '').slice(0,10)}|${parseFloat(row.amount).toFixed(2)}|${bucket}`;
+      if (existingKeys.has(key)) { skipped++; continue; }
 
-      // Auto-categorize based on description keywords
+      // Use PNC's category if provided, otherwise keyword-match description
       const desc = (row.description || '').toLowerCase();
+      const pncCat = (row.pncCategory || '').toLowerCase();
       let category = 'Other';
-      if (/grocery|safeway|trader|whole food|ralph|kroger|vons|sprout/.test(desc)) category = 'Groceries';
-      else if (/restaurant|cafe|coffee|starbucks|doordash|uber eat|grubhub|pizza|taco|burger|sushi|diner/.test(desc)) category = 'Dining';
-      else if (/uber|lyft|metro|parking|shell|chevron|arco|bp|exxon|mobil|gas|fuel/.test(desc)) category = 'Transportation';
-      else if (/netflix|spotify|hulu|apple|amazon prime|disney|youtube|subscri/.test(desc)) category = 'Subscriptions';
-      else if (/gym|equinox|la fitness|planet fitness|peloton|yoga|crossfit/.test(desc)) category = 'Fitness';
-      else if (/at&t|verizon|t-mobile|sprint|phone|wireless/.test(desc)) category = 'Phone';
-      else if (/rent|apartment|lease|zelle rent|landlord/.test(desc)) category = 'Rent';
-      else if (/amazon|target|walmart|costco|home depot|ikea|best buy/.test(desc)) category = 'Personal Care';
-      // Business categories
-      else if (/facebook|instagram|google ads|marketing|advertising/.test(desc)) category = 'Marketing';
-      else if (/office|staples|fedex|ups|print/.test(desc)) category = 'Office Supplies';
+      if (pncCat.includes('groceries')) category = 'Groceries';
+      else if (pncCat.includes('restaurant') || pncCat.includes('dining')) category = 'Dining';
+      else if (pncCat.includes('travel') || pncCat.includes('transportation')) category = 'Transportation';
+      else if (pncCat.includes('subscriptions')) category = 'Subscriptions';
+      else if (pncCat.includes('entertainment')) category = 'Entertainment';
+      else if (pncCat.includes('phone')) category = 'Phone';
+      else if (pncCat.includes('personal expenses')) category = 'Personal Care';
+      else if (pncCat.includes('healthcare')) category = 'Healthcare';
+      else if (pncCat.includes('insurance')) category = 'Other';
+      // Keyword fallback
+      else if (/trader joe|gelson|vons|ralph|whole food|safeway|sprout/.test(desc)) category = 'Groceries';
+      else if (/lyft|uber|lime|parking|metro|gas|fuel/.test(desc)) category = 'Transportation';
+      else if (/spotify|netflix|hulu|disney|apple\.com|amazon prime/.test(desc)) category = 'Subscriptions';
+      else if (/eos fitness|equinox|la fitness|peloton|gym/.test(desc)) category = 'Fitness';
+      else if (/verizon|spectrum|t-mobile|at&t/.test(desc)) category = 'Phone';
+      else if (/essex portfolio|rental/.test(desc)) category = 'Rent';
+      // Business overrides
+      else if (/twilio|anthropic|vapi|google workspace|mls claw|real estate photos/.test(desc)) category = bucket === 'work' ? 'Technology' : 'Other';
 
       if (!crm.expenses) crm.expenses = [];
       crm.expenses.push({
@@ -9493,7 +9515,7 @@ app.post('/api/budget-import-csv', express.json({ limit: '2mb' }), async (req, r
         source: 'csv_import',
         notes: 'Imported from bank CSV'
       });
-      existingKeys.add(key); // prevent dupes within the same upload
+      existingKeys.add(key); // prevent dupes within the same upload batch
       imported++;
     }
 
