@@ -46,6 +46,10 @@ function budgetMonth() {
 }
 
 function budgetCats() {
+  const key = `${budgetState.bucket}_categories`;
+  if (budgetState.settings[key]) {
+    try { return JSON.parse(budgetState.settings[key]); } catch(e) {}
+  }
   return budgetState.bucket === 'work' ? BUDGET_WORK_CATS : BUDGET_PERSONAL_CATS;
 }
 
@@ -138,6 +142,7 @@ function renderBudget() {
         <button onclick="setBudgetView('${t}',this)" style="padding:5px 14px;border-radius:6px;border:1px solid ${budgetState.view===t?'#aaa':'#ddd'};background:${budgetState.view===t?'#fff':'none'};font-size:13px;font-weight:${budgetState.view===t?'500':'400'};color:${budgetState.view===t?'#0b0b0b':'#52514e'};cursor:pointer">${t.charAt(0).toUpperCase()+t.slice(1)}</button>
       `).join('')}
       <button onclick="toggleBudgetEdit()" style="margin-left:auto;padding:5px 12px;border-radius:6px;border:1px solid #ddd;background:none;font-size:12px;color:#52514e;cursor:pointer">✏️ Edit Budgets</button>
+      <button onclick="openManageCategories()" style="padding:5px 12px;border-radius:6px;border:1px solid #ddd;background:none;font-size:12px;color:#52514e;cursor:pointer">🏷️ Categories</button>
     </div>
 
     <!-- Views -->
@@ -374,6 +379,108 @@ async function deleteBudgetTransaction(id) {
     await loadBudgetData();
     renderBudget();
   } catch (e) { console.error(e); }
+}
+
+const CAT_COLORS = ['#2a78d6','#e34948','#1baf7a','#eda100','#4a3aa7','#eb6834','#e87ba4','#008300','#898781','#b4b2a9','#00a8cc','#7b4f8e'];
+
+function openManageCategories() {
+  const cats = budgetCats();
+  const modal = document.createElement('div');
+  modal.id = 'budget-cat-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:#00000040;z-index:9999;display:flex;align-items:center;justify-content:center';
+
+  const renderRows = (list) => list.map((c, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" data-idx="${i}">
+      <select class="cat-color-pick" data-idx="${i}" style="width:32px;height:32px;border:1px solid #ddd;border-radius:6px;padding:0 2px;cursor:pointer;font-size:16px">
+        ${CAT_COLORS.map(col => `<option value="${col}" ${c.color===col?'selected':''} style="background:${col}">■</option>`).join('')}
+      </select>
+      <span style="width:12px;height:12px;border-radius:50%;background:${c.color};display:inline-block;flex-shrink:0"></span>
+      <input class="cat-name-input" data-idx="${i}" value="${c.name}" style="flex:1;font-size:14px;padding:5px 8px;border:1px solid #ddd;border-radius:6px">
+      <input class="cat-budget-input" data-idx="${i}" type="number" value="${budgetTarget(c.name)}" min="0" step="10" style="width:80px;font-size:13px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;text-align:right">
+      <button onclick="removeCatRow(${i})" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>
+    </div>
+  `).join('');
+
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:24px;width:460px;max-height:82vh;overflow-y:auto;box-shadow:0 8px 32px #0002">
+      <div style="font-size:16px;font-weight:500;margin-bottom:4px">Manage ${budgetState.bucket === 'work' ? 'Business' : 'Personal'} Categories</div>
+      <div style="font-size:12px;color:#898781;margin-bottom:16px">Rename, reorder, add, or remove categories. Budget amounts are per month.</div>
+      <div id="cat-rows-list">${renderRows(cats)}</div>
+      <button onclick="addCatRow()" style="width:100%;padding:8px;border:1px dashed #ddd;border-radius:6px;background:none;font-size:13px;color:#52514e;cursor:pointer;margin-top:4px">+ Add category</button>
+      <div style="display:flex;gap:8px;margin-top:18px">
+        <button onclick="saveCategories()" style="flex:1;background:#2a78d6;color:#fff;border:none;border-radius:6px;padding:9px;font-size:14px;cursor:pointer">Save</button>
+        <button onclick="document.getElementById('budget-cat-modal').remove()" style="flex:1;background:none;border:1px solid #ddd;border-radius:6px;padding:9px;font-size:14px;cursor:pointer">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Update color swatch when color picker changes
+  modal.querySelectorAll('.cat-color-pick').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const swatch = sel.nextElementSibling;
+      if (swatch) swatch.style.background = sel.value;
+    });
+  });
+}
+
+function addCatRow() {
+  const list = document.getElementById('cat-rows-list');
+  const idx = list.children.length;
+  const color = CAT_COLORS[idx % CAT_COLORS.length];
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px';
+  div.setAttribute('data-idx', idx);
+  div.innerHTML = `
+    <select class="cat-color-pick" data-idx="${idx}" style="width:32px;height:32px;border:1px solid #ddd;border-radius:6px;padding:0 2px;cursor:pointer;font-size:16px">
+      ${CAT_COLORS.map(col => `<option value="${col}" ${col===color?'selected':''} style="background:${col}">■</option>`).join('')}
+    </select>
+    <span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
+    <input class="cat-name-input" data-idx="${idx}" value="New Category" style="flex:1;font-size:14px;padding:5px 8px;border:1px solid #ddd;border-radius:6px">
+    <input class="cat-budget-input" data-idx="${idx}" type="number" value="0" min="0" step="10" style="width:80px;font-size:13px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;text-align:right">
+    <button onclick="removeCatRow(this)" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>
+  `;
+  div.querySelector('.cat-color-pick').addEventListener('change', function() {
+    this.nextElementSibling.style.background = this.value;
+  });
+  list.appendChild(div);
+}
+
+function removeCatRow(idxOrBtn) {
+  const list = document.getElementById('cat-rows-list');
+  if (typeof idxOrBtn === 'number') {
+    list.children[idxOrBtn]?.remove();
+  } else {
+    idxOrBtn.closest('[data-idx]')?.remove();
+  }
+}
+
+async function saveCategories() {
+  const rows = document.querySelectorAll('#cat-rows-list [data-idx]');
+  const newCats = [];
+  rows.forEach(row => {
+    const name = row.querySelector('.cat-name-input')?.value.trim();
+    const color = row.querySelector('.cat-color-pick')?.value || '#898781';
+    const budget = parseFloat(row.querySelector('.cat-budget-input')?.value) || 0;
+    if (name) newCats.push({ name, color, default: budget });
+  });
+  if (!newCats.length) return;
+
+  const catKey = `${budgetState.bucket}_categories`;
+  const budgetUpdates = {};
+  newCats.forEach(c => { budgetUpdates[`${budgetState.bucket}_${c.name}`] = c.default; });
+  budgetUpdates[catKey] = JSON.stringify(newCats);
+
+  try {
+    await fetch('/api/budget-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(budgetUpdates)
+    });
+    budgetState.settings = { ...budgetState.settings, ...budgetUpdates };
+    document.getElementById('budget-cat-modal')?.remove();
+    renderBudget();
+  } catch(e) { alert('Save failed: ' + e.message); }
 }
 
 function toggleBudgetEdit() {
