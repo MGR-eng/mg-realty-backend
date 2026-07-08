@@ -37,6 +37,7 @@ let budgetState = {
   settings: {},
   chart: null,
   editingBudget: false,
+  expandedCat: null,   // currently open accordion category
 };
 
 function budgetMonth() {
@@ -159,6 +160,14 @@ function renderBudget() {
 }
 
 function renderBudgetOverview(cats, bycat) {
+  // Group expenses by category for quick lookup
+  const expByCat = {};
+  budgetState.expenses.forEach(e => {
+    const cat = e.category || 'Other';
+    if (!expByCat[cat]) expByCat[cat] = [];
+    expByCat[cat].push(e);
+  });
+
   return `
     <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;gap:6px;padding:0 12px 6px;font-size:11px;color:#898781">
       <div>Category</div><div style="text-align:right">Budget</div><div style="text-align:right">Spent</div><div style="text-align:right">Left</div><div></div>
@@ -170,20 +179,46 @@ function renderBudgetOverview(cats, bycat) {
       const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
       const barColor = pct >= 100 ? '#e34948' : pct >= 80 ? '#eda100' : c.color;
       const leftColor = left < 0 ? '#e34948' : left < budget * 0.2 ? '#eda100' : '#1baf7a';
+      const isOpen = budgetState.expandedCat === c.name;
+      const catTxns = (expByCat[c.name] || []).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      const hasSpend = catTxns.length > 0;
+
       return `
-        <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;align-items:center;gap:6px;background:#fff;border:1px solid #e5e5e3;border-radius:8px;padding:9px 12px;margin-bottom:5px">
-          <div style="display:flex;align-items:center;gap:8px;font-size:14px">
-            <span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>${c.name}
-          </div>
-          <div style="font-size:13px;text-align:right;color:#898781">${budgetFmt(budget)}</div>
-          <div style="font-size:13px;text-align:right;font-weight:500">${spent > 0 ? budgetFmt(spent) : '—'}</div>
-          <div style="font-size:13px;text-align:right;color:${leftColor}">${(left < 0 ? '-' : '') + budgetFmt(Math.abs(left))}</div>
-          <div>
-            <div style="width:52px;height:4px;background:#e5e5e3;border-radius:2px;margin-left:auto">
-              <div style="width:${pct}%;height:100%;border-radius:2px;background:${barColor}"></div>
+        <div style="margin-bottom:5px">
+          <div onclick="toggleBudgetCat('${c.name.replace(/'/g,"\\'")}')"
+               style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;align-items:center;gap:6px;background:#fff;border:1px solid ${isOpen ? '#2a78d6' : '#e5e5e3'};border-radius:${isOpen ? '8px 8px 0 0' : '8px'};padding:9px 12px;cursor:${hasSpend ? 'pointer' : 'default'};user-select:none">
+            <div style="display:flex;align-items:center;gap:8px;font-size:14px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>
+              ${c.name}
+              ${hasSpend ? `<span style="font-size:10px;color:#898781">${isOpen ? '▲' : '▼'}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:#898781;text-align:right;margin-top:2px">${pct}%</div>
+            <div style="font-size:13px;text-align:right;color:#898781">${budgetFmt(budget)}</div>
+            <div style="font-size:13px;text-align:right;font-weight:500">${spent > 0 ? budgetFmt(spent) : '—'}</div>
+            <div style="font-size:13px;text-align:right;color:${leftColor}">${(left < 0 ? '-' : '') + budgetFmt(Math.abs(left))}</div>
+            <div>
+              <div style="width:52px;height:4px;background:#e5e5e3;border-radius:2px;margin-left:auto">
+                <div style="width:${pct}%;height:100%;border-radius:2px;background:${barColor}"></div>
+              </div>
+              <div style="font-size:10px;color:#898781;text-align:right;margin-top:2px">${pct}%</div>
+            </div>
           </div>
+          ${isOpen && catTxns.length ? `
+            <div style="background:#f9f9f8;border:1px solid #2a78d6;border-top:none;border-radius:0 0 8px 8px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:90px 1fr auto;gap:8px;padding:6px 14px;font-size:10px;color:#898781;border-bottom:1px solid #e5e5e3;text-transform:uppercase;letter-spacing:.05em">
+                <div>Date</div><div>Description</div><div>Amount</div>
+              </div>
+              ${catTxns.map(t => `
+                <div style="display:grid;grid-template-columns:90px 1fr auto;gap:8px;padding:7px 14px;font-size:13px;border-bottom:1px solid #f0f0ee;align-items:center">
+                  <div style="color:#898781;white-space:nowrap">${t.date || '—'}</div>
+                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(t.desc||t.vendor||'').replace(/"/g,'')}">${t.desc || t.vendor || '—'}</div>
+                  <div style="font-weight:500;color:#e34948;white-space:nowrap">-${budgetFmtFull(t.amt)}</div>
+                </div>
+              `).join('')}
+              <div style="padding:6px 14px;font-size:12px;color:#898781;text-align:right">
+                ${catTxns.length} transaction${catTxns.length !== 1 ? 's' : ''} · Total: <strong style="color:#0b0b0b">-${budgetFmtFull(spent)}</strong>
+              </div>
+            </div>
+          ` : ''}
         </div>
       `;
     }).join('')}
@@ -283,6 +318,18 @@ function renderBudgetChart(cats, bycat) {
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
+
+function toggleBudgetCat(name) {
+  budgetState.expandedCat = budgetState.expandedCat === name ? null : name;
+  // Re-render just the overview without a full data reload
+  const el = document.getElementById('budget-view-overview');
+  if (el) {
+    const cats = budgetCats();
+    const bycat = {};
+    budgetState.expenses.forEach(e => { const c = e.category||'Other'; bycat[c]=(bycat[c]||0)+parseFloat(e.amt||0); });
+    el.innerHTML = renderBudgetOverview(cats, bycat);
+  }
+}
 
 function budgetChMonth(d) {
   budgetState.curM += d;
