@@ -111,8 +111,8 @@ function renderBudget() {
       <div style="display:flex;gap:6px;align-items:center">
         <button onclick="setBudgetBucket('work',this)" class="budget-bucket-btn ${budgetState.bucket==='work'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='work'?'#2a78d6':'#ddd'};background:${budgetState.bucket==='work'?'#2a78d610':'none'};color:${budgetState.bucket==='work'?'#2a78d6':'#52514e'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='work'?'500':'400'}">Business</button>
         <button onclick="setBudgetBucket('personal',this)" class="budget-bucket-btn ${budgetState.bucket==='personal'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='personal'?'#2a78d6':'#ddd'};background:${budgetState.bucket==='personal'?'#2a78d610':'none'};color:${budgetState.bucket==='personal'?'#2a78d6':'#52514e'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='personal'?'500':'400'}">Personal</button>
-        <button onclick="openPlaidConnect()" title="Connect bank account" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">🏦 Connect Bank</button>
-        <button onclick="syncPlaidNow()" title="Sync bank transactions" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">↻ Sync</button>
+        <button onclick="triggerCsvImport()" title="Import transactions from bank CSV" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">📥 Import CSV</button>
+        <input type="file" id="budget-csv-input" accept=".csv" style="display:none" onchange="handleBudgetCsv(event)">
       </div>
     </div>
 
@@ -445,4 +445,105 @@ async function syncPlaidNow() {
 
 async function syncPlaidTransactions() {
   await syncPlaidNow();
+}
+
+// ── CSV Import ────────────────────────────────────────────────────────────────
+
+function triggerCsvImport() {
+  document.getElementById('budget-csv-input')?.click();
+}
+
+async function handleBudgetCsv(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  event.target.value = ''; // reset so same file can be re-imported if needed
+
+  const text = await file.text();
+  const rows = parseBankCsv(text);
+  if (!rows.length) { alert('No transactions found in CSV. Make sure you exported from PNC as CSV.'); return; }
+
+  const confirmed = confirm(`Found ${rows.length} transactions in the CSV.\n\nImport to ${budgetState.bucket === 'work' ? 'Business' : 'Personal'} budget?\n\nDuplicates already logged via Ace will be skipped automatically.`);
+  if (!confirmed) return;
+
+  try {
+    const r = await fetch('/api/budget-import-csv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rows, bucket: budgetState.bucket })
+    });
+    const data = await r.json();
+    if (data.ok) {
+      await loadBudgetData();
+      renderBudget();
+      alert(`✅ Done!\n• ${data.imported} new transactions imported\n• ${data.skipped} duplicates skipped (already in CRM)`);
+    } else {
+      alert('Import failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Import failed: ' + e.message);
+  }
+}
+
+function parseBankCsv(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+
+  // Detect header row
+  const header = lines[0].toLowerCase();
+  const rows = [];
+
+  // PNC format: Date,Description,Withdrawals,Deposits,Running Balance
+  const isPNC = header.includes('withdrawal') || header.includes('deposit');
+  // Generic format: Date,Description,Amount
+  const cols = lines[0].split(',').map(c => c.replace(/"/g, '').trim().toLowerCase());
+
+  const dateIdx = cols.findIndex(c => c.includes('date') || c.includes('posted'));
+  const descIdx = cols.findIndex(c => c.includes('description') || c.includes('memo') || c.includes('payee') || c.includes('name'));
+  const amtIdx = cols.findIndex(c => c === 'amount' || c === 'debit' || c === 'transaction amount');
+  const withdrawIdx = cols.findIndex(c => c.includes('withdrawal') || c.includes('debit'));
+  const depositIdx = cols.findIndex(c => c.includes('deposit') || c.includes('credit'));
+
+  for (let i = 1; i < lines.length; i++) {
+    const parts = splitCsvLine(lines[i]);
+    if (!parts.length) continue;
+
+    const rawDate = parts[dateIdx >= 0 ? dateIdx : 0]?.replace(/"/g, '').trim();
+    const rawDesc = parts[descIdx >= 0 ? descIdx : 1]?.replace(/"/g, '').trim();
+
+    let amount = 0;
+    if (isPNC && withdrawIdx >= 0) {
+      // PNC: withdrawals column (spending)
+      const w = parseFloat((parts[withdrawIdx] || '').replace(/[^0-9.-]/g, ''));
+      if (!isNaN(w) && w > 0) amount = w;
+    } else if (amtIdx >= 0) {
+      // Generic: amount column (negative = spending)
+      const a = parseFloat((parts[amtIdx] || '').replace(/[^0-9.-]/g, ''));
+      if (!isNaN(a)) amount = Math.abs(a); // treat all as expenses; deposits filtered server-side
+    }
+
+    if (!rawDate || !rawDesc || amount <= 0) continue;
+
+    // Normalize date to YYYY-MM-DD
+    let date = rawDate;
+    try {
+      const d = new Date(rawDate);
+      if (!isNaN(d)) date = d.toISOString().slice(0, 10);
+    } catch(e) {}
+
+    rows.push({ date, description: rawDesc, amount });
+  }
+
+  return rows;
+}
+
+function splitCsvLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (const ch of line) {
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += ch; }
+  }
+  result.push(cur);
+  return result;
 }

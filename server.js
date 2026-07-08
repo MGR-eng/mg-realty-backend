@@ -9441,6 +9441,70 @@ app.post('/api/plaid/sync-transactions', express.json(), async (req, res) => {
   }
 });
 
+// ── Bank CSV Import ───────────────────────────────────────────────────────────
+// POST /api/budget-import-csv
+// Body: { rows: [{date, description, amount, type}], bucket: 'personal'|'work' }
+// Deduplicates against existing CRM expenses (by date + amount)
+// Skips anything already logged via Ace (mms_scan source)
+app.post('/api/budget-import-csv', express.json({ limit: '2mb' }), async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const { rows = [], bucket = 'personal' } = req.body;
+    if (!rows.length) return res.status(400).json({ ok: false, error: 'No rows provided' });
+
+    const existing = crm.expenses || [];
+
+    // Build a dedupe key set: "YYYY-MM-DD|amount" for all existing expenses
+    const existingKeys = new Set(
+      existing.map(e => `${(e.date || '').slice(0,10)}|${parseFloat(e.amt || 0).toFixed(2)}`)
+    );
+
+    let imported = 0, skipped = 0;
+    for (const row of rows) {
+      if (!row.amount || parseFloat(row.amount) <= 0) continue; // skip credits/income/zero
+
+      const key = `${(row.date || '').slice(0,10)}|${parseFloat(row.amount).toFixed(2)}`;
+      if (existingKeys.has(key)) { skipped++; continue; } // already logged (Ace or prior import)
+
+      // Auto-categorize based on description keywords
+      const desc = (row.description || '').toLowerCase();
+      let category = 'Other';
+      if (/grocery|safeway|trader|whole food|ralph|kroger|vons|sprout/.test(desc)) category = 'Groceries';
+      else if (/restaurant|cafe|coffee|starbucks|doordash|uber eat|grubhub|pizza|taco|burger|sushi|diner/.test(desc)) category = 'Dining';
+      else if (/uber|lyft|metro|parking|shell|chevron|arco|bp|exxon|mobil|gas|fuel/.test(desc)) category = 'Transportation';
+      else if (/netflix|spotify|hulu|apple|amazon prime|disney|youtube|subscri/.test(desc)) category = 'Subscriptions';
+      else if (/gym|equinox|la fitness|planet fitness|peloton|yoga|crossfit/.test(desc)) category = 'Fitness';
+      else if (/at&t|verizon|t-mobile|sprint|phone|wireless/.test(desc)) category = 'Phone';
+      else if (/rent|apartment|lease|zelle rent|landlord/.test(desc)) category = 'Rent';
+      else if (/amazon|target|walmart|costco|home depot|ikea|best buy/.test(desc)) category = 'Personal Care';
+      // Business categories
+      else if (/facebook|instagram|google ads|marketing|advertising/.test(desc)) category = 'Marketing';
+      else if (/office|staples|fedex|ups|print/.test(desc)) category = 'Office Supplies';
+
+      if (!crm.expenses) crm.expenses = [];
+      crm.expenses.push({
+        id: 'exp' + Date.now() + Math.random().toString(36).slice(2),
+        date: (row.date || '').slice(0,10),
+        amt: parseFloat(row.amount),
+        category,
+        desc: row.description || '',
+        vendor: row.description || '',
+        bucket,
+        source: 'csv_import',
+        notes: 'Imported from bank CSV'
+      });
+      existingKeys.add(key); // prevent dupes within the same upload
+      imported++;
+    }
+
+    await writeCRM(crm);
+    res.json({ ok: true, imported, skipped });
+  } catch (e) {
+    console.error('CSV import error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
 // Extend timeout for large file uploads (default is 5min, set to 10min to be safe)
