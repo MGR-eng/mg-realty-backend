@@ -9398,7 +9398,8 @@ app.post('/api/plaid/sync-transactions', express.json(), async (req, res) => {
 
     let allNew = 0;
     for (const acct of accounts) {
-      const startDate = new Date(); startDate.setDate(1);
+      // Pull last 90 days so we catch all sandbox data
+      const startDate = new Date(); startDate.setDate(startDate.getDate() - 90);
       const r = await fetch(`${basePath}/transactions/get`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -9408,11 +9409,12 @@ app.post('/api/plaid/sync-transactions', express.json(), async (req, res) => {
           access_token: acct.accessToken,
           start_date: startDate.toISOString().slice(0, 10),
           end_date: new Date().toISOString().slice(0, 10),
-          options: { count: 250 }
+          options: { count: 500 }
         })
       });
       const data = await r.json();
-      if (data.error_code) continue;
+      console.log('Plaid sync response:', JSON.stringify(data).slice(0, 500));
+      if (data.error_code) { console.error('Plaid error:', data.error_code, data.error_message); continue; }
       const existing = new Set((crm.expenses || []).map(e => e.plaidId).filter(Boolean));
       for (const txn of (data.transactions || [])) {
         if (existing.has(txn.transaction_id)) continue;

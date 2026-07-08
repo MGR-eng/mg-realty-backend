@@ -112,6 +112,7 @@ function renderBudget() {
         <button onclick="setBudgetBucket('work',this)" class="budget-bucket-btn ${budgetState.bucket==='work'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='work'?'#2a78d6':'#ddd'};background:${budgetState.bucket==='work'?'#2a78d610':'none'};color:${budgetState.bucket==='work'?'#2a78d6':'#52514e'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='work'?'500':'400'}">Business</button>
         <button onclick="setBudgetBucket('personal',this)" class="budget-bucket-btn ${budgetState.bucket==='personal'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='personal'?'#2a78d6':'#ddd'};background:${budgetState.bucket==='personal'?'#2a78d610':'none'};color:${budgetState.bucket==='personal'?'#2a78d6':'#52514e'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='personal'?'500':'400'}">Personal</button>
         <button onclick="openPlaidConnect()" title="Connect bank account" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">🏦 Connect Bank</button>
+        <button onclick="syncPlaidNow()" title="Sync bank transactions" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">↻ Sync</button>
       </div>
     </div>
 
@@ -416,14 +417,26 @@ async function openPlaidConnect() {
   }
 }
 
-async function syncPlaidTransactions() {
+async function syncPlaidNow() {
+  const btn = document.querySelector('button[onclick="syncPlaidNow()"]');
+  if (btn) { btn.textContent = '↻ Syncing...'; btn.disabled = true; }
   try {
     const r = await fetch('/api/plaid/sync-transactions', { method: 'POST' });
     const data = await r.json();
+    if (btn) { btn.textContent = '↻ Sync'; btn.disabled = false; }
     if (data.ok) {
       await loadBudgetData();
       renderBudget();
-      if (data.imported > 0) alert(`Synced ${data.imported} new transactions.`);
+      alert(data.imported > 0 ? `✅ Imported ${data.imported} new transactions.` : 'Already up to date — no new transactions found.');
+    } else {
+      alert('Sync error: ' + (data.error || 'Unknown error'));
     }
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    if (btn) { btn.textContent = '↻ Sync'; btn.disabled = false; }
+    alert('Sync failed: ' + e.message);
+  }
+}
+
+async function syncPlaidTransactions() {
+  await syncPlaidNow();
 }
