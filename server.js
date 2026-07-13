@@ -7218,8 +7218,8 @@ Find these stats for the ${zips ? 'zip code(s) ' + zips + ' area' : 'LA Westside
 8. Number of condos sold/closed this month
 9. Overall market temperature (hot seller's, balanced, or buyer's market)
 
-Also find a one-line market update for each of these neighborhoods: ${hoodList}
-For each neighborhood: current median price or price range, and one notable trend.
+Also find a brief update for up to 3 of these neighborhoods: ${hoodList}
+For each: current median price range and one notable trend (keep it short).
 
 Return ONLY a JSON object in this exact format (no markdown, no explanation):
 {
@@ -7259,9 +7259,26 @@ Return ONLY a JSON object in this exact format (no markdown, no explanation):
       textBlock = fallbackMsg.content.filter(b => b.type === 'text').map(b => b.text).join('');
     }
 
-    const match = textBlock.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('AI response did not contain market data JSON. Response: ' + textBlock.slice(0, 200));
-    const data = JSON.parse(match[0]);
+    // Strip markdown code fences if present
+    let jsonStr = textBlock.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+    // Find outermost JSON object
+    const start = jsonStr.indexOf('{');
+    const end   = jsonStr.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('No JSON found in response. Got: ' + textBlock.slice(0, 300));
+    jsonStr = jsonStr.slice(start, end + 1);
+
+    let data;
+    try {
+      data = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      // Remove trailing commas before } or ] (common LLM mistake)
+      const cleaned = jsonStr
+        .replace(/,\s*([}\]])/g, '$1')
+        .replace(/([{,]\s*)(\w+)\s*:/g, (m, p, k) => `${p}"${k}":`) // unquoted keys
+        .replace(/[–—]/g, '-') // smart dashes in strings
+        .replace(/[“”]/g, '"'); // smart quotes
+      data = JSON.parse(cleaned);
+    }
     res.json({ ok: true, data });
   } catch(e) {
     console.error('Market data pull error:', e.message);
