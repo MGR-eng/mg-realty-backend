@@ -1250,16 +1250,18 @@ app.get('/calendar/list', async (req, res) => {
       }
     }
 
-    // Merge, deduplicate by title+start, and sort by start time
+    // Merge, deduplicate by title+start (normalize to ms timestamp), sort by start
     const seen = new Set();
+    const toMs = s => { try { return new Date(s).getTime(); } catch(_){ return 0; } };
     const events = [...events1, ...events2]
       .filter(e => {
-        const key = `${(e.title||'').trim().toLowerCase()}|${(e.start||'').slice(0,16)}`;
+        const ms = toMs(e.start);
+        const key = `${(e.title||'').trim().toLowerCase()}|${ms}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       })
-      .sort((a, b) => new Date(a.start) - new Date(b.start));
+      .sort((a, b) => toMs(a.start) - toMs(b.start));
 
     res.json({ ok: true, events });
   } catch (e) {
