@@ -14060,7 +14060,13 @@ function fbPullData() {
   .then(function(res) {
     btn.innerHTML = '<i class="ti ti-refresh"></i> Pull Live Market Data';
     btn.disabled = false;
-    if (!res.ok || !res.data) { toast('Could not pull data — try again'); return; }
+    if (!res.ok || !res.data) {
+      var errMsg = res.error || 'Unknown error';
+      toast('Pull failed: ' + errMsg.slice(0, 80));
+      status.style.display = ''; status.style.color = 'var(--red)';
+      status.innerHTML = '✗ ' + errMsg;
+      return;
+    }
     var d = res.data;
     fbMarketData = d;
     if (d.inventory) document.getElementById('fb-active').value = d.inventory;

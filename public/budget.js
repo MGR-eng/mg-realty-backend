@@ -71,6 +71,57 @@ function budgetFmtFull(n) {
 async function initBudget() {
   await loadBudgetData();
   renderBudget();
+  autoArchiveCheck();
+}
+
+// ── Auto-archive: export previous month's budget if not yet done ──
+async function autoArchiveCheck() {
+  try {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonth = `${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+    const archived = JSON.parse(budgetState.settings.archived_months || '[]');
+    const newArchived = [...archived];
+    let didExport = false;
+
+    for (const bucket of ['work', 'personal']) {
+      const key = `${prevMonth}-${bucket}`;
+      if (archived.includes(key)) continue;
+      // Check if there's data
+      const r = await fetch(`/api/budget-data?month=${prevMonth}&bucket=${bucket}`);
+      const d = await r.json();
+      if (d.expenses && d.expenses.length > 0) {
+        await exportBudgetMonth(prevMonth, bucket);
+        didExport = true;
+      }
+      newArchived.push(key);
+    }
+
+    if (newArchived.length !== archived.length) {
+      budgetState.settings.archived_months = JSON.stringify(newArchived);
+      fetch('/api/budget-settings', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ archived_months: JSON.stringify(newArchived) })
+      }).catch(() => {});
+    }
+    if (didExport) {
+      const label = prev.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      setTimeout(() => alert(`📁 ${label} is over — your budget was automatically exported and downloaded as CSV.`), 800);
+    }
+  } catch(e) { console.warn('Auto-archive check failed', e); }
+}
+
+async function exportBudgetMonth(month, bucket) {
+  const url = `/api/budget-export?month=${encodeURIComponent(month)}&bucket=${encodeURIComponent(bucket)}`;
+  const r = await fetch(url);
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `budget-${bucket}-${month}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
 }
 
 async function loadBudgetData() {
@@ -117,6 +168,7 @@ function renderBudget() {
         <button onclick="setBudgetBucket('work',this)" class="budget-bucket-btn ${budgetState.bucket==='work'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='work'?'#2a78d6':'#ddd'};background:${budgetState.bucket==='work'?'#2a78d610':'none'};color:${budgetState.bucket==='work'?'#2a78d6':'#52514e'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='work'?'500':'400'}">Business</button>
         <button onclick="setBudgetBucket('personal',this)" class="budget-bucket-btn ${budgetState.bucket==='personal'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='personal'?'#2a78d6':'#ddd'};background:${budgetState.bucket==='personal'?'#2a78d610':'none'};color:${budgetState.bucket==='personal'?'#2a78d6':'#52514e'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='personal'?'500':'400'}">Personal</button>
         <button onclick="triggerCsvImport()" title="Import transactions from bank CSV" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">📥 Import CSV</button>
+        <button onclick="exportBudgetMonth('${budgetMonth()}','${budgetState.bucket}')" title="Export this month as CSV" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">📤 Export</button>
         <input type="file" id="budget-csv-input" accept=".csv" style="display:none" onchange="handleBudgetCsv(event)">
       </div>
     </div>

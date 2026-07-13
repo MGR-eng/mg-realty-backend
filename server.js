@@ -7239,17 +7239,28 @@ Return ONLY a JSON object in this exact format (no markdown, no explanation):
   ]
 }`;
 
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1200,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      messages: [{ role: 'user', content: prompt }]
-    }, { headers: { 'anthropic-beta': 'web-search-2025-03-05' } });
+    let textBlock = '';
+    try {
+      const msg = await anthropic.messages.create({
+        model: 'claude-opus-4-6',
+        max_tokens: 1500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      }, { headers: { 'anthropic-beta': 'web-search-2025-03-05' } });
+      textBlock = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    } catch (searchErr) {
+      console.warn('Web search failed, falling back to estimation:', searchErr.message);
+      // Fallback: ask Claude to estimate based on known trends
+      const fallbackMsg = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt + '\n\nNote: Use your best knowledge of current LA real estate trends to estimate these numbers. Mark source as "Estimated".' }]
+      });
+      textBlock = fallbackMsg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    }
 
-    // Extract the final text response (after tool use)
-    const textBlock = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
     const match = textBlock.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('No JSON in response');
+    if (!match) throw new Error('AI response did not contain market data JSON. Response: ' + textBlock.slice(0, 200));
     const data = JSON.parse(match[0]);
     res.json({ ok: true, data });
   } catch(e) {
@@ -9336,6 +9347,46 @@ app.post('/api/budget-settings', express.json(), async (req, res) => {
     crm.budgetSettings = { ...(crm.budgetSettings || {}), ...req.body };
     await writeCRM(crm);
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/budget-export?month=YYYY-MM&bucket=work|personal — download CSV for a month
+app.get('/api/budget-export', async (req, res) => {
+  try {
+    const { month, bucket } = req.query;
+    const crm = await readCRM();
+    let expenses = crm.expenses || [];
+    if (bucket) expenses = expenses.filter(e => e.bucket === bucket);
+    if (month) expenses = expenses.filter(e => (e.date || '').slice(0, 7) === month);
+    expenses.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const totalSpent = expenses.reduce((s, e) => s + parseFloat(e.amt || 0), 0);
+    const [yr, mo] = (month || '').split('-');
+    const monthName = yr && mo
+      ? new Date(parseInt(yr), parseInt(mo) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      : (month || 'Export');
+    const bucketLabel = bucket === 'work' ? 'Business' : bucket === 'personal' ? 'Personal' : 'All';
+
+    const lines = [
+      `Budget Export: ${monthName} — ${bucketLabel}`,
+      `Total Transactions: ${expenses.length}`,
+      `Total Spent: $${totalSpent.toFixed(2)}`,
+      '',
+      'Date,Description,Category,Amount'
+    ];
+    for (const e of expenses) {
+      const desc = (e.description || e.desc || '').replace(/"/g, '""');
+      const cat  = (e.category || '').replace(/"/g, '""');
+      const amt  = parseFloat(e.amt || 0).toFixed(2);
+      lines.push(`${e.date || ''},"${desc}","${cat}",${amt}`);
+    }
+
+    const filename = `budget-${bucket || 'all'}-${month || 'export'}.csv`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(lines.join('\n'));
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
