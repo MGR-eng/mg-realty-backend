@@ -9746,6 +9746,103 @@ app.post('/api/budget-import-csv', express.json({ limit: '2mb' }), async (req, r
   }
 });
 
+// ── Real Estate News Brief ─────────────────────────────────────────────────────
+app.get('/api/re-news', async (req, res) => {
+  try {
+    // ── RSS parser ──
+    const parseRSS = (xml, limit = 6) => {
+      const items = [];
+      const itemRx = /<item[\s>]([\s\S]*?)<\/item>/gi;
+      let m;
+      while ((m = itemRx.exec(xml)) !== null && items.length < limit) {
+        const b = m[1];
+        const titleM = b.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i);
+        const linkM  = b.match(/<link>(https?:\/\/[^<]+)<\/link>/i)
+                    || b.match(/<link[^>]+href="([^"]+)"/i);
+        if (!titleM || !linkM) continue;
+        const title = titleM[1]
+          .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+          .replace(/&#8217;/g,"'").replace(/&#8220;/g,'"').replace(/&#8221;/g,'"')
+          .replace(/&#038;/g,'&').replace(/\s+/g,' ').trim();
+        items.push({ title, url: linkM[1].trim() });
+      }
+      return items;
+    };
+
+    // ── Fetch feeds in parallel ──
+    const FEEDS = [
+      { label: 'The Real Deal LA',  url: 'https://therealdeal.com/la/feed/',      limit: 6 },
+      { label: 'Inman News',        url: 'https://www.inman.com/feed/',            limit: 5 },
+      { label: 'HousingWire',       url: 'https://www.housingwire.com/feed/',      limit: 5 },
+      { label: 'Bisnow LA',         url: 'https://www.bisnow.com/los-angeles/rss', limit: 4 },
+    ];
+
+    const results = await Promise.allSettled(
+      FEEDS.map(f =>
+        fetch(f.url, { headers: { 'User-Agent': 'MGRealty-NewsBot/1.0' }, signal: AbortSignal.timeout(8000) })
+          .then(r => r.text())
+          .then(xml => ({ label: f.label, items: parseRSS(xml, f.limit) }))
+      )
+    );
+
+    const sections = results
+      .filter(r => r.status === 'fulfilled' && r.value.items.length)
+      .map(r => r.value);
+
+    if (!sections.length) {
+      return res.type('text').send('⚠️ Could not fetch news feeds right now. Try again in a moment.');
+    }
+
+    // ── Build headline list for Claude ──
+    const headlineBlock = sections.map(s =>
+      `[${s.label}]\n` + s.items.map((it, i) => `${i+1}. ${it.title}\n   ${it.url}`).join('\n')
+    ).join('\n\n');
+
+    const today = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+    const prompt = `You are curating a morning real estate news brief for Matt Golden, a Los Angeles real estate agent at MG Realty.
+
+Today is ${today}.
+
+Here are today's headlines from multiple sources:
+
+${headlineBlock}
+
+Instructions:
+- Select the 7-9 most useful stories for an LA real estate agent
+- Prioritize: LA/SoCal market news, interest rates, notable deals, regulatory changes, buyer/seller trends
+- For each story, write ONE punchy sentence (max 15 words) explaining why it matters
+- Group into two sections: 📍 LOS ANGELES and 🇺🇸 NATIONAL / MARKET
+- Keep the LA section first and heavier (more stories)
+- Include the URL on the line below each story
+- Format exactly like this (no extra commentary, no intro paragraph):
+
+🏠 REAL ESTATE BRIEF — ${today}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 LOS ANGELES
+• [Story title] — [one punchy sentence]
+  [URL]
+
+🇺🇸 NATIONAL / MARKET
+• [Story title] — [one punchy sentence]
+  [URL]`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-opus-4-6',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const brief = msg.content.find(b => b.type === 'text')?.text?.trim() || 'No brief generated.';
+    res.type('text').send(brief);
+
+  } catch (e) {
+    console.error('re-news error:', e.message);
+    res.status(500).type('text').send('Error fetching news: ' + e.message);
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => console.log(`MG Realty backend running on port ${PORT}`));
 // Extend timeout for large file uploads (default is 5min, set to 10min to be safe)
