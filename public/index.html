@@ -19,20 +19,20 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
 :root{
-  --bg:#F5F4F1;--surface:#FFFFFF;--surface2:#EFEDE7;--border:#E0DDD6;
-  --text:#1A1A1A;--text2:#777777;--text3:#AAAAAA;
+  --bg:#1A1A1C;--surface:#242428;--surface2:#2C2C30;--border:#383840;
+  --text:#EDEDF0;--text2:#9090A0;--text3:#505060;
   --accent:#E8681A;
-  --blue:#2563EB;--blue-bg:rgba(37,99,235,0.08);--blue-bd:rgba(37,99,235,0.20);
-  --green:#15803D;--green-bg:rgba(21,128,61,0.08);--green-bd:rgba(21,128,61,0.20);
-  --amber:#B45309;--amber-bg:rgba(180,83,9,0.08);--amber-bd:rgba(180,83,9,0.22);
-  --red:#DC2626;--red-bg:rgba(220,38,38,0.08);--red-bd:rgba(220,38,38,0.22);
-  --purple:#7C3AED;--purple-bg:rgba(124,58,237,0.08);--purple-bd:rgba(124,58,237,0.22);
-  --hot-bg:rgba(232,104,26,0.12);--hot-txt:#C05212;--warm-bg:rgba(180,83,9,0.10);--warm-txt:#92400E;
-  --cold-bg:rgba(37,99,235,0.10);--cold-txt:#1D4ED8;--done-bg:rgba(21,128,61,0.10);--done-txt:#166534;
-  --shadow-sm:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
-  --shadow:0 4px 6px -1px rgba(0,0,0,.08),0 2px 4px -2px rgba(0,0,0,.05);
-  --shadow-lg:0 10px 25px -3px rgba(0,0,0,.12),0 4px 8px -4px rgba(0,0,0,.07);
-  --card:#FFFFFF;
+  --blue:#60A5FA;--blue-bg:rgba(96,165,250,0.10);--blue-bd:rgba(96,165,250,0.25);
+  --green:#4ADE80;--green-bg:rgba(74,222,128,0.10);--green-bd:rgba(74,222,128,0.25);
+  --amber:#FBB040;--amber-bg:rgba(251,176,64,0.10);--amber-bd:rgba(251,176,64,0.25);
+  --red:#F87171;--red-bg:rgba(248,113,113,0.10);--red-bd:rgba(248,113,113,0.25);
+  --purple:#A78BFA;--purple-bg:rgba(167,139,250,0.10);--purple-bd:rgba(167,139,250,0.25);
+  --hot-bg:rgba(232,104,26,0.16);--hot-txt:#F0844A;--warm-bg:rgba(251,176,64,0.12);--warm-txt:#FBB040;
+  --cold-bg:rgba(96,165,250,0.12);--cold-txt:#60A5FA;--done-bg:rgba(74,222,128,0.12);--done-txt:#4ADE80;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.30),0 1px 2px rgba(0,0,0,.20);
+  --shadow:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.22);
+  --shadow-lg:0 10px 25px -3px rgba(0,0,0,.45),0 4px 8px -4px rgba(0,0,0,.30);
+  --card:#242428;
   --r:10px;--rl:14px;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -70,7 +70,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 
 /* ── Main ── */
 .main{overflow-y:auto;min-height:100vh;background:var(--bg)}
-.topbar{background:rgba(245,244,241,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.topbar{background:rgba(26,26,28,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
 .page-title{font-size:15px;font-weight:600;letter-spacing:-.01em}
 .tba{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 .content{padding:24px 28px}
@@ -112,7 +112,7 @@ tbody td{padding:11px 14px;vertical-align:middle;overflow:hidden;text-overflow:e
 /* ── Buttons ── */
 .btn{font-size:12px;padding:7px 14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:var(--font);font-weight:500;transition:all 0.15s;white-space:nowrap;line-height:1;box-shadow:var(--shadow-sm)}
 .btn:hover{background:var(--surface2);border-color:#D4D0C8}.btn:disabled{opacity:0.4;cursor:not-allowed;box-shadow:none}
-.btn-primary{background:#18181B;color:#fff;border-color:#F0F0F0;box-shadow:none}.btn-primary:hover{background:#27272A;border-color:#27272A}
+.btn-primary{background:rgba(255,255,255,0.10);color:var(--text);border-color:rgba(255,255,255,0.15);box-shadow:none}.btn-primary:hover{background:rgba(255,255,255,0.16);border-color:rgba(255,255,255,0.22)}
 .btn-gold{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;box-shadow:none}.btn-gold:hover{background:#D05A13;border-color:#D05A13}
 .btn-blue{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd);box-shadow:none}.btn-blue:hover{background:var(--blue-bd)}
 .btn-green{background:var(--green-bg);color:var(--green);border-color:var(--green-bd);box-shadow:none}.btn-green:hover{background:var(--green-bd)}
@@ -123,7 +123,7 @@ tbody td{padding:11px 14px;vertical-align:middle;overflow:hidden;text-overflow:e
 
 /* ── Inputs ── */
 input,select,textarea{font-family:var(--font);font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s}
-input[type="date"],input[type="time"],input[type="datetime-local"]{appearance:auto;-webkit-appearance:auto;color-scheme:light;cursor:pointer}
+input[type="date"],input[type="time"],input[type="datetime-local"]{appearance:auto;-webkit-appearance:auto;color-scheme:dark;cursor:pointer}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,104,26,.1)}
 textarea{resize:vertical;min-height:65px}
 label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:5px}

@@ -160,15 +160,15 @@ function renderBudget() {
     <!-- Top bar -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:8px">
-        <button onclick="budgetChMonth(-1)" style="background:none;border:1px solid #ddd;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:15px">&#8249;</button>
-        <span style="font-size:17px;font-weight:500">${MONTHS_FULL[budgetState.curM]} ${budgetState.curY}</span>
-        <button onclick="budgetChMonth(1)" style="background:none;border:1px solid #ddd;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:15px">&#8250;</button>
+        <button onclick="budgetChMonth(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:15px;color:var(--text)">&#8249;</button>
+        <span style="font-size:17px;font-weight:500;color:var(--text)">${MONTHS_FULL[budgetState.curM]} ${budgetState.curY}</span>
+        <button onclick="budgetChMonth(1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:15px;color:var(--text)">&#8250;</button>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
-        <button onclick="setBudgetBucket('work',this)" class="budget-bucket-btn ${budgetState.bucket==='work'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='work'?'#2a78d6':'#ddd'};background:${budgetState.bucket==='work'?'#2a78d610':'none'};color:${budgetState.bucket==='work'?'#2a78d6':'#52514e'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='work'?'500':'400'}">Business</button>
-        <button onclick="setBudgetBucket('personal',this)" class="budget-bucket-btn ${budgetState.bucket==='personal'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='personal'?'#2a78d6':'#ddd'};background:${budgetState.bucket==='personal'?'#2a78d610':'none'};color:${budgetState.bucket==='personal'?'#2a78d6':'#52514e'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='personal'?'500':'400'}">Personal</button>
-        <button onclick="triggerCsvImport()" title="Import transactions from bank CSV" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">📥 Import CSV</button>
-        <button onclick="exportBudgetMonth('${budgetMonth()}','${budgetState.bucket}')" title="Export this month as CSV" style="padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:#52514e">📤 Export</button>
+        <button onclick="setBudgetBucket('work',this)" class="budget-bucket-btn ${budgetState.bucket==='work'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='work'?'#2a78d6':'var(--border)'};background:${budgetState.bucket==='work'?'#2a78d620':'none'};color:${budgetState.bucket==='work'?'#60A5FA':'var(--text2)'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='work'?'500':'400'}">Business</button>
+        <button onclick="setBudgetBucket('personal',this)" class="budget-bucket-btn ${budgetState.bucket==='personal'?'on':''}" style="padding:4px 14px;border-radius:20px;border:1px solid ${budgetState.bucket==='personal'?'#2a78d6':'var(--border)'};background:${budgetState.bucket==='personal'?'#2a78d620':'none'};color:${budgetState.bucket==='personal'?'#60A5FA':'var(--text2)'};font-size:13px;cursor:pointer;font-weight:${budgetState.bucket==='personal'?'500':'400'}">Personal</button>
+        <button onclick="triggerCsvImport()" title="Import transactions from bank CSV" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;font-size:12px;color:var(--text2)">📥 Import CSV</button>
+        <button onclick="exportBudgetMonth('${budgetMonth()}','${budgetState.bucket}')" title="Export this month as CSV" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;font-size:12px;color:var(--text2)">📤 Export</button>
         <input type="file" id="budget-csv-input" accept=".csv" style="display:none" onchange="handleBudgetCsv(event)">
       </div>
     </div>
@@ -176,13 +176,13 @@ function renderBudget() {
     <!-- KPIs -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
       ${[
-        { label: 'Budgeted', val: budgetFmt(totalBudget), color: '#0b0b0b' },
-        { label: 'Spent', val: budgetFmt(totalSpent), color: totalSpent > totalBudget ? '#e34948' : '#0b0b0b' },
-        { label: 'Remaining', val: (totalLeft < 0 ? '-' : '') + budgetFmt(totalLeft), color: totalLeft < 0 ? '#e34948' : totalLeft < totalBudget * 0.15 ? '#eda100' : '#1baf7a' },
-        { label: '% Used', val: pctUsed + '%', color: pctUsed >= 100 ? '#e34948' : pctUsed >= 85 ? '#eda100' : '#0b0b0b' },
+        { label: 'Budgeted', val: budgetFmt(totalBudget), color: 'var(--text)' },
+        { label: 'Spent', val: budgetFmt(totalSpent), color: totalSpent > totalBudget ? '#e34948' : 'var(--text)' },
+        { label: 'Remaining', val: (totalLeft < 0 ? '-' : '') + budgetFmt(totalLeft), color: totalLeft < 0 ? '#e34948' : totalLeft < totalBudget * 0.15 ? '#eda100' : '#4ADE80' },
+        { label: '% Used', val: pctUsed + '%', color: pctUsed >= 100 ? '#e34948' : pctUsed >= 85 ? '#eda100' : 'var(--text)' },
       ].map(k => `
-        <div style="background:#fff;border:1px solid #e5e5e3;border-radius:8px;padding:12px 14px">
-          <div style="font-size:11px;color:#898781;margin-bottom:4px">${k.label}</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:4px">${k.label}</div>
           <div style="font-size:20px;font-weight:500;color:${k.color}">${k.val}</div>
         </div>
       `).join('')}
@@ -191,10 +191,10 @@ function renderBudget() {
     <!-- Tabs -->
     <div style="display:flex;gap:4px;margin-bottom:14px">
       ${['overview','transactions','chart'].map(t => `
-        <button onclick="setBudgetView('${t}',this)" style="padding:5px 14px;border-radius:6px;border:1px solid ${budgetState.view===t?'#aaa':'#ddd'};background:${budgetState.view===t?'#fff':'none'};font-size:13px;font-weight:${budgetState.view===t?'500':'400'};color:${budgetState.view===t?'#0b0b0b':'#52514e'};cursor:pointer">${t.charAt(0).toUpperCase()+t.slice(1)}</button>
+        <button onclick="setBudgetView('${t}',this)" style="padding:5px 14px;border-radius:6px;border:1px solid ${budgetState.view===t?'var(--border)':'var(--border)'};background:${budgetState.view===t?'var(--surface2)':'none'};font-size:13px;font-weight:${budgetState.view===t?'500':'400'};color:${budgetState.view===t?'var(--text)':'var(--text2)'};cursor:pointer">${t.charAt(0).toUpperCase()+t.slice(1)}</button>
       `).join('')}
-      <button onclick="toggleBudgetEdit()" style="margin-left:auto;padding:5px 12px;border-radius:6px;border:1px solid #ddd;background:none;font-size:12px;color:#52514e;cursor:pointer">✏️ Edit Budgets</button>
-      <button onclick="openManageCategories()" style="padding:5px 12px;border-radius:6px;border:1px solid #ddd;background:none;font-size:12px;color:#52514e;cursor:pointer">🏷️ Categories</button>
+      <button onclick="toggleBudgetEdit()" style="margin-left:auto;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;font-size:12px;color:var(--text2);cursor:pointer">✏️ Edit Budgets</button>
+      <button onclick="openManageCategories()" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;font-size:12px;color:var(--text2);cursor:pointer">🏷️ Categories</button>
     </div>
 
     <!-- Views -->
@@ -226,7 +226,7 @@ function renderBudgetOverview(cats, bycat) {
   });
 
   return `
-    <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;gap:6px;padding:0 12px 6px;font-size:11px;color:#898781">
+    <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;gap:6px;padding:0 12px 6px;font-size:11px;color:var(--text2)">
       <div>Category</div><div style="text-align:right">Budget</div><div style="text-align:right">Spent</div><div style="text-align:right">Left</div><div></div>
     </div>
     ${cats.map(c => {
@@ -243,36 +243,36 @@ function renderBudgetOverview(cats, bycat) {
       return `
         <div style="margin-bottom:5px">
           <div onclick="toggleBudgetCat('${c.name.replace(/'/g,"\\'")}')"
-               style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;align-items:center;gap:6px;background:#fff;border:1px solid ${isOpen ? '#2a78d6' : '#e5e5e3'};border-radius:${isOpen ? '8px 8px 0 0' : '8px'};padding:9px 12px;cursor:${hasSpend ? 'pointer' : 'default'};user-select:none">
+               style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;align-items:center;gap:6px;background:var(--surface2);border:1px solid ${isOpen ? '#60A5FA' : 'var(--border)'};border-radius:${isOpen ? '8px 8px 0 0' : '8px'};padding:9px 12px;cursor:${hasSpend ? 'pointer' : 'default'};user-select:none">
             <div style="display:flex;align-items:center;gap:8px;font-size:14px">
               <span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>
               ${c.name}
-              ${hasSpend ? `<span style="font-size:10px;color:#898781">${isOpen ? '▲' : '▼'}</span>` : ''}
+              ${hasSpend ? `<span style="font-size:10px;color:var(--text2)">${isOpen ? '▲' : '▼'}</span>` : ''}
             </div>
-            <div style="font-size:13px;text-align:right;color:#898781">${budgetFmt(budget)}</div>
-            <div style="font-size:13px;text-align:right;font-weight:500">${spent > 0 ? budgetFmt(spent) : '—'}</div>
+            <div style="font-size:13px;text-align:right;color:var(--text2)">${budgetFmt(budget)}</div>
+            <div style="font-size:13px;text-align:right;font-weight:500;color:var(--text)">${spent > 0 ? budgetFmt(spent) : '—'}</div>
             <div style="font-size:13px;text-align:right;color:${leftColor}">${(left < 0 ? '-' : '') + budgetFmt(Math.abs(left))}</div>
             <div>
-              <div style="width:52px;height:4px;background:#e5e5e3;border-radius:2px;margin-left:auto">
+              <div style="width:52px;height:4px;background:var(--border);border-radius:2px;margin-left:auto">
                 <div style="width:${pct}%;height:100%;border-radius:2px;background:${barColor}"></div>
               </div>
-              <div style="font-size:10px;color:#898781;text-align:right;margin-top:2px">${pct}%</div>
+              <div style="font-size:10px;color:var(--text2);text-align:right;margin-top:2px">${pct}%</div>
             </div>
           </div>
           ${isOpen && catTxns.length ? `
-            <div style="background:#f9f9f8;border:1px solid #2a78d6;border-top:none;border-radius:0 0 8px 8px;overflow:hidden">
-              <div style="display:grid;grid-template-columns:90px 1fr auto;gap:8px;padding:6px 14px;font-size:10px;color:#898781;border-bottom:1px solid #e5e5e3;text-transform:uppercase;letter-spacing:.05em">
+            <div style="background:var(--surface);border:1px solid #60A5FA;border-top:none;border-radius:0 0 8px 8px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:90px 1fr auto;gap:8px;padding:6px 14px;font-size:10px;color:var(--text2);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em">
                 <div>Date</div><div>Description</div><div>Amount</div>
               </div>
               ${catTxns.map(t => `
-                <div style="display:grid;grid-template-columns:90px 1fr auto;gap:8px;padding:7px 14px;font-size:13px;border-bottom:1px solid #f0f0ee;align-items:center">
-                  <div style="color:#898781;white-space:nowrap">${t.date || '—'}</div>
-                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(t.desc||t.vendor||'').replace(/"/g,'')}">${t.desc || t.vendor || '—'}</div>
-                  <div style="font-weight:500;color:#e34948;white-space:nowrap">-${budgetFmtFull(t.amt)}</div>
+                <div style="display:grid;grid-template-columns:90px 1fr auto;gap:8px;padding:7px 14px;font-size:13px;border-bottom:1px solid var(--border);align-items:center">
+                  <div style="color:var(--text2);white-space:nowrap">${t.date || '—'}</div>
+                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)" title="${(t.desc||t.vendor||'').replace(/"/g,'')}">${t.desc || t.vendor || '—'}</div>
+                  <div style="font-weight:500;color:#F87171;white-space:nowrap">-${budgetFmtFull(t.amt)}</div>
                 </div>
               `).join('')}
-              <div style="padding:6px 14px;font-size:12px;color:#898781;text-align:right">
-                ${catTxns.length} transaction${catTxns.length !== 1 ? 's' : ''} · Total: <strong style="color:#0b0b0b">-${budgetFmtFull(spent)}</strong>
+              <div style="padding:6px 14px;font-size:12px;color:var(--text2);text-align:right">
+                ${catTxns.length} transaction${catTxns.length !== 1 ? 's' : ''} · Total: <strong style="color:var(--text)">-${budgetFmtFull(spent)}</strong>
               </div>
             </div>
           ` : ''}
@@ -287,20 +287,20 @@ function renderBudgetTransactions(cats) {
   const sorted = [...budgetState.expenses].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   const addForm = `
-    <div style="background:#fff;border:1px solid #e5e5e3;border-radius:10px;padding:16px;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:500;color:#898781;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Add Transaction</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Add Transaction</div>
       <div style="display:grid;grid-template-columns:1fr 100px 160px 90px;gap:8px;align-items:end">
         <div>
-          <label style="font-size:11px;color:#898781;display:block;margin-bottom:3px">Description</label>
-          <input id="bt-desc" type="text" placeholder="e.g. Staples" style="width:100%;font-size:13px;padding:6px 8px;border:1px solid #ddd;border-radius:6px">
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Description</label>
+          <input id="bt-desc" type="text" placeholder="e.g. Staples" style="width:100%;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">
         </div>
         <div>
-          <label style="font-size:11px;color:#898781;display:block;margin-bottom:3px">Amount</label>
-          <input id="bt-amt" type="number" placeholder="0.00" min="0" step="0.01" style="width:100%;font-size:13px;padding:6px 8px;border:1px solid #ddd;border-radius:6px">
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Amount</label>
+          <input id="bt-amt" type="number" placeholder="0.00" min="0" step="0.01" style="width:100%;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">
         </div>
         <div>
-          <label style="font-size:11px;color:#898781;display:block;margin-bottom:3px">Category</label>
-          <select id="bt-cat" style="width:100%;font-size:13px;padding:6px 8px;border:1px solid #ddd;border-radius:6px">
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:3px">Category</label>
+          <select id="bt-cat" style="width:100%;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">
             ${catNames.map(n => `<option>${n}</option>`).join('')}
           </select>
         </div>
@@ -311,17 +311,17 @@ function renderBudgetTransactions(cats) {
     </div>
   `;
 
-  if (!sorted.length) return addForm + '<div style="text-align:center;padding:2rem;color:#898781;font-size:14px">No transactions this month</div>';
+  if (!sorted.length) return addForm + '<div style="text-align:center;padding:2rem;color:var(--text2);font-size:14px">No transactions this month</div>';
 
   return addForm + sorted.map(e => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#fff;border:1px solid #e5e5e3;border-radius:8px;margin-bottom:4px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:4px">
       <div>
-        <div style="font-size:14px">${e.desc || e.vendor || '—'}</div>
-        <div style="font-size:11px;color:#898781">${e.category || 'Other'} · ${e.date || ''} ${e.source === 'plaid' ? '· 🏦' : e.source === 'mms_scan' ? '· 📱' : ''}</div>
+        <div style="font-size:14px;color:var(--text)">${e.desc || e.vendor || '—'}</div>
+        <div style="font-size:11px;color:var(--text2)">${e.category || 'Other'} · ${e.date || ''} ${e.source === 'plaid' ? '· 🏦' : e.source === 'mms_scan' ? '· 📱' : ''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="font-size:14px;font-weight:500;color:#e34948">-${budgetFmtFull(e.amt)}</div>
-        <button onclick="deleteBudgetTransaction('${e.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:15px;padding:0 2px" title="Delete">✕</button>
+        <div style="font-size:14px;font-weight:500;color:#F87171">-${budgetFmtFull(e.amt)}</div>
+        <button onclick="deleteBudgetTransaction('${e.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:0 2px" title="Delete">✕</button>
       </div>
     </div>
   `).join('');
@@ -367,8 +367,8 @@ function renderBudgetChart(cats, bycat) {
         tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + budgetFmtFull(ctx.raw) } }
       },
       scales: {
-        x: { ticks: { font: { size: 10 }, color: '#898781', maxRotation: 35 }, grid: { display: false } },
-        y: { ticks: { callback: v => '$' + v, font: { size: 11 }, color: '#898781' }, grid: { color: '#e1e0d9' } }
+        x: { ticks: { font: { size: 10 }, color: '#9090A0', maxRotation: 35 }, grid: { display: false } },
+        y: { ticks: { callback: v => '$' + v, font: { size: 11 }, color: '#9090A0' }, grid: { color: '#383840' } }
       }
     }
   });
@@ -443,25 +443,25 @@ function openManageCategories() {
 
   const renderRows = (list) => list.map((c, i) => `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" data-idx="${i}">
-      <select class="cat-color-pick" data-idx="${i}" style="width:32px;height:32px;border:1px solid #ddd;border-radius:6px;padding:0 2px;cursor:pointer;font-size:16px">
+      <select class="cat-color-pick" data-idx="${i}" style="width:32px;height:32px;border:1px solid var(--border);border-radius:6px;padding:0 2px;cursor:pointer;font-size:16px;background:var(--surface)">
         ${CAT_COLORS.map(col => `<option value="${col}" ${c.color===col?'selected':''} style="background:${col}">■</option>`).join('')}
       </select>
       <span style="width:12px;height:12px;border-radius:50%;background:${c.color};display:inline-block;flex-shrink:0"></span>
-      <input class="cat-name-input" data-idx="${i}" value="${c.name}" style="flex:1;font-size:14px;padding:5px 8px;border:1px solid #ddd;border-radius:6px">
-      <input class="cat-budget-input" data-idx="${i}" type="number" value="${budgetTarget(c.name)}" min="0" step="10" style="width:80px;font-size:13px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;text-align:right">
-      <button onclick="removeCatRow(${i})" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>
+      <input class="cat-name-input" data-idx="${i}" value="${c.name}" style="flex:1;font-size:14px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">
+      <input class="cat-budget-input" data-idx="${i}" type="number" value="${budgetTarget(c.name)}" min="0" step="10" style="width:80px;font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;text-align:right;background:var(--surface);color:var(--text)">
+      <button onclick="removeCatRow(${i})" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>
     </div>
   `).join('');
 
   modal.innerHTML = `
-    <div style="background:#fff;border-radius:12px;padding:24px;width:460px;max-height:82vh;overflow-y:auto;box-shadow:0 8px 32px #0002">
-      <div style="font-size:16px;font-weight:500;margin-bottom:4px">Manage ${budgetState.bucket === 'work' ? 'Business' : 'Personal'} Categories</div>
-      <div style="font-size:12px;color:#898781;margin-bottom:16px">Rename, reorder, add, or remove categories. Budget amounts are per month.</div>
+    <div style="background:var(--surface);border-radius:12px;padding:24px;width:460px;max-height:82vh;overflow-y:auto;box-shadow:var(--shadow-lg);border:1px solid var(--border)">
+      <div style="font-size:16px;font-weight:500;margin-bottom:4px;color:var(--text)">Manage ${budgetState.bucket === 'work' ? 'Business' : 'Personal'} Categories</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Rename, reorder, add, or remove categories. Budget amounts are per month.</div>
       <div id="cat-rows-list">${renderRows(cats)}</div>
-      <button onclick="addCatRow()" style="width:100%;padding:8px;border:1px dashed #ddd;border-radius:6px;background:none;font-size:13px;color:#52514e;cursor:pointer;margin-top:4px">+ Add category</button>
+      <button onclick="addCatRow()" style="width:100%;padding:8px;border:1px dashed var(--border);border-radius:6px;background:none;font-size:13px;color:var(--text2);cursor:pointer;margin-top:4px">+ Add category</button>
       <div style="display:flex;gap:8px;margin-top:18px">
         <button onclick="saveCategories()" style="flex:1;background:#2a78d6;color:#fff;border:none;border-radius:6px;padding:9px;font-size:14px;cursor:pointer">Save</button>
-        <button onclick="document.getElementById('budget-cat-modal').remove()" style="flex:1;background:none;border:1px solid #ddd;border-radius:6px;padding:9px;font-size:14px;cursor:pointer">Cancel</button>
+        <button onclick="document.getElementById('budget-cat-modal').remove()" style="flex:1;background:none;border:1px solid var(--border);border-radius:6px;padding:9px;font-size:14px;cursor:pointer;color:var(--text)">Cancel</button>
       </div>
     </div>
   `;
@@ -484,13 +484,13 @@ function addCatRow() {
   div.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px';
   div.setAttribute('data-idx', idx);
   div.innerHTML = `
-    <select class="cat-color-pick" data-idx="${idx}" style="width:32px;height:32px;border:1px solid #ddd;border-radius:6px;padding:0 2px;cursor:pointer;font-size:16px">
+    <select class="cat-color-pick" data-idx="${idx}" style="width:32px;height:32px;border:1px solid var(--border);border-radius:6px;padding:0 2px;cursor:pointer;font-size:16px;background:var(--surface)">
       ${CAT_COLORS.map(col => `<option value="${col}" ${col===color?'selected':''} style="background:${col}">■</option>`).join('')}
     </select>
     <span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
-    <input class="cat-name-input" data-idx="${idx}" value="New Category" style="flex:1;font-size:14px;padding:5px 8px;border:1px solid #ddd;border-radius:6px">
-    <input class="cat-budget-input" data-idx="${idx}" type="number" value="0" min="0" step="10" style="width:80px;font-size:13px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;text-align:right">
-    <button onclick="removeCatRow(this)" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>
+    <input class="cat-name-input" data-idx="${idx}" value="New Category" style="flex:1;font-size:14px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">
+    <input class="cat-budget-input" data-idx="${idx}" type="number" value="0" min="0" step="10" style="width:80px;font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;text-align:right;background:var(--surface);color:var(--text)">
+    <button onclick="removeCatRow(this)" style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:0 4px" title="Remove">✕</button>
   `;
   div.querySelector('.cat-color-pick').addEventListener('change', function() {
     this.nextElementSibling.style.background = this.value;
@@ -541,20 +541,20 @@ function toggleBudgetEdit() {
   modal.id = 'budget-edit-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:#00000040;z-index:9999;display:flex;align-items:center;justify-content:center';
   modal.innerHTML = `
-    <div style="background:#fff;border-radius:12px;padding:24px;width:380px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px #0002">
-      <div style="font-size:16px;font-weight:500;margin-bottom:16px">Edit Monthly Budgets</div>
+    <div style="background:var(--surface);border-radius:12px;padding:24px;width:380px;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg);border:1px solid var(--border)">
+      <div style="font-size:16px;font-weight:500;margin-bottom:16px;color:var(--text)">Edit Monthly Budgets</div>
       ${cats.map(c => `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px;font-size:14px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text)">
             <span style="width:8px;height:8px;border-radius:50%;background:${c.color};display:inline-block"></span>${c.name}
           </div>
           <input type="number" data-cat="${c.name}" value="${budgetTarget(c.name)}" min="0" step="10"
-            style="width:90px;font-size:13px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;text-align:right">
+            style="width:90px;font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;text-align:right;background:var(--surface2);color:var(--text)">
         </div>
       `).join('')}
       <div style="display:flex;gap:8px;margin-top:18px">
         <button onclick="saveBudgetSettings()" style="flex:1;background:#2a78d6;color:#fff;border:none;border-radius:6px;padding:8px;font-size:14px;cursor:pointer">Save</button>
-        <button onclick="document.getElementById('budget-edit-modal').remove()" style="flex:1;background:none;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:14px;cursor:pointer">Cancel</button>
+        <button onclick="document.getElementById('budget-edit-modal').remove()" style="flex:1;background:none;border:1px solid var(--border);border-radius:6px;padding:8px;font-size:14px;cursor:pointer;color:var(--text)">Cancel</button>
       </div>
     </div>
   `;
