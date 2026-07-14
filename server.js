@@ -9835,6 +9835,50 @@ Instructions:
     });
 
     const brief = msg.content.find(b => b.type === 'text')?.text?.trim() || 'No brief generated.';
+
+    // ── HTML version (for CRM pane + browser) ──
+    if (req.query.html === '1') {
+      const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      let bodyHtml = '';
+      const lines = brief.split('\n');
+      let i = 0;
+      while (i < lines.length) {
+        const line = lines[i].trim();
+        if (!line || /^━+$/.test(line)) { i++; continue; }
+        if (line.startsWith('🏠')) {
+          bodyHtml += `<h1>${esc(line)}</h1>`;
+        } else if (line.startsWith('📍') || line.startsWith('🇺🇸')) {
+          bodyHtml += `<h2>${esc(line)}</h2>`;
+        } else if (line.startsWith('•')) {
+          const inner = line.slice(1).trim();
+          const dashIdx = inner.indexOf(' — ');
+          const title   = dashIdx > -1 ? inner.slice(0, dashIdx) : inner;
+          const summary = dashIdx > -1 ? inner.slice(dashIdx + 3) : '';
+          const next = lines[i+1]?.trim() || '';
+          const url = /^https?:\/\//.test(next) ? next : '';
+          if (url) i++;
+          bodyHtml += `<div class="story">
+            <a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
+            ${summary ? `<div class="sum">— ${esc(summary)}</div>` : ''}
+          </div>`;
+        }
+        i++;
+      }
+      return res.type('html').send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif;background:#1A1A1C;color:#EDEDF0;padding:24px;max-width:700px}
+h1{font-size:15px;font-weight:600;color:#E8681A;padding-bottom:14px;border-bottom:1px solid #383840;margin-bottom:20px;letter-spacing:.01em}
+h2{font-size:11px;font-weight:600;color:#9090A0;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 12px}
+.story{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #2C2C30}
+.story:last-child{border-bottom:none}
+.story a{color:#EDEDF0;font-weight:500;font-size:14px;line-height:1.45;text-decoration:none;display:block}
+.story a:hover{color:#E8681A}
+.sum{font-size:12px;color:#9090A0;margin-top:5px;line-height:1.4}
+</style></head><body>${bodyHtml}</body></html>`);
+    }
+
     res.type('text').send(brief);
 
   } catch (e) {

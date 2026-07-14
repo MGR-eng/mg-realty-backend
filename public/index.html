@@ -521,6 +521,8 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
     <button class="nav-item" onclick="showPane('properties',this)"><i class="ti ti-building"></i><span>Properties</span></button>
     <button class="nav-item nav-sub" onclick="showPane('leases',this)"><span>Leases</span></button>
 
+    <button class="nav-item" onclick="showPane('morning-brief',this)"><i class="ti ti-news"></i><span>Morning Brief</span></button>
+
     <button class="nav-item" onclick="showPane('content',this)"><i class="ti ti-speakerphone"></i><span>Marketing</span></button>
     <button class="nav-item nav-sub" onclick="showPane('content',this)"><span>Content</span></button>
     <button class="nav-item nav-sub" onclick="showPane('dm-import',this)"><span>DM Importer</span></button>
@@ -3032,6 +3034,17 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
 </div>
 
 <!-- ── Newsletter Builder Pane ── -->
+<div id="pane-morning-brief" class="pane">
+  <div class="page-title"><i class="ti ti-news" style="margin-right:6px;color:#E8681A"></i>Morning Brief</div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+    <button class="btn btn-primary" onclick="loadMorningBrief()" id="brief-refresh-btn"><i class="ti ti-refresh"></i> Refresh</button>
+    <span id="brief-status" style="font-size:12px;color:var(--text2)"></span>
+  </div>
+  <div id="brief-frame-wrap" style="border-radius:10px;overflow:hidden;border:1px solid var(--border);min-height:400px;background:var(--surface)">
+    <iframe id="brief-iframe" style="width:100%;min-height:600px;border:none;display:block" src="about:blank"></iframe>
+  </div>
+</div>
+
 <div id="pane-newsletter" class="pane">
   <div class="topbar">
     <div class="page-title"><i class="ti ti-mail-forward" style="margin-right:6px;color:var(--accent)"></i>Newsletter Builder</div>
@@ -4279,6 +4292,7 @@ function showPane(id,el){
   if(id==='response-tracker') renderResponseTracker();
   if(id==='meeting-notes') initMeetingNotes();
   if(id==='budget') initBudget();
+  if(id==='morning-brief') loadMorningBrief();
 }
 function toggleMoreSheet(){
   document.getElementById('moreSheet').classList.toggle('open');
@@ -14762,6 +14776,36 @@ function renderMeetingResults(data) {
   }
 
   document.getElementById('mn-results').style.display = 'block';
+}
+
+// ── Morning Brief ─────────────────────────────────────────────────────────────
+let briefLoaded = false;
+async function loadMorningBrief(force) {
+  if (briefLoaded && !force) return;
+  const status = document.getElementById('brief-status');
+  const iframe = document.getElementById('brief-iframe');
+  const btn = document.getElementById('brief-refresh-btn');
+  if (!iframe) return;
+  if (status) status.textContent = 'Fetching latest news…';
+  if (btn) btn.disabled = true;
+  briefLoaded = false;
+  try {
+    const r = await fetch(BACKEND + '/api/re-news?html=1');
+    const html = await r.text();
+    // Write into iframe
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open(); doc.write(html); doc.close();
+    // Auto-size iframe to content
+    setTimeout(() => {
+      try { iframe.style.minHeight = (doc.body.scrollHeight + 32) + 'px'; } catch(_) {}
+    }, 200);
+    if (status) status.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    briefLoaded = true;
+  } catch(e) {
+    if (status) status.textContent = 'Error loading news — try again';
+    console.error('Morning brief error:', e);
+  }
+  if (btn) btn.disabled = false;
 }
 
 function initMeetingNotes() {
