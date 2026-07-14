@@ -7589,19 +7589,41 @@ app.post('/api/fb-post-generate', async (req, res) => {
       : 'fall (serious buyers still active, pre-holiday window closing)';
     const area = neighborhood || 'Los Angeles';
 
+    // Helper: quick web search snippet
+    const webSnippet = async (query) => {
+      try {
+        const m = await anthropic.messages.create({
+          model: 'claude-opus-4-6', max_tokens: 400,
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+          messages: [{ role: 'user', content: query }]
+        }, { headers: { 'anthropic-beta': 'web-search-2025-03-05' } });
+        return m.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      } catch(e) { console.warn('Web search failed:', e.message); return ''; }
+    };
+
     // For Rate Alert: fetch current rate via web search first
     let currentRate = '~7%';
     if (postType === 'ratealert') {
-      try {
-        const rm = await anthropic.messages.create({
-          model: 'claude-opus-4-6', max_tokens: 150,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [{ role: 'user', content: 'What is the current average 30-year fixed mortgage rate right now in the US? Reply with ONLY the rate number, e.g. "6.87%"' }]
-        }, { headers: { 'anthropic-beta': 'web-search-2025-03-05' } });
-        const rateText = rm.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-        const rateMatch = rateText.match(/[\d.]+%/);
-        if (rateMatch) currentRate = rateMatch[0];
-      } catch(e) { console.warn('Rate fetch failed:', e.message); }
+      const rateText = await webSnippet('What is the current average 30-year fixed mortgage rate right now in the US? Reply with ONLY the rate number, e.g. "6.87%"');
+      const rateMatch = rateText.match(/[\d.]+%/);
+      if (rateMatch) currentRate = rateMatch[0];
+    }
+
+    // For market/commentary/compare: search for current context if stats are sparse
+    let liveContext = '';
+    const statsProvided = stats && (stats.active || stats.medianPrice || stats.dom);
+    if ((postType === 'market' || postType === 'commentary') && !statsProvided) {
+      liveContext = await webSnippet(
+        `Current real estate market conditions in ${area} as of ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}. ` +
+        `Find: median home price, active listings, days on market, price trends, and any notable recent developments. Be concise.`
+      );
+    }
+    if (postType === 'compare') {
+      const area2 = neighborhood2 || 'Silver Lake';
+      liveContext = await webSnippet(
+        `Current real estate market comparison: ${area} vs ${area2} in Los Angeles as of ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}. ` +
+        `Find median prices, trends, and what makes each neighborhood distinct for buyers right now. Be concise.`
+      );
     }
 
     const HASHTAG_INSTRUCTION = `
@@ -7625,6 +7647,7 @@ Market data:
 - Pending: ${s.pending || 'N/A'}
 - Sold this month: ${s.sold || 'N/A'}
 ${s.angle ? '- Matt\'s take: ' + s.angle : ''}
+${liveContext ? '\nCurrent market context from live search:\n' + liveContext : ''}
 
 Rules for both versions:
 - Hook in line 1 (FB cuts off after 2-3 lines — must make people click "See more")
@@ -7763,6 +7786,7 @@ Neighborhoods: ${area} vs ${neighborhood2 || 'Silver Lake'}
 Buyer type/context: general LA buyers
 Seasonal context: ${seasonal}
 Tone: ${toneGuide[tone] || toneGuide.expert}
+${liveContext ? '\nCurrent data from live search:\n' + liveContext : ''}
 
 Rules:
 - Frame it as a genuine, useful comparison — not a sales pitch for either
