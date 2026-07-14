@@ -2797,6 +2797,13 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
             <label>Neighborhood</label>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
+              <button type="button" onclick="fbSetArea('Los Angeles','')" style="padding:2px 9px;font-size:11px;border-radius:12px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text2)">All LA</button>
+              <button type="button" onclick="fbSetArea('West Hollywood','90046')" style="padding:2px 9px;font-size:11px;border-radius:12px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text2)">WeHo</button>
+              <button type="button" onclick="fbSetArea('Silver Lake','90026')" style="padding:2px 9px;font-size:11px;border-radius:12px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text2)">Silver Lake</button>
+              <button type="button" onclick="fbSetArea('Los Feliz','90027')" style="padding:2px 9px;font-size:11px;border-radius:12px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text2)">Los Feliz</button>
+              <button type="button" onclick="fbSetArea('Echo Park','90026')" style="padding:2px 9px;font-size:11px;border-radius:12px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text2)">Echo Park</button>
+            </div>
             <input id="fb-neighborhood" placeholder="West Hollywood, Silver Lake…">
           </div>
           <div>
@@ -2825,6 +2832,18 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
           </label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
             <input type="radio" name="fb-type" value="commentary" onchange="fbSwitchType('commentary')" style="width:auto"> 💬 Market Commentary
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
+            <input type="radio" name="fb-type" value="openhouse" onchange="fbSwitchType('openhouse')" style="width:auto"> 🚪 Open House
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
+            <input type="radio" name="fb-type" value="poll" onchange="fbSwitchType('poll')" style="width:auto"> 🗳️ Poll / Engagement
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
+            <input type="radio" name="fb-type" value="ratealert" onchange="fbSwitchType('ratealert')" style="width:auto"> 🔔 Rate Alert
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--text)">
+            <input type="radio" name="fb-type" value="compare" onchange="fbSwitchType('compare')" style="width:auto"> 🗺️ Neighborhood Comparison
           </label>
         </div>
       </div>
@@ -2892,13 +2911,68 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
         </div>
       </div>
 
+      <!-- Open House card -->
+      <div class="tw" id="fb-openhouse-card" style="padding:16px;display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Open House Details</div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="fb-oh-address" placeholder="Property address">
+          <input id="fb-oh-price" placeholder="Asking price">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="fb-oh-date" placeholder="Date (e.g. Sunday July 20)">
+          <input id="fb-oh-time" placeholder="Time (e.g. 1–4 PM)">
+        </div>
+        <textarea id="fb-oh-highlights" placeholder="What makes this home special? (3 bed, rooftop deck, Silver Lake views, gut-renovated kitchen…)" style="height:60px;resize:none"></textarea>
+      </div>
+
+      <!-- Poll card -->
+      <div class="tw" id="fb-poll-card" style="padding:16px;display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Poll Setup</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="fb-poll-a" placeholder="Option A (e.g. WeHo)">
+          <input id="fb-poll-b" placeholder="Option B (e.g. Silver Lake)">
+        </div>
+        <input id="fb-poll-context" placeholder="Budget / context (e.g. $1.2M, first-time buyer)" style="margin-bottom:8px">
+        <input id="fb-poll-buyer" placeholder="Buyer type (e.g. young couple, investor, downsizer)">
+      </div>
+
+      <!-- Rate Alert card -->
+      <div class="tw" id="fb-ratealert-card" style="padding:16px;display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Rate Alert</div>
+        <p style="font-size:12px;color:var(--text2);margin:0">Current mortgage rate will be auto-pulled from the web. Just hit Generate — Matt's take will be woven in automatically.</p>
+      </div>
+
+      <!-- Neighborhood Comparison card -->
+      <div class="tw" id="fb-compare-card" style="padding:16px;display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Neighborhoods to Compare</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input id="fb-compare-a" placeholder="Neighborhood A (auto-filled from Area)">
+          <input id="fb-compare-b" placeholder="Neighborhood B (e.g. Silver Lake)">
+        </div>
+      </div>
+
       <!-- Output -->
       <div class="tw" id="fb-output" style="display:none">
         <div style="padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em"><i class="ti ti-brand-facebook"></i> Facebook Post — Ready to Copy</div>
+          <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em"><i class="ti ti-brand-facebook"></i> Facebook Post</div>
           <button class="btn btn-sm" onclick="fbCopy()" id="fb-copy-btn"><i class="ti ti-copy"></i> Copy</button>
         </div>
+        <!-- A/B tabs -->
+        <div style="display:flex;gap:4px;padding:10px 16px 0;border-bottom:1px solid var(--border)">
+          <button id="fb-tab-a" onclick="fbSelectVersion('A')" style="padding:4px 14px;border-radius:6px 6px 0 0;border:1px solid var(--border);border-bottom:none;background:#fff;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer">Version A</button>
+          <button id="fb-tab-b" onclick="fbSelectVersion('B')" style="padding:4px 14px;border-radius:6px 6px 0 0;border:1px solid var(--border);border-bottom:1px solid #fff;background:none;font-size:12px;font-weight:400;color:var(--text2);cursor:pointer">Version B</button>
+        </div>
         <div id="fb-out-text" style="padding:16px;font-size:14px;line-height:1.8;white-space:pre-wrap;color:var(--text)"></div>
+        <!-- Hashtags -->
+        <div id="fb-hashtags-row" style="padding:0 16px 12px;display:none">
+          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Suggested Hashtags <span style="font-weight:400;cursor:pointer;color:var(--accent)" onclick="fbCopyHashtags()">(copy all)</span></div>
+          <div id="fb-hashtags-list" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+        </div>
+        <!-- Image prompt -->
+        <div id="fb-image-prompt-row" style="margin:0 16px 14px;padding:10px 12px;background:var(--surface2);border-radius:8px;display:none">
+          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">📸 Pair with</div>
+          <div id="fb-image-prompt-text" style="font-size:12px;color:var(--text2);line-height:1.5"></div>
+        </div>
         <div style="padding:0 16px 14px;display:flex;gap:8px">
           <button class="btn btn-sm" onclick="fbGenerate()" style="font-size:11px"><i class="ti ti-refresh"></i> Regenerate</button>
           <button class="btn btn-sm" onclick="fbAddToCalendar()" style="font-size:11px;color:var(--blue);border-color:var(--blue-bd)"><i class="ti ti-calendar-plus"></i> Add to Calendar</button>
@@ -14029,15 +14103,51 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── Facebook Post Generator ─────────────────────────────────────
 var fbMarketData = null;
 
+var fbVersionA = '', fbVersionB = '', fbActiveVersion = 'A';
+
 function fbSwitchType(type) {
-  var statsCard = document.getElementById('fb-stats-card');
-  var propCard = document.getElementById('fb-property-card');
-  var soldExtra = document.getElementById('fb-sold-extra');
+  var statsCard    = document.getElementById('fb-stats-card');
+  var propCard     = document.getElementById('fb-property-card');
+  var ohCard       = document.getElementById('fb-openhouse-card');
+  var pollCard     = document.getElementById('fb-poll-card');
+  var rateCard     = document.getElementById('fb-ratealert-card');
+  var compareCard  = document.getElementById('fb-compare-card');
+  var soldExtra    = document.getElementById('fb-sold-extra');
   if (!statsCard) return;
-  statsCard.style.display = (type === 'market' || type === 'commentary') ? '' : 'none';
-  propCard.style.display = (type === 'listing' || type === 'sold') ? '' : 'none';
+  statsCard.style.display   = (type === 'market' || type === 'commentary') ? '' : 'none';
+  propCard.style.display    = (type === 'listing' || type === 'sold') ? '' : 'none';
+  ohCard.style.display      = type === 'openhouse' ? '' : 'none';
+  pollCard.style.display    = type === 'poll' ? '' : 'none';
+  rateCard.style.display    = type === 'ratealert' ? '' : 'none';
+  compareCard.style.display = type === 'compare' ? '' : 'none';
   if (soldExtra) soldExtra.style.display = type === 'sold' ? '' : 'none';
+  // Pre-fill compare field A from neighborhood
+  if (type === 'compare') {
+    var nb = document.getElementById('fb-neighborhood').value.trim();
+    if (nb) document.getElementById('fb-compare-a').value = nb;
+  }
   document.getElementById('fb-output').style.display = 'none';
+}
+
+function fbSelectVersion(v) {
+  fbActiveVersion = v;
+  document.getElementById('fb-out-text').innerText = v === 'A' ? fbVersionA : fbVersionB;
+  document.getElementById('fb-tab-a').style.fontWeight = v === 'A' ? '600' : '400';
+  document.getElementById('fb-tab-b').style.fontWeight = v === 'B' ? '600' : '400';
+  document.getElementById('fb-tab-a').style.color = v === 'A' ? 'var(--accent)' : 'var(--text2)';
+  document.getElementById('fb-tab-b').style.color = v === 'B' ? 'var(--accent)' : 'var(--text2)';
+  document.getElementById('fb-tab-a').style.background = v === 'A' ? '#fff' : 'none';
+  document.getElementById('fb-tab-b').style.background = v === 'B' ? '#fff' : 'none';
+}
+
+function fbCopyHashtags() {
+  var tags = Array.from(document.querySelectorAll('#fb-hashtags-list span')).map(s => s.textContent).join(' ');
+  navigator.clipboard.writeText(tags).then(function() { toast('Hashtags copied ✓'); });
+}
+
+function fbSetArea(neighborhood, zip) {
+  document.getElementById('fb-neighborhood').value = neighborhood;
+  document.getElementById('fb-zip').value = zip;
 }
 
 function fbPullData() {
@@ -14093,7 +14203,6 @@ function fbGenerate() {
   var neighborhood = document.getElementById('fb-neighborhood').value.trim();
   var zip = document.getElementById('fb-zip').value.trim();
   var tone = document.getElementById('fb-tone').value;
-
   var payload = { postType: postType, neighborhood: neighborhood || zip || 'Los Angeles', tone: tone };
 
   if (postType === 'market' || postType === 'commentary') {
@@ -14106,7 +14215,7 @@ function fbGenerate() {
       sold: document.getElementById('fb-sold').value,
       angle: document.getElementById('fb-market-angle').value
     };
-  } else {
+  } else if (postType === 'listing' || postType === 'sold') {
     payload.property = {
       address: document.getElementById('fb-prop-addr').value,
       price: document.getElementById('fb-prop-price').value,
@@ -14117,6 +14226,25 @@ function fbGenerate() {
       story: document.getElementById('fb-prop-story').value
     };
     if (postType === 'sold') payload.saleStory = document.getElementById('fb-sold-story').value;
+  } else if (postType === 'openhouse') {
+    payload.openHouse = {
+      address:    document.getElementById('fb-oh-address').value,
+      price:      document.getElementById('fb-oh-price').value,
+      date:       document.getElementById('fb-oh-date').value,
+      time:       document.getElementById('fb-oh-time').value,
+      highlights: document.getElementById('fb-oh-highlights').value
+    };
+  } else if (postType === 'poll') {
+    payload.pollData = {
+      optionA:  document.getElementById('fb-poll-a').value || neighborhood,
+      optionB:  document.getElementById('fb-poll-b').value,
+      context:  document.getElementById('fb-poll-context').value,
+      buyerType:document.getElementById('fb-poll-buyer').value
+    };
+    payload.neighborhood2 = document.getElementById('fb-poll-b').value;
+  } else if (postType === 'compare') {
+    payload.neighborhood  = document.getElementById('fb-compare-a').value || neighborhood;
+    payload.neighborhood2 = document.getElementById('fb-compare-b').value;
   }
 
   var btn = document.getElementById('fb-gen-btn');
@@ -14124,8 +14252,7 @@ function fbGenerate() {
   btn.disabled = true;
 
   fetch('/api/fb-post-generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   })
   .then(function(r) { return r.json(); })
@@ -14133,11 +14260,35 @@ function fbGenerate() {
     btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Post';
     btn.disabled = false;
     if (data.error) { toast('Error: ' + data.error); return; }
-    document.getElementById('fb-out-text').innerText = data.post || '';
+
+    // Store both versions
+    fbVersionA = data.postA || data.post || '';
+    fbVersionB = data.postB || '';
+
+    // Show version A by default
+    fbSelectVersion('A');
     document.getElementById('fb-output').style.display = '';
+
+    // Hashtags
+    var hashRow = document.getElementById('fb-hashtags-row');
+    var hashList = document.getElementById('fb-hashtags-list');
+    if (data.hashtags && data.hashtags.length) {
+      hashList.innerHTML = data.hashtags.map(function(h) {
+        return '<span onclick="navigator.clipboard.writeText(\'' + h + '\').then(()=>toast(\'Copied!\'))" style="padding:2px 8px;background:var(--surface2);border-radius:12px;font-size:11px;color:var(--accent);cursor:pointer;border:1px solid var(--border)">' + h + '</span>';
+      }).join('');
+      hashRow.style.display = '';
+    } else { hashRow.style.display = 'none'; }
+
+    // Image prompt
+    var imgRow = document.getElementById('fb-image-prompt-row');
+    if (data.imagePrompt) {
+      document.getElementById('fb-image-prompt-text').textContent = data.imagePrompt;
+      imgRow.style.display = '';
+    } else { imgRow.style.display = 'none'; }
+
     document.getElementById('fb-output').scrollIntoView({ behavior: 'smooth', block: 'start' });
   })
-  .catch(function() {
+  .catch(function(e) {
     btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate Post';
     btn.disabled = false;
     toast('Generation failed — try again');
@@ -14145,8 +14296,10 @@ function fbGenerate() {
 }
 
 function fbCopy() {
-  var text = document.getElementById('fb-out-text').innerText;
-  navigator.clipboard.writeText(text).then(function() {
+  var postText = document.getElementById('fb-out-text').innerText;
+  var hashtags = Array.from(document.querySelectorAll('#fb-hashtags-list span')).map(function(s){return s.textContent;}).join(' ');
+  var full = postText + (hashtags ? '\n\n' + hashtags : '');
+  navigator.clipboard.writeText(full).then(function() {
     var btn = document.getElementById('fb-copy-btn');
     btn.innerHTML = '<i class="ti ti-check"></i> Copied!';
     btn.style.color = 'var(--green)';

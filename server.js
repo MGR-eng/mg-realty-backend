@@ -7573,23 +7573,49 @@ Return ONLY valid JSON: {"subject":"...","body":"..."}`;
 // ── Facebook Post Generator ───────────────────────────────────
 app.post('/api/fb-post-generate', async (req, res) => {
   try {
-    const { postType, neighborhood, tone, stats, property, saleStory } = req.body;
+    const { postType, neighborhood, neighborhood2, tone, stats, property, saleStory, openHouse, pollData } = req.body;
     const VOICE = `Matt Golden is a Los Angeles real estate agent with MG Realty. He's knowledgeable, warm, direct, and speaks like a trusted friend in the industry — not a corporate agent. Never salesy or hype-y. Always useful and human.`;
-
     const toneGuide = {
-      expert: 'Confident and authoritative but approachable — like the smartest person at a dinner party who also happens to be your friend.',
-      direct: 'Lead with the data. Short sentences. No fluff. The numbers tell the story.',
-      storytelling: 'Paint a picture. Open with a scene or moment, connect it to the market, end with a human insight.',
-      conversational: 'Like texting a friend who happens to know everything about LA real estate. Casual, warm, direct.'
+      expert:        'Confident and authoritative but approachable — like the smartest person at a dinner party who also happens to be your friend.',
+      direct:        'Lead with the data. Short sentences. No fluff. The numbers tell the story.',
+      storytelling:  'Paint a picture. Open with a scene or moment, connect it to the market, end with a human insight.',
+      conversational:'Like texting a friend who happens to know everything about LA real estate. Casual, warm, direct.'
     };
-
     const month = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const mo = new Date().getMonth();
+    const seasonal = mo <= 1 || mo === 11 ? 'year-end/winter (motivated sellers, less competition, serious buyers only)'
+      : mo <= 4 ? 'spring (peak buying season, competitive, prices trending up)'
+      : mo <= 7 ? 'summer (active market, families in transition, strong demand)'
+      : 'fall (serious buyers still active, pre-holiday window closing)';
+    const area = neighborhood || 'Los Angeles';
+
+    // For Rate Alert: fetch current rate via web search first
+    let currentRate = '~7%';
+    if (postType === 'ratealert') {
+      try {
+        const rm = await anthropic.messages.create({
+          model: 'claude-opus-4-6', max_tokens: 150,
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+          messages: [{ role: 'user', content: 'What is the current average 30-year fixed mortgage rate right now in the US? Reply with ONLY the rate number, e.g. "6.87%"' }]
+        }, { headers: { 'anthropic-beta': 'web-search-2025-03-05' } });
+        const rateText = rm.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+        const rateMatch = rateText.match(/[\d.]+%/);
+        if (rateMatch) currentRate = rateMatch[0];
+      } catch(e) { console.warn('Rate fetch failed:', e.message); }
+    }
+
+    const HASHTAG_INSTRUCTION = `
+"hashtags": generate 8-10 relevant hashtags. Include: area-specific (e.g. #${area.replace(/\s+/g,'').replace(/,.*/, '')}RealEstate), general LA (#LARealEstate #LosAngelesHomes), post-type specific, and evergreen (#HomeBuying #RealEstateTips #MGRealty). Return as a JSON array of strings.
+"imagePrompt": one sentence describing the ideal photo or graphic to pair with this post (be specific — type of shot, subject, mood).`;
+
     let prompt = '';
 
     if (postType === 'market' || postType === 'commentary') {
       const s = stats || {};
-      prompt = `Write a Facebook post for Matt Golden, LA real estate agent, about the ${neighborhood} real estate market for ${month}.
+      prompt = `${VOICE}
 
+Write TWO versions of a Facebook post about the ${area} real estate market for ${month}.
+Seasonal context: ${seasonal}
 Tone: ${toneGuide[tone] || toneGuide.expert}
 
 Market data:
@@ -7598,87 +7624,180 @@ Market data:
 - Avg days on market: ${s.dom || 'N/A'}
 - Pending: ${s.pending || 'N/A'}
 - Sold this month: ${s.sold || 'N/A'}
-${s.angle ? '\nMatt\'s angle / take: ' + s.angle : ''}
+${s.angle ? '- Matt\'s take: ' + s.angle : ''}
 
-Write a Facebook post that:
-- Opens with a hook in the first line (Facebook cuts off after 2-3 lines — this line must make people click "See more")
-- Weaves the data into a narrative, not a bullet-point dump
-- Gives readers a clear "so what" — what does this mean for buyers or sellers right now?
-- Ends with a direct CTA (reply, DM, call — one clear ask)
-- Is 150-250 words
-- Reads like it came from a real person, not a marketing department
-- Plain text only, no hashtags (Matt adds those separately)
+Rules for both versions:
+- Hook in line 1 (FB cuts off after 2-3 lines — must make people click "See more")
+- Weave data into narrative, not a bullet dump
+- Clear "so what" for buyers/sellers right now
+- End with one direct CTA
+- 150-250 words, plain text, NO hashtags in the post body
 
-Return ONLY the post text, nothing else.`;
+Version A and B must have completely different opening hooks and angles.
+
+Return ONLY this JSON (no markdown):
+{"postA":"...","postB":"...",${HASHTAG_INSTRUCTION}}`;
 
     } else if (postType === 'listing') {
       const p = property || {};
-      prompt = `Write a Facebook post for Matt Golden, LA real estate agent, showcasing a property listing.
+      prompt = `${VOICE}
 
-Tone: ${toneGuide[tone] || toneGuide.expert}
-
-Property details:
-- Address: ${p.address || 'N/A'}
-- Price: ${p.price || 'N/A'}
-- Beds/Baths: ${p.beds || 'N/A'}
-- Sq ft: ${p.sqft || 'N/A'}
-- Type: ${p.type || 'N/A'}
-${p.link ? '- Link: ' + p.link : ''}
-${p.story ? '- What makes it special: ' + p.story : ''}
-
-Write a Facebook post that:
-- Opens with something that makes you want to keep reading — NOT "Just listed!" or "Check out this amazing home!" (too generic)
-- Tells the story of this property — who would love it and why
-- Includes key details naturally, not as a spec sheet
-- Ends with a clear CTA (DM, call, link to listing)
-- Is 100-180 words
-- Plain text only, no hashtags
-
-Return ONLY the post text, nothing else.`;
-
-    } else if (postType === 'sold') {
-      const p = property || {};
-      prompt = `Write a "Just Sold" Facebook post for Matt Golden, LA real estate agent.
-
+Write TWO versions of a Facebook listing post.
+Seasonal context: ${seasonal}
 Tone: ${toneGuide[tone] || toneGuide.expert}
 
 Property:
-- Address: ${p.address || 'N/A'}
-- Sale price: ${p.price || 'N/A'}
-- Beds/Baths: ${p.beds || 'N/A'}
-- Sq ft: ${p.sqft || 'N/A'}
+- Address: ${p.address || 'N/A'} (${area})
+- Price: ${p.price || 'N/A'}
+- Beds/Baths: ${p.beds || 'N/A'} | Sq ft: ${p.sqft || 'N/A'} | Type: ${p.type || 'N/A'}
+${p.story ? '- What makes it special: ' + p.story : ''}
+${p.link ? '- Link: ' + p.link : ''}
+
+Rules:
+- Do NOT open with "Just listed!" or "Check out this amazing home!"
+- Tell the story — who would love it and why
+- Include key details naturally, not as a spec sheet
+- End with a CTA (DM/call/link)
+- 100-180 words, plain text, NO hashtags
+
+Return ONLY this JSON (no markdown):
+{"postA":"...","postB":"...",${HASHTAG_INSTRUCTION}}`;
+
+    } else if (postType === 'sold') {
+      const p = property || {};
+      prompt = `${VOICE}
+
+Write TWO versions of a "Just Sold" Facebook post.
+Seasonal context: ${seasonal}
+Tone: ${toneGuide[tone] || toneGuide.expert}
+
+Property:
+- Address: ${p.address || 'N/A'} (${area})
+- Sale price: ${p.price || 'N/A'} | Beds/Baths: ${p.beds || 'N/A'}
 ${p.story ? '- Property story: ' + p.story : ''}
 ${saleStory ? '- Sale story: ' + saleStory : ''}
 
-Write a Facebook post that:
-- Opens with something compelling — the outcome, a surprising detail, or what the sale signals about the market
-- Tells the story of the sale — not just the specs but what happened and why it matters
-- Includes a market insight (what does this sale say about the neighborhood right now?)
-- Ends with a CTA for people thinking about buying or selling
-- Is 120-200 words
-- Plain text only, no hashtags
+Rules:
+- Open with the outcome, a surprise, or what it signals — not "Just Sold!"
+- Tell the story of the sale
+- Include a market insight: what does this say about the neighborhood right now?
+- End with CTA for buyers/sellers
+- 120-200 words, plain text, NO hashtags
 
-Return ONLY the post text, nothing else.`;
+Return ONLY this JSON (no markdown):
+{"postA":"...","postB":"...",${HASHTAG_INSTRUCTION}}`;
+
+    } else if (postType === 'openhouse') {
+      const oh = openHouse || {};
+      prompt = `${VOICE}
+
+Write TWO versions of an Open House announcement Facebook post.
+Seasonal context: ${seasonal}
+Tone: ${toneGuide[tone] || toneGuide.expert}
+
+Open House details:
+- Property: ${oh.address || 'N/A'} (${area})
+- Price: ${oh.price || 'N/A'}
+- Date: ${oh.date || 'N/A'} | Time: ${oh.time || 'N/A'}
+- Highlights: ${oh.highlights || 'N/A'}
+
+Rules:
+- Open with something that creates FOMO or excitement — not "Come visit!"
+- Make people feel like they'd be missing out if they skip it
+- Include the date/time clearly
+- End with "Hope to see you there" style CTA + invite people to DM for private showings
+- 80-140 words, plain text, NO hashtags
+
+Return ONLY this JSON (no markdown):
+{"postA":"...","postB":"...",${HASHTAG_INSTRUCTION}}`;
+
+    } else if (postType === 'poll') {
+      const pd = pollData || {};
+      prompt = `${VOICE}
+
+Write TWO versions of an engagement/poll Facebook post.
+Seasonal context: ${seasonal}
+Tone: ${toneGuide[tone] || toneGuide.expert}
+
+Poll concept: ${pd.concept || `${area} vs ${neighborhood2 || 'neighboring area'} for ${pd.buyerType || 'buyers'}`}
+Option A: ${pd.optionA || area}
+Option B: ${pd.optionB || neighborhood2 || 'neighboring neighborhood'}
+Budget/context: ${pd.context || 'around $1.2M'}
+
+Rules:
+- Frame it as a fun but genuinely interesting debate
+- Give ONE compelling reason for each option (real, not fluffy)
+- Ask people to comment A or B and WHY — the "why" drives longer comments which the algorithm loves
+- Keep it under 100 words — short polls get more responses
+- End with "Drop A or B below 👇" or similar
+- Plain text, NO hashtags
+
+Return ONLY this JSON (no markdown):
+{"postA":"...","postB":"...",${HASHTAG_INSTRUCTION}}`;
+
+    } else if (postType === 'ratealert') {
+      prompt = `${VOICE}
+
+Write TWO versions of a mortgage rate update Facebook post.
+Current 30-year fixed rate: ${currentRate}
+Seasonal context: ${seasonal}
+Area focus: ${area}
+Tone: ${toneGuide[tone] || toneGuide.expert}
+
+Rules:
+- Open with the rate and why it matters RIGHT NOW for buyers/sellers in LA
+- Give a concrete dollar example (e.g. "on a $1.2M purchase, that's $X/month")
+- Include Matt's take — is now a good time to lock? Wait? What's the move?
+- Keep it under 150 words — rate posts do better short
+- End with CTA to DM for a lender referral or to talk strategy
+- Plain text, NO hashtags
+
+Return ONLY this JSON (no markdown):
+{"postA":"...","postB":"...",${HASHTAG_INSTRUCTION}}`;
+
+    } else if (postType === 'compare') {
+      prompt = `${VOICE}
+
+Write TWO versions of a neighborhood comparison Facebook post.
+Neighborhoods: ${area} vs ${neighborhood2 || 'Silver Lake'}
+Buyer type/context: general LA buyers
+Seasonal context: ${seasonal}
+Tone: ${toneGuide[tone] || toneGuide.expert}
+
+Rules:
+- Frame it as a genuine, useful comparison — not a sales pitch for either
+- Hit 2-3 real differences: price point, vibe, walkability, school ratings, appreciation trend, etc.
+- Be specific and honest — this is what makes it shareable
+- End with "Which would you choose and why? Drop it below 👇"
+- 150-200 words, plain text, NO hashtags
+
+Return ONLY this JSON (no markdown):
+{"postA":"...","postB":"...",${HASHTAG_INSTRUCTION}}`;
     }
+
+    if (!prompt) throw new Error('Unknown post type: ' + postType);
 
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1400, messages: [{ role: 'user', content: prompt }] })
     });
-
     const aiData = await aiRes.json();
-    const post = aiData.content?.[0]?.text?.trim() || '';
-    if (!post) throw new Error('No content from AI');
-    res.json({ post });
+    let raw = aiData.content?.[0]?.text?.trim() || '';
+    if (!raw) throw new Error('No content from AI');
+
+    // Parse JSON response
+    raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+    const js = raw.indexOf('{'), je = raw.lastIndexOf('}');
+    if (js === -1) throw new Error('AI did not return JSON');
+    const parsed = JSON.parse(raw.slice(js, je + 1).replace(/,\s*([}\]])/g, '$1'));
+
+    res.json({
+      postA:       parsed.postA || parsed.post || '',
+      postB:       parsed.postB || '',
+      hashtags:    parsed.hashtags || [],
+      imagePrompt: parsed.imagePrompt || ''
+    });
 
   } catch(e) {
     console.error('FB post generate error:', e.message);
