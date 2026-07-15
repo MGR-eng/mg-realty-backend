@@ -1320,19 +1320,19 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
   <div class="topbar">
     <div class="page-title"><i class="ti ti-notebook" style="margin-right:6px;color:#E8681A"></i>Meeting Notes</div>
   </div>
-  <div class="pane-body" style="max-width:860px;margin:0 auto;padding:24px 20px">
+  <div class="pane-body" style="max-width:860px;margin:0 auto;padding:10px 20px">
 
     <!-- Two-column layout -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
 
       <!-- LEFT: Brain dump form -->
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em">New Note</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em">New Note</div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Meeting type</label>
-            <select id="mn-type" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px">
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Meeting type</label>
+            <select id="mn-type" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px">
               <option value="phone call">Phone call</option>
               <option value="in-person meeting">In-person</option>
               <option value="showing">Showing</option>
@@ -1342,21 +1342,19 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
             </select>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Date</label>
-            <input type="date" id="mn-date" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px;box-sizing:border-box">
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Date</label>
+            <input type="date" id="mn-date" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box;color-scheme:dark">
           </div>
         </div>
 
         <div style="margin-bottom:12px">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Link to lead (optional)</label>
-          <select id="mn-lead" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px">
-            <option value="">— No lead —</option>
-          </select>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Attendees</label>
+          <input type="text" id="mn-attendees" placeholder="e.g. Sarah Johnson, Mike Chen" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box">
         </div>
 
         <div style="margin-bottom:14px">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Brain dump — type messy, AI will clean it up</label>
-          <textarea id="mn-dump" rows="10" placeholder="e.g. Called Sarah about Brentwood showing. She likes the layout but worried about street noise. Budget is firm at 1.2M. Said she wants to decide by end of month. Need to send comps and schedule a second look. Husband hasn't seen it yet..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text1);font-size:13px;resize:vertical;box-sizing:border-box;line-height:1.5"></textarea>
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Brain dump — type messy, AI will clean it up</label>
+          <textarea id="mn-dump" rows="10" placeholder="e.g. Called Sarah about Brentwood showing. She likes the layout but worried about street noise. Budget is firm at 1.2M. Said she wants to decide by end of month. Need to send comps and schedule a second look. Husband hasn't seen it yet..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px;resize:vertical;box-sizing:border-box;line-height:1.5"></textarea>
         </div>
 
         <!-- Live recording -->
@@ -1397,7 +1395,7 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
 
       <!-- RIGHT: AI output -->
       <div id="mn-results" style="display:none">
-        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em">AI Summary</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em">AI Summary</div>
 
         <!-- Sentiment badge -->
         <div id="mn-sentiment-badge" style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-bottom:14px"></div>
@@ -1409,9 +1407,9 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         </div>
 
         <!-- Next step -->
-        <div style="background:#fff8f0;border:1px solid #fde8d0;border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="background:#241A0A;border:1px solid #5C3010;border-radius:8px;padding:12px;margin-bottom:12px">
           <div style="font-size:11px;color:#E8681A;margin-bottom:4px;font-weight:600">⚡ NEXT STEP</div>
-          <div id="mn-next-step" style="font-size:13px;color:var(--text1);font-weight:500"></div>
+          <div id="mn-next-step" style="font-size:13px;color:var(--text);font-weight:500"></div>
         </div>
 
         <!-- Action items -->
@@ -14631,7 +14629,7 @@ async function handleMeetingFileUpload(input) {
   if (!file) return;
   document.getElementById('mn-file-name').textContent = file.name;
 
-  const leadId      = document.getElementById('mn-lead').value;
+  const attendees   = document.getElementById('mn-attendees')?.value || '';
   const meetingType = document.getElementById('mn-type').value;
   const date        = document.getElementById('mn-date').value;
 
@@ -14639,7 +14637,7 @@ async function handleMeetingFileUpload(input) {
   document.getElementById('mn-results').style.display = 'none';
 
   try {
-    const params = new URLSearchParams({ leadId, meetingType, date });
+    const params = new URLSearchParams({ attendees, meetingType, date });
     const r = await fetch(`/api/transcribe-meeting?${params}`, {
       method: 'POST',
       headers: { 'Content-Type': file.type || 'audio/m4a' },
@@ -14713,14 +14711,14 @@ async function toggleMeetingRecording() {
 }
 
 async function uploadMeetingRecording(blob, mimeType) {
-  const leadId      = document.getElementById('mn-lead').value;
+  const attendees   = document.getElementById('mn-attendees')?.value || '';
   const meetingType = document.getElementById('mn-type').value;
   const date        = document.getElementById('mn-date').value;
 
   document.getElementById('mn-processing').style.display = 'block';
   document.getElementById('mn-results').style.display = 'none';
 
-  const params = new URLSearchParams({ leadId, meetingType, date });
+  const params = new URLSearchParams({ attendees, meetingType, date });
   try {
     const r = await fetch(`/api/transcribe-meeting?${params}`, {
       method: 'POST',
@@ -14812,20 +14810,12 @@ function initMeetingNotes() {
   const dateEl = document.getElementById('mn-date');
   if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
 
-  const sel = document.getElementById('mn-lead');
-  if (sel) {
-    const leads = (JSON.parse(localStorage.getItem('crm_leads') || '[]'))
-      .sort((a,b) => (`${a.firstName||''} ${a.lastName||''}`).localeCompare(`${b.firstName||''} ${b.lastName||''}`));
-    sel.innerHTML = '<option value="">— No lead —</option>' +
-      leads.map(l => `<option value="${l.id}">${l.firstName||''} ${l.lastName||''} ${l.phone ? '('+l.phone+')' : ''}</option>`).join('');
-  }
-
   loadCallLog();
 }
 
 async function processMeetingNotes() {
   const brainDump   = document.getElementById('mn-dump').value.trim();
-  const leadId      = document.getElementById('mn-lead').value;
+  const attendees   = document.getElementById('mn-attendees')?.value || '';
   const meetingType = document.getElementById('mn-type').value;
   const date        = document.getElementById('mn-date').value;
 
@@ -14838,7 +14828,7 @@ async function processMeetingNotes() {
     const r = await fetch('/api/process-meeting-notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brainDump, leadId, meetingType, date })
+      body: JSON.stringify({ brainDump, attendees, meetingType, date })
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Failed');
