@@ -2252,11 +2252,11 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
           <div style="font-size:12px;color:var(--text3);margin-top:-6px">Print or screenshot this QR code for your sign-in table. Visitors text to opt in instantly.</div>
           <div class="fg">
             <label>Property Address</label>
-            <input id="oh-address" type="text" placeholder="1234 Kings Rd, West Hollywood, CA 90069">
+            <input id="oh-qr-addr" type="text" placeholder="1234 Kings Rd, West Hollywood, CA 90069">
           </div>
           <div class="fg">
             <label>Open House Date (optional)</label>
-            <input id="oh-date" type="date">
+            <input id="oh-qr-date" type="date">
           </div>
           <button class="btn btn-gold" onclick="generateOpenHouseQR()" style="width:100%"><i class="ti ti-qrcode"></i> Generate QR Code</button>
 
@@ -8122,9 +8122,9 @@ async function gifGenerate() {
 }
 
 function generateOpenHouseQR() {
-  var address = (document.getElementById('oh-address').value || '').trim();
+  var address = (document.getElementById('oh-qr-addr').value || '').trim();
   if (!address) { if(typeof toast==='function') toast('Enter a property address','err'); return; }
-  var date = document.getElementById('oh-date').value;
+  var date = document.getElementById('oh-qr-date').value;
 
   var keyword = 'OPEN ' + address;
   var phone = '3236883855';
