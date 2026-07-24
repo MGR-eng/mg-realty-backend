@@ -226,7 +226,7 @@ function renderBudgetOverview(cats, bycat) {
   });
 
   return `
-    <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;gap:6px;padding:0 12px 6px;font-size:11px;color:var(--text2)">
+    <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 64px;gap:6px;padding:6px 12px 8px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);margin-bottom:6px">
       <div>Category</div><div style="text-align:right">Budget</div><div style="text-align:right">Spent</div><div style="text-align:right">Left</div><div></div>
     </div>
     ${cats.map(c => {
@@ -235,7 +235,7 @@ function renderBudgetOverview(cats, bycat) {
       const left = budget - spent;
       const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
       const barColor = pct >= 100 ? '#e34948' : pct >= 80 ? '#eda100' : c.color;
-      const leftColor = left < 0 ? '#e34948' : left < budget * 0.2 ? '#eda100' : '#1baf7a';
+      const leftColor = left < 0 ? '#e34948' : left < budget * 0.2 ? '#eda100' : '#4ADE80';
       const isOpen = budgetState.expandedCat === c.name;
       const catTxns = (expByCat[c.name] || []).sort((a,b) => (b.date||'').localeCompare(a.date||''));
       const hasSpend = catTxns.length > 0;
@@ -249,7 +249,7 @@ function renderBudgetOverview(cats, bycat) {
               ${c.name}
               ${hasSpend ? `<span style="font-size:10px;color:var(--text2)">${isOpen ? '▲' : '▼'}</span>` : ''}
             </div>
-            <div style="font-size:13px;text-align:right;color:var(--text2)">${budgetFmt(budget)}</div>
+            <div style="font-size:13px;text-align:right;color:var(--text)">${budgetFmt(budget)}</div>
             <div style="font-size:13px;text-align:right;font-weight:500;color:var(--text)">${spent > 0 ? budgetFmt(spent) : '—'}</div>
             <div style="font-size:13px;text-align:right;color:${leftColor}">${(left < 0 ? '-' : '') + budgetFmt(Math.abs(left))}</div>
             <div>
