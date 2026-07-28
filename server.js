@@ -9829,7 +9829,7 @@ Instructions:
   [URL]`;
 
     const msg = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
+      model: 'claude-sonnet-5',
       max_tokens: 1200,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -9838,29 +9838,29 @@ Instructions:
 
     // ── HTML version (for CRM pane + browser) ──
     if (req.query.html === '1') {
-      const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      let bodyHtml = '';
+      const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+      let bodyHtml = `<div class="brief-header"><div class="brief-label">🏠 Morning Brief</div><div class="brief-date">${esc(dateStr)}</div></div>`;
       const lines = brief.split('\n');
       let i = 0;
       while (i < lines.length) {
         const line = lines[i].trim();
-        if (!line || /^━+$/.test(line)) { i++; continue; }
-        if (line.startsWith('🏠')) {
-          bodyHtml += `<h1>${esc(line)}</h1>`;
-        } else if (line.startsWith('📍') || line.startsWith('🇺🇸')) {
-          bodyHtml += `<h2>${esc(line)}</h2>`;
+        if (!line || /^━+$/.test(line) || line.startsWith('🏠')) { i++; continue; }
+        if (line.startsWith('📍') || line.startsWith('🇺🇸')) {
+          bodyHtml += `<div class="section-head"><span>${esc(line)}</span></div>`;
         } else if (line.startsWith('•')) {
           const inner = line.slice(1).trim();
           const dashIdx = inner.indexOf(' — ');
           const title   = dashIdx > -1 ? inner.slice(0, dashIdx) : inner;
           const summary = dashIdx > -1 ? inner.slice(dashIdx + 3) : '';
           const next = lines[i+1]?.trim() || '';
-          const url = /^https?:\/\//.test(next) ? next : '';
-          if (url) i++;
-          bodyHtml += `<div class="story">
-            <a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
-            ${summary ? `<div class="sum">— ${esc(summary)}</div>` : ''}
-          </div>`;
+          const url = /^https?:\/\//.test(next) ? next : '#';
+          if (url !== '#') i++;
+          bodyHtml += `<a class="card" href="${esc(url)}" target="_blank" rel="noopener">
+            <span class="card-arrow">→</span>
+            <div class="card-title">${esc(title)}</div>
+            ${summary ? `<div class="card-sum">${esc(summary)}</div>` : ''}
+          </a>`;
         }
         i++;
       }
@@ -9868,14 +9868,18 @@ Instructions:
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif;background:#1A1A1C;color:#EDEDF0;padding:24px;max-width:700px}
-h1{font-size:15px;font-weight:600;color:#E8681A;padding-bottom:14px;border-bottom:1px solid #383840;margin-bottom:20px;letter-spacing:.01em}
-h2{font-size:11px;font-weight:600;color:#9090A0;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 12px}
-.story{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #2C2C30}
-.story:last-child{border-bottom:none}
-.story a{color:#EDEDF0;font-weight:500;font-size:14px;line-height:1.45;text-decoration:none;display:block}
-.story a:hover{color:#E8681A}
-.sum{font-size:12px;color:#9090A0;margin-top:5px;line-height:1.4}
+body{font-family:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif;background:#1A1A1C;color:#EDEDF0;padding:20px 24px;max-width:680px}
+.brief-header{padding-bottom:16px;margin-bottom:20px;border-bottom:2px solid #E8681A}
+.brief-label{font-size:11px;color:#9090A0;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.brief-date{font-size:22px;font-weight:600;color:#EDEDF0}
+.section-head{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;color:#9090A0;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 10px}
+.section-head::after{content:'';flex:1;height:1px;background:#383840}
+.card{display:block;padding:13px 14px;margin-bottom:7px;background:#242428;border:1px solid #383840;border-radius:9px;text-decoration:none;color:inherit;transition:border-color .15s,background .15s;position:relative}
+.card:hover{border-color:#E8681A;background:#2C2C30}
+.card-arrow{position:absolute;right:14px;top:14px;color:#505060;font-size:13px;transition:color .15s}
+.card:hover .card-arrow{color:#E8681A}
+.card-title{font-size:14px;font-weight:500;color:#EDEDF0;line-height:1.4;padding-right:22px}
+.card-sum{font-size:12px;color:#9090A0;margin-top:6px;line-height:1.4}
 </style></head><body>${bodyHtml}</body></html>`);
     }
 

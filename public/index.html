@@ -3035,7 +3035,7 @@ them: Yes! Friday works great" style="width:100%;resize:vertical;font-size:13px;
 <div id="pane-morning-brief" class="pane">
   <div class="page-title"><i class="ti ti-news" style="margin-right:6px;color:#E8681A"></i>Morning Brief</div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
-    <button class="btn btn-primary" onclick="loadMorningBrief()" id="brief-refresh-btn"><i class="ti ti-refresh"></i> Refresh</button>
+    <button class="btn btn-primary" onclick="loadMorningBrief(true)" id="brief-refresh-btn"><i class="ti ti-refresh"></i> Refresh</button>
     <span id="brief-status" style="font-size:12px;color:var(--text2)"></span>
   </div>
   <div id="brief-frame-wrap" style="border-radius:10px;overflow:hidden;border:1px solid var(--border);min-height:400px;background:var(--surface)">
@@ -14788,7 +14788,8 @@ async function loadMorningBrief(force) {
   if (btn) btn.disabled = true;
   briefLoaded = false;
   try {
-    const r = await fetch(BACKEND + '/api/re-news?html=1');
+    const r = await fetch(BACKEND + '/api/re-news?html=1&t=' + Date.now());
+    if (!r.ok) throw new Error('Server returned ' + r.status);
     const html = await r.text();
     // Write into iframe
     const doc = iframe.contentDocument || iframe.contentWindow.document;
