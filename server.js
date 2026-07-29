@@ -9319,8 +9319,10 @@ Respond with JSON only:
     });
 
     let parsed = {};
-    try { parsed = JSON.parse(result.content[0].text); }
-    catch(e) { parsed = { summary: transcript.slice(0, 400), actionItems: [], sentiment: 'neutral', nextStep: '' }; }
+    try {
+      const raw = result.content[0].text.replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'').trim();
+      parsed = JSON.parse(raw);
+    } catch(e) { parsed = { summary: transcript.slice(0, 400), actionItems: [], sentiment: 'neutral', nextStep: '' }; }
 
     const meetingDate = date || new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
     const noteText = `📋 ${meetingType} (recorded) — ${meetingDate}\n\nSummary: ${parsed.summary}\n\nAction Items:\n${(parsed.actionItems||[]).map(a=>`• ${a.task}${a.dueDate?' (due '+a.dueDate+')':''}`).join('\n') || 'None'}\n\nNext Step: ${parsed.nextStep || ''}\n\nTranscript:\n${transcript}`;
@@ -9385,8 +9387,10 @@ Respond with JSON only:
     });
 
     let parsed = {};
-    try { parsed = JSON.parse(result.content[0].text); }
-    catch(e) { return res.status(500).json({ ok: false, error: 'AI parse error' }); }
+    try {
+      const raw = result.content[0].text.replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'').trim();
+      parsed = JSON.parse(raw);
+    } catch(e) { return res.status(500).json({ ok: false, error: 'AI parse error: ' + result.content[0].text.slice(0,200) }); }
 
     const meetingDate = date || new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
     const noteText = `📋 ${meetingType.charAt(0).toUpperCase()+meetingType.slice(1)} Note — ${meetingDate}\n\nSummary: ${parsed.summary}\n\nAction Items:\n${(parsed.actionItems||[]).map(a=>`• ${a.task}${a.dueDate?' (due '+a.dueDate+')':''}`).join('\n') || 'None'}\n\nNext Step: ${parsed.nextStep || ''}\n\nRaw Notes:\n${brainDump}`;
