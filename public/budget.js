@@ -181,8 +181,8 @@ function renderBudget() {
         { label: 'Remaining', val: (totalLeft < 0 ? '-' : '') + budgetFmt(totalLeft), color: totalLeft < 0 ? '#e34948' : totalLeft < totalBudget * 0.15 ? '#eda100' : '#4ADE80' },
         { label: '% Used', val: pctUsed + '%', color: pctUsed >= 100 ? '#e34948' : pctUsed >= 85 ? '#eda100' : 'var(--text)' },
       ].map(k => `
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:4px">${k.label}</div>
+        <div style="background:#2C2C30;border:1px solid #383840;border-radius:8px;padding:12px 14px">
+          <div style="font-size:11px;color:#9090A0;margin-bottom:4px">${k.label}</div>
           <div style="font-size:20px;font-weight:500;color:${k.color}">${k.val}</div>
         </div>
       `).join('')}

@@ -1348,8 +1348,19 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         </div>
 
         <div style="margin-bottom:12px">
-          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Attendees</label>
-          <input type="text" id="mn-attendees" placeholder="e.g. Sarah Johnson, Mike Chen" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box">
+          <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Meeting Title</label>
+          <input type="text" id="mn-title" placeholder="e.g. Buyer consult — Johnson family" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Attendees</label>
+            <input type="text" id="mn-attendees" placeholder="e.g. Sarah, Mike" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Property Address</label>
+            <input type="text" id="mn-property" placeholder="e.g. 123 Elm St" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box">
+          </div>
         </div>
 
         <div style="margin-bottom:14px">
@@ -1360,13 +1371,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         <!-- Live recording -->
         <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;background:var(--bg2)">
           <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Live Recording</div>
+          <div style="margin-bottom:10px">
+            <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Audio source</label>
+            <select id="mn-audio-device" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px">
+              <option value="">Default microphone</option>
+            </select>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">For video calls: install BlackHole → select it here to capture call audio</div>
+          </div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
             <button id="mn-record-btn" onclick="toggleMeetingRecording()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer">
               <i class="ti ti-microphone" style="margin-right:5px"></i>Start Recording
             </button>
             <span id="mn-record-timer" style="font-size:13px;color:var(--text3);display:none">⏺ <span id="mn-timer-val">0:00</span></span>
           </div>
-          <div style="font-size:11px;color:var(--text3)">Put your phone on speaker → hit Start → talk naturally. When the meeting ends, hit Stop and AI does the rest.</div>
+          <div style="font-size:11px;color:var(--text3)">For in-person: hit Start → talk naturally. For video calls: use BlackHole as audio source.</div>
         </div>
 
         <!-- File upload -->
@@ -1397,13 +1415,16 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div id="mn-results" style="display:none">
         <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em">AI Summary</div>
 
-        <!-- Sentiment badge -->
-        <div id="mn-sentiment-badge" style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-bottom:14px"></div>
+        <!-- Badges row -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <div id="mn-sentiment-badge" style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600"></div>
+          <div id="mn-readiness-badge" style="display:none;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600"></div>
+        </div>
 
         <!-- Summary -->
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:600">SUMMARY</div>
-          <div id="mn-summary" style="font-size:13px;color:var(--text1);line-height:1.6"></div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:600">SUMMARY</div>
+          <div id="mn-summary" style="font-size:13px;color:var(--text);line-height:1.6"></div>
         </div>
 
         <!-- Next step -->
@@ -1413,18 +1434,36 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
         </div>
 
         <!-- Action items -->
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600">ACTION ITEMS</div>
-          <div id="mn-actions" style="font-size:13px;color:var(--text1)"></div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:600">ACTION ITEMS</div>
+          <div id="mn-actions" style="font-size:13px;color:var(--text)"></div>
         </div>
 
         <!-- Follow-up email -->
-        <div id="mn-email-wrap" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:600">FOLLOW-UP EMAIL DRAFT</div>
-          <div id="mn-email" style="font-size:13px;color:var(--text1);line-height:1.6;font-style:italic"></div>
+        <div id="mn-email-wrap" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:11px;color:var(--text2);font-weight:600">FOLLOW-UP EMAIL DRAFT</div>
+            <button onclick="copyFollowUpEmail()" style="padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text2);font-size:10px;cursor:pointer"><i class="ti ti-copy" style="margin-right:3px"></i>Copy</button>
+          </div>
+          <div id="mn-email" style="font-size:13px;color:var(--text);line-height:1.6;font-style:italic"></div>
         </div>
 
-        <div style="font-size:11px;color:var(--text3);text-align:center">Note saved to lead record automatically</div>
+        <!-- Save to Drive -->
+        <button onclick="saveMeetingToDrive()" id="mn-save-btn" style="width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;margin-bottom:8px">
+          <i class="ti ti-brand-google-drive" style="margin-right:6px;color:#4ADE80"></i>Save to Google Drive
+        </button>
+        <div id="mn-drive-link" style="display:none;font-size:12px;color:var(--text3);text-align:center;margin-bottom:12px"></div>
+      </div>
+    </div>
+
+    <!-- Meeting History -->
+    <div style="margin-top:32px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">Meeting History</div>
+        <input type="text" id="mn-history-search" placeholder="Search by name, topic..." oninput="filterMeetingHistory()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px;width:200px">
+      </div>
+      <div id="mn-history-list" style="font-size:13px;color:var(--text3);padding:20px;text-align:center;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        Loading history...
       </div>
     </div>
 
@@ -14629,7 +14668,9 @@ async function handleMeetingFileUpload(input) {
   if (!file) return;
   document.getElementById('mn-file-name').textContent = file.name;
 
+  const title       = document.getElementById('mn-title')?.value || '';
   const attendees   = document.getElementById('mn-attendees')?.value || '';
+  const property    = document.getElementById('mn-property')?.value || '';
   const meetingType = document.getElementById('mn-type').value;
   const date        = document.getElementById('mn-date').value;
 
@@ -14637,7 +14678,7 @@ async function handleMeetingFileUpload(input) {
   document.getElementById('mn-results').style.display = 'none';
 
   try {
-    const params = new URLSearchParams({ attendees, meetingType, date });
+    const params = new URLSearchParams({ title, attendees, property, meetingType, date });
     const r = await fetch(`/api/transcribe-meeting?${params}`, {
       method: 'POST',
       headers: { 'Content-Type': file.type || 'audio/m4a' },
@@ -14647,7 +14688,7 @@ async function handleMeetingFileUpload(input) {
     if (!data.ok) throw new Error(data.error || 'Transcription failed');
 
     document.getElementById('mn-dump').value = data.transcript || '';
-    renderMeetingResults(data);
+    renderMeetingResults(data, { title, attendees, property, meetingType, date });
     toast('✓ Recording transcribed & saved');
     setTimeout(() => syncFromBackend && syncFromBackend(), 1500);
   } catch(e) {
@@ -14670,7 +14711,9 @@ async function toggleMeetingRecording() {
   } else {
     // Start
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const deviceId = document.getElementById('mn-audio-device')?.value;
+      const audioConstraints = deviceId ? { deviceId: { exact: deviceId } } : true;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
       _mnChunks = [];
       _mnSeconds = 0;
 
@@ -14711,14 +14754,16 @@ async function toggleMeetingRecording() {
 }
 
 async function uploadMeetingRecording(blob, mimeType) {
+  const title       = document.getElementById('mn-title')?.value || '';
   const attendees   = document.getElementById('mn-attendees')?.value || '';
+  const property    = document.getElementById('mn-property')?.value || '';
   const meetingType = document.getElementById('mn-type').value;
   const date        = document.getElementById('mn-date').value;
 
   document.getElementById('mn-processing').style.display = 'block';
   document.getElementById('mn-results').style.display = 'none';
 
-  const params = new URLSearchParams({ attendees, meetingType, date });
+  const params = new URLSearchParams({ title, attendees, property, meetingType, date });
   try {
     const r = await fetch(`/api/transcribe-meeting?${params}`, {
       method: 'POST',
@@ -14728,11 +14773,8 @@ async function uploadMeetingRecording(blob, mimeType) {
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Transcription failed');
 
-    // Show transcript in brain dump box for reference
     document.getElementById('mn-dump').value = data.transcript || '';
-
-    // Render results using same renderer
-    renderMeetingResults(data);
+    renderMeetingResults(data, { title, attendees, property, meetingType, date });
     toast('✓ Meeting recorded, transcribed & saved');
     setTimeout(() => syncFromBackend && syncFromBackend(), 1500);
   } catch(e) {
@@ -14742,15 +14784,46 @@ async function uploadMeetingRecording(blob, mimeType) {
   }
 }
 
-function renderMeetingResults(data) {
-  const sentimentColors = { positive:'#d1fae5', neutral:'#f3f4f6', negative:'#fee2e2' };
-  const sentimentLabels = { positive:'😊 Positive', neutral:'😐 Neutral', negative:'😟 Needs attention' };
-  const sb = document.getElementById('mn-sentiment-badge');
-  sb.style.background = sentimentColors[data.sentiment] || '#f3f4f6';
-  sb.style.color = data.sentiment === 'positive' ? '#065f46' : data.sentiment === 'negative' ? '#991b1b' : '#374151';
-  sb.textContent = sentimentLabels[data.sentiment] || data.sentiment || '';
+let _lastMeetingData = null;
 
-  document.getElementById('mn-summary').textContent = data.summary || '';
+function renderMeetingResults(data, formFields = {}) {
+  // Store everything for save-to-drive
+  _lastMeetingData = {
+    title:       formFields.title       || document.getElementById('mn-title')?.value     || '',
+    attendees:   formFields.attendees   || document.getElementById('mn-attendees')?.value || '',
+    property:    formFields.property    || document.getElementById('mn-property')?.value  || '',
+    meetingType: formFields.meetingType || document.getElementById('mn-type')?.value      || 'meeting',
+    date:        formFields.date        || document.getElementById('mn-date')?.value      || '',
+    ...data
+  };
+
+  // Sentiment badge — dark-mode safe colors
+  const sentimentBg    = { positive:'#0F3D2A', neutral:'#2C2C30', negative:'#3D0F0F' };
+  const sentimentColor = { positive:'#4ADE80', neutral:'#9090A0', negative:'#F87171' };
+  const sentimentLabel = { positive:'😊 Positive', neutral:'😐 Neutral', negative:'😟 Needs attention' };
+  const sb = document.getElementById('mn-sentiment-badge');
+  sb.style.background = sentimentBg[data.sentiment]    || '#2C2C30';
+  sb.style.color      = sentimentColor[data.sentiment] || '#9090A0';
+  sb.textContent      = sentimentLabel[data.sentiment] || data.sentiment || '';
+
+  // Readiness badge
+  const rb = document.getElementById('mn-readiness-badge');
+  if (data.readiness) {
+    const readinessCfg = {
+      hot:  { bg:'#3D1A0F', color:'#FB923C', label:'🔥 Hot'  },
+      warm: { bg:'#2D2A0A', color:'#FCD34D', label:'⚡ Warm' },
+      cold: { bg:'#0A1A2D', color:'#60A5FA', label:'❄️ Cold' }
+    };
+    const cfg = readinessCfg[data.readiness] || { bg:'#2C2C30', color:'#9090A0', label: data.readiness };
+    rb.style.background = cfg.bg;
+    rb.style.color      = cfg.color;
+    rb.textContent      = cfg.label;
+    rb.style.display    = 'inline-block';
+  } else {
+    rb.style.display = 'none';
+  }
+
+  document.getElementById('mn-summary').textContent  = data.summary  || '';
   document.getElementById('mn-next-step').textContent = data.nextStep || '';
 
   const actionsEl = document.getElementById('mn-actions');
@@ -14773,7 +14846,116 @@ function renderMeetingResults(data) {
     emailWrap.style.display = 'none';
   }
 
+  // Reset save button
+  const saveBtn = document.getElementById('mn-save-btn');
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<i class="ti ti-brand-google-drive" style="margin-right:6px;color:#4ADE80"></i>Save to Google Drive';
+    saveBtn.style.color = 'var(--text)';
+    saveBtn.style.borderColor = 'var(--border)';
+  }
+  const linkEl = document.getElementById('mn-drive-link');
+  if (linkEl) linkEl.style.display = 'none';
+
   document.getElementById('mn-results').style.display = 'block';
+}
+
+async function saveMeetingToDrive() {
+  if (!_lastMeetingData) return;
+  const btn = document.getElementById('mn-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;margin-right:6px"></i>Saving to Drive...';
+  try {
+    const r = await fetch(BACKEND + '/api/save-meeting-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(_lastMeetingData)
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error);
+    btn.innerHTML = '<i class="ti ti-check" style="margin-right:6px"></i>Saved to Drive';
+    btn.style.color = '#4ADE80';
+    btn.style.borderColor = '#4ADE80';
+    const linkEl = document.getElementById('mn-drive-link');
+    linkEl.style.display = 'block';
+    linkEl.innerHTML = `<a href="${data.driveUrl}" target="_blank" style="color:var(--accent)">Open in Google Drive →</a>`;
+    toast('✓ Meeting saved to Drive');
+    loadMeetingHistory();
+  } catch(e) {
+    toast('Drive save failed: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-brand-google-drive" style="margin-right:6px;color:#4ADE80"></i>Save to Google Drive';
+  }
+}
+
+function copyFollowUpEmail() {
+  const text = document.getElementById('mn-email')?.textContent || '';
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => toast('Email copied to clipboard'));
+}
+
+async function initMicSelector() {
+  try {
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const sel = document.getElementById('mn-audio-device');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Default microphone</option>';
+    devices.filter(d => d.kind === 'audioinput').forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Microphone ${d.deviceId.slice(0, 8)}`;
+      sel.appendChild(opt);
+    });
+  } catch(e) { /* permission not yet granted */ }
+}
+
+let _meetingHistory = [];
+
+async function loadMeetingHistory() {
+  try {
+    const r = await fetch(BACKEND + '/api/meeting-history');
+    const data = await r.json();
+    _meetingHistory = data.meetings || [];
+    renderMeetingHistory(_meetingHistory);
+  } catch(e) {
+    const el = document.getElementById('mn-history-list');
+    if (el) el.innerHTML = '<div style="text-align:center;padding:20px">Could not load history</div>';
+  }
+}
+
+function filterMeetingHistory() {
+  const q = (document.getElementById('mn-history-search')?.value || '').toLowerCase();
+  const filtered = q
+    ? _meetingHistory.filter(m =>
+        (m.title||'').toLowerCase().includes(q) ||
+        (m.attendees||'').toLowerCase().includes(q) ||
+        (m.summary||'').toLowerCase().includes(q) ||
+        (m.type||'').toLowerCase().includes(q)
+      )
+    : _meetingHistory;
+  renderMeetingHistory(filtered);
+}
+
+function renderMeetingHistory(meetings) {
+  const el = document.getElementById('mn-history-list');
+  if (!el) return;
+  if (!meetings.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3)">No meetings saved yet — process a meeting and hit "Save to Google Drive"</div>';
+    return;
+  }
+  const dotColor = s => s === 'positive' ? '#4ADE80' : s === 'negative' ? '#F87171' : '#9090A0';
+  el.innerHTML = meetings.map(m => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${dotColor(m.sentiment)};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;color:var(--text)">${m.title || m.type}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px">${m.date}${m.attendees ? ' · ' + m.attendees : ''}${m.property ? ' · ' + m.property : ''}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.summary || ''}</div>
+      </div>
+      <a href="${m.driveUrl}" target="_blank" style="color:var(--accent);font-size:12px;font-weight:500;white-space:nowrap;flex-shrink:0">PDF →</a>
+    </div>
+  `).join('');
 }
 
 // ── Morning Brief ─────────────────────────────────────────────────────────────
@@ -14811,12 +14993,16 @@ function initMeetingNotes() {
   const dateEl = document.getElementById('mn-date');
   if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
 
+  initMicSelector();
+  loadMeetingHistory();
   loadCallLog();
 }
 
 async function processMeetingNotes() {
   const brainDump   = document.getElementById('mn-dump').value.trim();
+  const title       = document.getElementById('mn-title')?.value    || '';
   const attendees   = document.getElementById('mn-attendees')?.value || '';
+  const property    = document.getElementById('mn-property')?.value  || '';
   const meetingType = document.getElementById('mn-type').value;
   const date        = document.getElementById('mn-date').value;
 
@@ -14826,15 +15012,15 @@ async function processMeetingNotes() {
   document.getElementById('mn-results').style.display = 'none';
 
   try {
-    const r = await fetch('/api/process-meeting-notes', {
+    const r = await fetch(BACKEND + '/api/process-meeting-notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brainDump, attendees, meetingType, date })
+      body: JSON.stringify({ brainDump, title, attendees, property, meetingType, date })
     });
     const data = await r.json();
     if (!data.ok) throw new Error(data.error || 'Failed');
 
-    renderMeetingResults(data);
+    renderMeetingResults(data, { title, attendees, property, meetingType, date });
     toast('✓ Notes processed and saved');
     setTimeout(() => syncFromBackend && syncFromBackend(), 1500);
   } catch(e) {

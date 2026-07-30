@@ -9271,7 +9271,7 @@ Extract a structured summary as JSON only:
 // ── Meeting Notes — Live mic transcription ─────────────────────
 app.post('/api/transcribe-meeting', express.raw({ type: 'audio/*', limit: '50mb' }), async (req, res) => {
   try {
-    const { leadId, meetingType = 'meeting', date } = req.query;
+    const { leadId, title, attendees, property, meetingType = 'meeting', date } = req.query;
     const audioBuffer = req.body;
     if (!audioBuffer || audioBuffer.length < 1000) {
       return res.status(400).json({ ok: false, error: 'No audio received' });
@@ -9295,13 +9295,20 @@ app.post('/api/transcribe-meeting', express.raw({ type: 'audio/*', limit: '50mb'
     const lead = leadId ? (crm.leads || []).find(l => l.id === leadId) : null;
     const leadContext = lead ? `Client: ${lead.firstName||''} ${lead.lastName||''}, ${lead.type||'lead'}, ${lead.status||''}` : 'No specific client linked';
 
+    const contextLines = [
+      leadContext,
+      title ? `Meeting title: ${title}` : '',
+      attendees ? `Attendees: ${attendees}` : '',
+      property ? `Property: ${property}` : '',
+      `Meeting date: ${date || new Date().toLocaleDateString()}`,
+    ].filter(Boolean).join('\n');
+
     const result = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
+      max_tokens: 900,
       messages: [{ role: 'user', content: `You are an assistant for Matt Golden, a Los Angeles real estate agent.
 This is a transcript of a ${meetingType}.
-${leadContext}
-Meeting date: ${date || new Date().toLocaleDateString()}
+${contextLines}
 
 Transcript:
 "${transcript}"
@@ -9314,7 +9321,8 @@ Respond with JSON only:
   ],
   "followUpEmail": "2-3 sentence follow-up email draft, or null if not needed",
   "sentiment": "positive|neutral|negative",
-  "nextStep": "single most important next action"
+  "nextStep": "single most important next action",
+  "readiness": "hot|warm|cold|null"
 }` }]
     });
 
@@ -9352,7 +9360,7 @@ Respond with JSON only:
 // ── Meeting Notes — AI brain dump processor ────────────────────
 app.post('/api/process-meeting-notes', async (req, res) => {
   try {
-    const { brainDump, leadId, meetingType = 'meeting', date } = req.body;
+    const { brainDump, leadId, title, attendees, property, meetingType = 'meeting', date } = req.body;
     if (!brainDump || brainDump.trim().length < 10) {
       return res.status(400).json({ ok: false, error: 'Notes too short' });
     }
@@ -9361,15 +9369,22 @@ app.post('/api/process-meeting-notes', async (req, res) => {
     const lead = leadId ? (crm.leads || []).find(l => l.id === leadId) : null;
     const leadContext = lead ? `Client: ${lead.firstName||''} ${lead.lastName||''}, ${lead.type||'lead'}, ${lead.status||''}` : 'No specific client linked';
 
+    const contextLines = [
+      leadContext,
+      title ? `Meeting title: ${title}` : '',
+      attendees ? `Attendees: ${attendees}` : '',
+      property ? `Property: ${property}` : '',
+      `Meeting date: ${date || new Date().toLocaleDateString()}`,
+    ].filter(Boolean).join('\n');
+
     // Claude processes the brain dump
     const result = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
+      max_tokens: 900,
       messages: [{ role: 'user', content: `You are an assistant for Matt Golden, a Los Angeles real estate agent.
 He just had a ${meetingType} and gave you these rough notes. Structure them into a clean meeting summary.
 
-${leadContext}
-Meeting date: ${date || new Date().toLocaleDateString()}
+${contextLines}
 
 Raw notes:
 "${brainDump}"
@@ -9382,7 +9397,8 @@ Respond with JSON only:
   ],
   "followUpEmail": "optional 2-3 sentence follow-up email draft, or null if not needed",
   "sentiment": "positive|neutral|negative",
-  "nextStep": "single most important next action"
+  "nextStep": "single most important next action",
+  "readiness": "hot|warm|cold|null"
 }` }]
     });
 
@@ -9892,6 +9908,176 @@ body{font-family:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif;backgroun
   } catch (e) {
     console.error('re-news error:', e.message);
     res.status(500).type('text').send('Error fetching news: ' + e.message);
+  }
+});
+
+// ── Meeting Notes — Save PDF to Google Drive ──────────────────
+app.post('/api/save-meeting-pdf', async (req, res) => {
+  try {
+    const { title, attendees, meetingType = 'meeting', date, summary, actionItems, nextStep, sentiment, followUpEmail, transcript, property, readiness } = req.body;
+    const token = await googleToken();
+
+    // 1. Generate PDF with PDFKit
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+      const chunks = [];
+      doc.on('data', c => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const meetingDate = date
+        ? new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+      // Header
+      doc.fontSize(22).fillColor('#1A1A1C').font('Helvetica-Bold').text('Meeting Notes', { align: 'left' });
+      doc.moveDown(0.4);
+      doc.fontSize(15).fillColor('#E8681A').font('Helvetica-Bold').text(title || meetingType);
+      doc.moveDown(0.3);
+      const meta = [meetingDate, meetingType, attendees, property].filter(Boolean).join('  ·  ');
+      doc.fontSize(10).fillColor('#9090A0').font('Helvetica').text(meta);
+      if (readiness) {
+        const readinessLabel = { hot: '🔥 Hot', warm: '⚡ Warm', cold: '❄️ Cold' }[readiness] || readiness;
+        doc.moveDown(0.2).fontSize(10).fillColor('#9090A0').text(`Client Readiness: ${readinessLabel}`);
+      }
+      doc.moveDown(0.8);
+      doc.moveTo(50, doc.y).lineTo(562, doc.y).strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+      doc.moveDown(0.8);
+
+      // Summary
+      doc.fontSize(9).fillColor('#9090A0').font('Helvetica-Bold').text('SUMMARY');
+      doc.moveDown(0.3);
+      doc.fontSize(11).fillColor('#1A1A1C').font('Helvetica').text(summary || '', { lineGap: 3 });
+      doc.moveDown(0.8);
+
+      // Next Step
+      doc.fontSize(9).fillColor('#E8681A').font('Helvetica-Bold').text('⚡ NEXT STEP');
+      doc.moveDown(0.3);
+      doc.fontSize(11).fillColor('#1A1A1C').font('Helvetica').text(nextStep || '', { lineGap: 3 });
+      doc.moveDown(0.8);
+
+      // Action Items
+      if (actionItems && actionItems.length > 0) {
+        doc.fontSize(9).fillColor('#9090A0').font('Helvetica-Bold').text('ACTION ITEMS');
+        doc.moveDown(0.3);
+        actionItems.forEach(item => {
+          const due = item.dueDate ? `  (due ${item.dueDate})` : '';
+          const priority = item.priority === 'high' ? '●' : item.priority === 'medium' ? '◐' : '○';
+          doc.fontSize(11).fillColor('#1A1A1C').font('Helvetica').text(`${priority}  ${item.task}${due}`, { indent: 10, lineGap: 3 });
+        });
+        doc.moveDown(0.8);
+      }
+
+      // Follow-up email
+      if (followUpEmail) {
+        doc.fontSize(9).fillColor('#9090A0').font('Helvetica-Bold').text('FOLLOW-UP EMAIL DRAFT');
+        doc.moveDown(0.3);
+        doc.fontSize(11).fillColor('#505060').font('Helvetica').text(followUpEmail, { indent: 10, lineGap: 3 });
+        doc.moveDown(0.8);
+      }
+
+      // Transcript (if present)
+      if (transcript) {
+        doc.moveTo(50, doc.y).lineTo(562, doc.y).strokeColor('#E0E0E0').lineWidth(0.5).stroke();
+        doc.moveDown(0.8);
+        doc.fontSize(9).fillColor('#9090A0').font('Helvetica-Bold').text('TRANSCRIPT');
+        doc.moveDown(0.3);
+        doc.fontSize(9).fillColor('#707070').font('Helvetica').text(transcript, { lineGap: 2 });
+        doc.moveDown(0.8);
+      }
+
+      // Footer
+      doc.fontSize(8).fillColor('#C0C0C0').font('Helvetica')
+        .text(`Generated by MG Realty CRM  ·  ${new Date().toLocaleString()}`, { align: 'center' });
+
+      doc.end();
+    });
+
+    // 2. Find or create "MG Realty — Meeting Notes" folder in Drive
+    const FOLDER_NAME = 'MG Realty — Meeting Notes';
+    const folderRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const folderData = await folderRes.json();
+    let folderId = folderData.files?.[0]?.id;
+    if (!folderId) {
+      const cf = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+      });
+      folderId = (await cf.json()).id;
+    }
+
+    // 3. Upload PDF
+    const safeTitle = (title || meetingType).replace(/[^a-z0-9 \-_]/gi, '').slice(0, 60);
+    const fileName = `${date || new Date().toISOString().split('T')[0]} — ${safeTitle}.pdf`;
+    const metadata = { name: fileName, mimeType: 'application/pdf', parents: [folderId] };
+    const boundary = 'meeting_pdf_boundary';
+    const body = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`),
+      pdfBuffer,
+      Buffer.from(`\r\n--${boundary}--`)
+    ]);
+    const upRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body
+    });
+    const upData = await upRes.json();
+    if (!upData.id) throw new Error('Drive upload failed: ' + JSON.stringify(upData));
+
+    // Make it readable by anyone with the link
+    await fetch(`https://www.googleapis.com/drive/v3/files/${upData.id}/permissions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' })
+    });
+
+    const driveUrl = `https://drive.google.com/file/d/${upData.id}/view`;
+
+    // 4. Save record to Supabase via activities (no schema change needed)
+    const crm = await readCRM();
+    const activity = {
+      id: `meet_${Date.now()}`,
+      type: meetingType,
+      isMeeting: true,
+      date: date || new Date().toISOString().split('T')[0],
+      title: title || meetingType,
+      attendees: attendees || '',
+      property: property || '',
+      sentiment: sentiment || 'neutral',
+      readiness: readiness || '',
+      summary: summary || '',
+      nextStep: nextStep || '',
+      driveUrl,
+      fileName,
+      note: `Meeting note: ${title || meetingType}`
+    };
+    crm.activities = [...(crm.activities || []), activity];
+    await writeCRM(crm);
+
+    console.log(`Meeting PDF saved: ${fileName} → ${driveUrl}`);
+    res.json({ ok: true, driveUrl, fileName });
+  } catch(e) {
+    console.error('Save meeting PDF error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Meeting Notes — History ────────────────────────────────────
+app.get('/api/meeting-history', async (req, res) => {
+  try {
+    const crm = await readCRM();
+    const meetings = (crm.activities || [])
+      .filter(a => a.isMeeting && a.driveUrl)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 100);
+    res.json({ ok: true, meetings });
+  } catch(e) {
+    console.error('Meeting history error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
