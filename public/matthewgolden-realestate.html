@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matt Golden — Los Angeles Real Estate</title>
+<meta name="description" content="Matt Golden is a Los Angeles real estate agent helping buyers and sellers in West Hollywood, Beverly Hills, Silver Lake, and beyond. Real estate done right.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --white:#FFFFFF;
+  --off:#F8F7F5;
+  --black:#111111;
+  --gray:#888888;
+  --light:#DEDBD6;
+  --serif:'Playfair Display',Georgia,serif;
+  --sans:'DM Sans',system-ui,sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--white);color:var(--black);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:22px 56px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,0.92);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(17,17,17,0.08);
+}
+.nav-name{
+  font-family:var(--serif);
+  font-size:17px;font-weight:600;letter-spacing:0.01em;
+}
+.nav-name span{font-weight:400;color:var(--gray);margin-left:6px;font-size:14px;font-family:var(--sans)}
+.nav-links{display:flex;align-items:center;gap:36px}
+.nav-links a{font-size:13px;font-weight:500;color:var(--gray);letter-spacing:0.02em;transition:color 0.15s}
+.nav-links a:hover{color:var(--black)}
+.nav-cta{
+  border:1px solid var(--black);color:var(--black);
+  padding:10px 24px;font-size:13px;font-weight:600;letter-spacing:0.03em;
+  transition:all 0.2s;
+}
+.nav-cta:hover{background:var(--black);color:var(--white)}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;
+  display:grid;grid-template-columns:52% 48%;
+  padding-top:80px;
+}
+.hero-photo-side{
+  position:relative;overflow:hidden;
+  background:#E8E5E0;
+}
+.hero-photo-side img{
+  width:100%;height:100%;
+  object-fit:cover;object-position:center top;
+}
+.hero-text-side{
+  display:flex;align-items:center;
+  padding:80px 72px 80px 64px;
+  background:var(--white);
+}
+.hero-text-inner{max-width:500px}
+.hero-eyebrow{
+  font-size:11px;font-weight:600;letter-spacing:0.14em;
+  text-transform:uppercase;color:var(--gray);
+  margin-bottom:28px;
+}
+.hero-h1{
+  font-family:var(--serif);
+  font-size:clamp(40px,4.5vw,58px);
+  font-weight:500;line-height:1.12;
+  letter-spacing:-0.01em;
+  margin-bottom:24px;
+}
+.hero-h1 em{font-style:italic;font-weight:400}
+.hero-sub{
+  font-size:16px;color:var(--gray);line-height:1.75;
+  max-width:420px;margin-bottom:44px;font-weight:400;
+}
+/* Lead capture tabs */
+.capture-tabs{display:flex;border-bottom:1px solid var(--light);margin-bottom:28px;gap:0}
+.capture-tab{
+  font-size:13px;font-weight:600;letter-spacing:0.04em;
+  padding:10px 20px 10px 0;margin-right:24px;
+  color:var(--gray);border-bottom:2px solid transparent;
+  cursor:pointer;transition:all 0.15s;
+  text-transform:uppercase;
+}
+.capture-tab.active{color:var(--black);border-bottom-color:var(--black)}
+.capture-panel{display:none}
+.capture-panel.active{display:block}
+.capture-form{display:flex;flex-direction:column;gap:12px}
+.capture-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.capture-form input,
+.capture-form select{
+  border:1px solid var(--light);
+  padding:13px 16px;
+  font-family:var(--sans);font-size:14px;
+  color:var(--black);background:var(--white);
+  width:100%;outline:none;
+  transition:border-color 0.15s;
+}
+.capture-form input:focus,
+.capture-form select:focus{border-color:var(--black)}
+.capture-form input::placeholder{color:var(--gray)}
+.capture-form select{color:var(--gray);-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.capture-form select option:not(:first-child){color:var(--black)}
+.btn-submit{
+  background:var(--black);color:var(--white);
+  border:none;padding:15px 32px;
+  font-family:var(--sans);font-size:14px;font-weight:600;
+  letter-spacing:0.04em;cursor:pointer;
+  transition:background 0.2s;margin-top:4px;
+  text-transform:uppercase;
+}
+.btn-submit:hover{background:#333}
+.btn-submit:disabled{background:var(--gray);cursor:default}
+.form-success{
+  padding:20px;background:var(--off);
+  font-size:14px;color:var(--black);line-height:1.6;
+  display:none;
+}
+.form-success.show{display:block}
+
+/* ── TRUST STRIP ── */
+.trust{
+  background:var(--black);
+  padding:52px 56px;
+}
+.trust-inner{
+  max-width:1200px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:40px;
+}
+.trust-stat{text-align:center}
+.trust-num{
+  font-family:var(--serif);font-size:44px;font-weight:500;
+  color:var(--white);letter-spacing:-0.02em;line-height:1;
+}
+.trust-label{font-size:12px;font-weight:500;color:rgba(255,255,255,0.45);margin-top:8px;letter-spacing:0.06em;text-transform:uppercase}
+
+/* ── ABOUT ── */
+.about{
+  padding:120px 56px;
+  max-width:1200px;margin:0 auto;
+  display:grid;grid-template-columns:1fr 1fr;gap:100px;align-items:center;
+}
+.about-section-label{
+  font-size:11px;font-weight:600;letter-spacing:0.14em;
+  text-transform:uppercase;color:var(--gray);margin-bottom:24px;
+}
+.about-h2{
+  font-family:var(--serif);
+  font-size:clamp(30px,3vw,42px);font-weight:500;
+  line-height:1.2;letter-spacing:-0.01em;margin-bottom:28px;
+}
+.about-h2 em{font-style:italic;font-weight:400}
+.about-body{font-size:16px;color:var(--gray);line-height:1.85;margin-bottom:16px;font-weight:400}
+.about-cta{
+  display:inline-block;margin-top:32px;
+  font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--black);border-bottom:1px solid var(--black);padding-bottom:3px;
+  transition:color 0.15s,border-color 0.15s;
+}
+.about-cta:hover{color:var(--gray);border-color:var(--gray)}
+.about-photo{
+  position:relative;
+  border-radius:0;overflow:hidden;
+  aspect-ratio:4/5;
+  background:var(--off);
+}
+.about-photo img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.about-photo-tag{
+  position:absolute;bottom:28px;left:-28px;
+  background:var(--white);
+  padding:18px 22px;
+  border:1px solid var(--light);
+  font-size:13px;line-height:1.5;
+}
+.about-photo-tag strong{display:block;font-weight:600;font-size:15px;margin-bottom:2px}
+.about-photo-tag span{color:var(--gray);font-size:12px}
+
+/* ── AREAS ── */
+.areas{
+  background:var(--off);
+  padding:100px 56px;
+}
+.areas-inner{max-width:1200px;margin:0 auto}
+.areas-header{text-align:center;margin-bottom:64px}
+.areas-section-label{
+  font-size:11px;font-weight:600;letter-spacing:0.14em;
+  text-transform:uppercase;color:var(--gray);margin-bottom:20px;
+}
+.areas-h2{
+  font-family:var(--serif);
+  font-size:clamp(28px,3vw,40px);font-weight:500;
+  line-height:1.2;letter-spacing:-0.01em;
+}
+.areas-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:2px;
+}
+.area-card{
+  background:var(--white);
+  padding:36px 28px;
+  transition:background 0.2s;
+  cursor:default;
+}
+.area-card:hover{background:var(--black)}
+.area-card:hover .area-name{color:var(--white)}
+.area-card:hover .area-desc{color:rgba(255,255,255,0.5)}
+.area-num{
+  font-family:var(--serif);font-size:13px;font-weight:400;
+  color:var(--light);margin-bottom:16px;
+}
+.area-name{
+  font-family:var(--serif);font-size:20px;font-weight:500;
+  margin-bottom:10px;transition:color 0.2s;
+}
+.area-desc{font-size:13px;color:var(--gray);line-height:1.6;transition:color 0.2s}
+
+/* ── HOW IT WORKS ── */
+.process{padding:100px 56px;max-width:1200px;margin:0 auto}
+.process-header{margin-bottom:64px}
+.process-h2{
+  font-family:var(--serif);
+  font-size:clamp(28px,3vw,40px);font-weight:500;
+  line-height:1.2;letter-spacing:-0.01em;
+}
+.process-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:56px}
+.process-step{}
+.step-num{
+  font-family:var(--serif);font-size:42px;font-weight:400;
+  color:var(--light);line-height:1;margin-bottom:20px;
+}
+.step-title{font-size:17px;font-weight:600;margin-bottom:12px}
+.step-desc{font-size:14px;color:var(--gray);line-height:1.75}
+
+/* ── CTA BAND ── */
+.cta-band{
+  background:var(--black);
+  padding:100px 56px;text-align:center;
+}
+.cta-band-sub{
+  font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;
+  color:rgba(255,255,255,0.4);margin-bottom:24px;
+}
+.cta-band-h2{
+  font-family:var(--serif);
+  font-size:clamp(32px,4vw,52px);font-weight:500;
+  color:var(--white);line-height:1.15;letter-spacing:-0.01em;
+  max-width:640px;margin:0 auto 40px;
+}
+.cta-band-h2 em{font-style:italic;font-weight:400}
+.cta-band-btns{display:flex;justify-content:center;gap:16px;flex-wrap:wrap}
+.btn-white{
+  background:var(--white);color:var(--black);
+  padding:16px 36px;font-size:14px;font-weight:600;
+  letter-spacing:0.04em;text-transform:uppercase;
+  transition:background 0.2s;display:inline-block;
+}
+.btn-white:hover{background:#E8E8E8}
+.btn-outline-white{
+  border:1px solid rgba(255,255,255,0.3);color:var(--white);
+  padding:16px 36px;font-size:14px;font-weight:600;
+  letter-spacing:0.04em;text-transform:uppercase;
+  transition:border-color 0.2s;display:inline-block;
+}
+.btn-outline-white:hover{border-color:rgba(255,255,255,0.7)}
+
+/* ── FOOTER ── */
+footer{
+  padding:64px 56px;
+  border-top:1px solid var(--light);
+  display:grid;grid-template-columns:1fr auto;
+  gap:40px;align-items:start;
+  max-width:100%;
+}
+.footer-brand{}
+.footer-name{
+  font-family:var(--serif);font-size:20px;font-weight:500;margin-bottom:8px;
+}
+.footer-lic{font-size:12px;color:var(--gray);line-height:1.7}
+.footer-right{display:flex;flex-direction:column;align-items:flex-end;gap:20px}
+.footer-links{display:flex;gap:28px}
+.footer-links a{font-size:13px;color:var(--gray);transition:color 0.15s}
+.footer-links a:hover{color:var(--black)}
+.footer-contact{font-size:14px;color:var(--gray);text-align:right;line-height:1.8}
+.footer-contact a{color:var(--black);font-weight:500}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1024px){
+  nav{padding:18px 32px}
+  .hero{grid-template-columns:1fr}
+  .hero-photo-side{height:60vw;min-height:380px}
+  .hero-text-side{padding:60px 32px}
+  .trust-inner{grid-template-columns:repeat(2,1fr)}
+  .about{grid-template-columns:1fr;gap:48px;padding:80px 32px}
+  .about-photo-tag{left:0;bottom:20px}
+  .areas{padding:80px 32px}
+  .areas-grid{grid-template-columns:repeat(2,1fr)}
+  .process{padding:80px 32px}
+  .process-grid{grid-template-columns:1fr;gap:40px}
+  .cta-band{padding:80px 32px}
+  footer{grid-template-columns:1fr;gap:32px;padding:48px 32px}
+  .footer-right{align-items:flex-start}
+  .footer-contact{text-align:left}
+}
+@media(max-width:640px){
+  nav{padding:16px 20px}
+  .nav-links{display:none}
+  .hero-text-side{padding:40px 20px}
+  .trust{padding:40px 20px}
+  .trust-inner{grid-template-columns:1fr 1fr;gap:28px}
+  .areas-grid{grid-template-columns:1fr 1fr}
+  .areas{padding:60px 20px}
+  .cta-band{padding:60px 20px}
+  footer{padding:40px 20px}
+  .capture-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-name">Matthew Golden <span>· Real Estate</span></div>
+  <div class="nav-links">
+    <a href="#about">About</a>
+    <a href="#areas">Areas</a>
+    <a href="#contact">Contact</a>
+    <a href="#capture" class="nav-cta">Get Started</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-photo-side">
+    <img src="/headshot.jpg"
+         onerror="this.style.display='none'"
+         alt="Matt Golden, Los Angeles Real Estate Agent">
+    <!-- Fallback gradient so it looks good without the image -->
+    <style>.hero-photo-side{background:linear-gradient(160deg,#D8D4CE 0%,#C4BFB8 100%)}</style>
+  </div>
+  <div class="hero-text-side">
+    <div class="hero-text-inner" id="capture">
+      <p class="hero-eyebrow">Los Angeles · Real Estate</p>
+      <h1 class="hero-h1">Your next move, <em>made right.</em></h1>
+      <p class="hero-sub">Whether you're ready to sell, searching for the right home, or just exploring — I'll give you a straight answer, not a sales pitch.</p>
+
+      <div class="capture-tabs">
+        <div class="capture-tab active" onclick="switchTab('seller')">Selling</div>
+        <div class="capture-tab" onclick="switchTab('buyer')">Buying</div>
+      </div>
+
+      <!-- SELLER TAB -->
+      <div class="capture-panel active" id="panel-seller">
+        <form class="capture-form" onsubmit="submitForm(event,'seller')">
+          <input type="text" name="name" placeholder="Your name" required>
+          <input type="text" name="address" placeholder="Property address" required>
+          <div class="capture-row">
+            <select name="timeline">
+              <option value="" disabled selected>Timeline</option>
+              <option>ASAP</option>
+              <option>1–3 months</option>
+              <option>3–6 months</option>
+              <option>Just curious</option>
+            </select>
+            <input type="tel" name="phone" placeholder="Phone number" required>
+          </div>
+          <button class="btn-submit" type="submit">Get My Home Value →</button>
+          <div class="form-success" id="success-seller">
+            Thanks — I'll pull the comps and reach out within a few hours with a real number, not a range.
+          </div>
+        </form>
+      </div>
+
+      <!-- BUYER TAB -->
+      <div class="capture-panel" id="panel-buyer">
+        <form class="capture-form" onsubmit="submitForm(event,'buyer')">
+          <input type="text" name="name" placeholder="Your name" required>
+          <div class="capture-row">
+            <input type="text" name="neighborhood" placeholder="Neighborhood / area">
+            <input type="text" name="budget" placeholder="Budget range">
+          </div>
+          <input type="tel" name="phone" placeholder="Phone number" required>
+          <button class="btn-submit" type="submit">Let's Talk →</button>
+          <div class="form-success" id="success-buyer">
+            Got it — I'll reach out shortly. No pressure, just a real conversation about what you're looking for.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST STRIP -->
+<section class="trust">
+  <div class="trust-inner">
+    <div class="trust-stat">
+      <div class="trust-num">$40M+</div>
+      <div class="trust-label">In Transactions</div>
+    </div>
+    <div class="trust-stat">
+      <div class="trust-num">8+</div>
+      <div class="trust-label">LA Neighborhoods</div>
+    </div>
+    <div class="trust-stat">
+      <div class="trust-num">100%</div>
+      <div class="trust-label">5-Star Reviews</div>
+    </div>
+    <div class="trust-stat">
+      <div class="trust-num">Fast</div>
+      <div class="trust-label">Response, Every Time</div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="about" id="about">
+  <div class="about-content">
+    <p class="about-section-label">About Matt</p>
+    <h2 class="about-h2">LA real estate, <em>without the runaround.</em></h2>
+    <p class="about-body">I grew up here. I know that Silver Lake and Los Feliz feel different at night, that the difference between a good deal in West Hollywood and a great one is knowing when to walk, and that buying or selling a home is one of the biggest decisions you'll make.</p>
+    <p class="about-body">I started MG Realty to do this the right way — straightforward advice, sharp market knowledge, and someone who actually picks up the phone.</p>
+    <p class="about-body">If you're curious about what your place is worth or what the right next move is, I'll give you a real answer — not a pitch.</p>
+    <a href="mailto:goldenmb@gmail.com" class="about-cta">Get in touch →</a>
+  </div>
+  <div class="about-photo">
+    <img src="/headshot.jpg"
+         onerror="this.parentElement.style.background='#E8E5E0'"
+         alt="Matt Golden">
+    <div class="about-photo-tag">
+      <strong>Matthew Golden</strong>
+      <span>Realtor · DRE #02133900</span>
+    </div>
+  </div>
+</section>
+
+<!-- AREAS -->
+<section class="areas" id="areas">
+  <div class="areas-inner">
+    <div class="areas-header">
+      <p class="areas-section-label">Where I Work</p>
+      <h2 class="areas-h2">From the Hills to the Eastside.</h2>
+    </div>
+    <div class="areas-grid">
+      <div class="area-card">
+        <div class="area-num">01</div>
+        <div class="area-name">West Hollywood</div>
+        <div class="area-desc">WeHo's best pockets — walkable, vibrant, and one of LA's tightest markets.</div>
+      </div>
+      <div class="area-card">
+        <div class="area-num">02</div>
+        <div class="area-name">Beverly Hills</div>
+        <div class="area-desc">Trophy properties, patient buyers, and deals that take precision to close.</div>
+      </div>
+      <div class="area-card">
+        <div class="area-num">03</div>
+        <div class="area-name">Silver Lake</div>
+        <div class="area-desc">Creative, character-driven homes. I know this neighborhood deeply.</div>
+      </div>
+      <div class="area-card">
+        <div class="area-num">04</div>
+        <div class="area-name">Los Feliz</div>
+        <div class="area-desc">Architectural gems and strong appreciation. A neighborhood people don't leave.</div>
+      </div>
+      <div class="area-card">
+        <div class="area-num">05</div>
+        <div class="area-name">Hollywood Hills</div>
+        <div class="area-desc">Views, privacy, and a wide price range — from starter to spectacular.</div>
+      </div>
+      <div class="area-card">
+        <div class="area-num">06</div>
+        <div class="area-name">Culver City</div>
+        <div class="area-desc">Fast-moving, family-friendly, and one of LA's most consistent investments.</div>
+      </div>
+      <div class="area-card">
+        <div class="area-num">07</div>
+        <div class="area-name">Mid-City / Miracle Mile</div>
+        <div class="area-desc">Great bones, Westside access, and undervalued blocks still hiding deals.</div>
+      </div>
+      <div class="area-card">
+        <div class="area-num">08</div>
+        <div class="area-name">Greater LA</div>
+        <div class="area-desc">If it's in LA County and it matters to you, I'll figure it out.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="process">
+  <div class="process-header">
+    <p class="about-section-label" style="margin-bottom:16px">How It Works</p>
+    <h2 class="process-h2">Simple process. <em style="font-family:var(--serif);font-style:italic;font-weight:400">No surprises.</em></h2>
+  </div>
+  <div class="process-grid">
+    <div class="process-step">
+      <div class="step-num">01</div>
+      <div class="step-title">We Talk</div>
+      <p class="step-desc">Quick call or text — you tell me what you're thinking, I give you my honest read on the market and what's realistic. No commitment, no pitch deck.</p>
+    </div>
+    <div class="process-step">
+      <div class="step-num">02</div>
+      <div class="step-title">I Do the Work</div>
+      <p class="step-desc">Whether that's pulling comps, identifying off-market opportunities, or crafting a listing strategy — I handle the details so you don't have to.</p>
+    </div>
+    <div class="process-step">
+      <div class="step-num">03</div>
+      <div class="step-title">You Move Confidently</div>
+      <p class="step-desc">I'll walk you through every step, flag anything that doesn't look right, and negotiate hard on your behalf. You make the call — I just make sure it's a good one.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<section class="cta-band">
+  <p class="cta-band-sub">Ready to start</p>
+  <h2 class="cta-band-h2">Let's figure out your <em>next move.</em></h2>
+  <div class="cta-band-btns">
+    <a href="#capture" class="btn-white">What's My Home Worth?</a>
+    <a href="tel:+13239197539" class="btn-outline-white">Call (323) 919-7539</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer id="contact">
+  <div class="footer-brand">
+    <div class="footer-name">Matthew Golden · MG Realty</div>
+    <div class="footer-lic">
+      DRE License #02133900 · Los Angeles, California<br>
+      matthewgolden.realestate
+    </div>
+  </div>
+  <div class="footer-right">
+    <div class="footer-links">
+      <a href="https://www.instagram.com/mattgolden_re/" target="_blank">Instagram</a>
+      <a href="mailto:goldenmb@gmail.com">Email</a>
+      <a href="tel:+13239197539">Phone</a>
+    </div>
+    <div class="footer-contact">
+      <a href="mailto:goldenmb@gmail.com">goldenmb@gmail.com</a><br>
+      <a href="tel:+13239197539">(323) 919-7539</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Tab switching
+function switchTab(tab) {
+  document.querySelectorAll('.capture-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.capture-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.capture-tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById(`panel-${tab}`).classList.add('active');
+}
+
+// Form submit
+async function submitForm(e, type) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('.btn-submit');
+  const success = form.querySelector('.form-success');
+  const data = Object.fromEntries(new FormData(form));
+  data.type = type === 'seller' ? 'Seller' : 'Buyer';
+  data.source = 'matthewgolden.realestate';
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    const resp = await fetch('https://mg-realty-backend.onrender.com/leads/capture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.name,
+        phone: data.phone,
+        address: data.address || data.neighborhood || '',
+        notes: type === 'seller'
+          ? `Home value inquiry. Timeline: ${data.timeline || 'not specified'}`
+          : `Buyer inquiry. Area: ${data.neighborhood || 'not specified'}. Budget: ${data.budget || 'not specified'}`,
+        source: data.source,
+        type: data.type
+      })
+    });
+    success.classList.add('show');
+    form.querySelectorAll('input,select,button').forEach(el => el.style.display = 'none');
+  } catch(err) {
+    btn.disabled = false;
+    btn.textContent = type === 'seller' ? 'Get My Home Value →' : 'Let\'s Talk →';
+    alert('Something went wrong — please call or text directly: (323) 919-7539');
+  }
+}
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
+});
+</script>
+</body>
+</html>
