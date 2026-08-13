@@ -1373,9 +1373,20 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
           <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Live Recording</div>
           <div style="margin-bottom:10px">
             <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">Audio source</label>
-            <select id="mn-audio-device" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px">
-              <option value="">Default microphone</option>
-            </select>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="mn-audio-device" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:12px">
+                <option value="">Default microphone</option>
+              </select>
+              <button onclick="initMicSelector()" title="Refresh device list" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text2);font-size:13px;cursor:pointer">↺</button>
+            </div>
+            <!-- Audio level meter -->
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+              <button onclick="testMicLevel()" id="mn-test-btn" style="padding:4px 10px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--surface2);color:var(--text2);cursor:pointer">Test mic</button>
+              <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                <div id="mn-level-bar" style="height:100%;width:0%;background:#22c55e;border-radius:4px;transition:width 0.05s"></div>
+              </div>
+              <span id="mn-level-label" style="font-size:10px;color:var(--text3);width:28px">–</span>
+            </div>
             <div style="font-size:10px;color:var(--text3);margin-top:4px">For video calls: install BlackHole → select it here to capture call audio</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -14900,6 +14911,7 @@ async function initMicSelector() {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const sel = document.getElementById('mn-audio-device');
     if (!sel) return;
+    const prev = sel.value;
     sel.innerHTML = '<option value="">Default microphone</option>';
     devices.filter(d => d.kind === 'audioinput').forEach(d => {
       const opt = document.createElement('option');
@@ -14907,7 +14919,48 @@ async function initMicSelector() {
       opt.textContent = d.label || `Microphone ${d.deviceId.slice(0, 8)}`;
       sel.appendChild(opt);
     });
-  } catch(e) { /* permission not yet granted */ }
+    if (prev) sel.value = prev; // restore previous selection
+    toast('✓ ' + (sel.options.length - 1) + ' audio source(s) found');
+  } catch(e) { toast('Mic permission denied — check browser settings'); }
+}
+
+let _micTestStream = null;
+let _micTestAnimFrame = null;
+async function testMicLevel() {
+  // Stop any existing test
+  if (_micTestStream) {
+    _micTestStream.getTracks().forEach(t => t.stop());
+    _micTestStream = null;
+    cancelAnimationFrame(_micTestAnimFrame);
+    document.getElementById('mn-level-bar').style.width = '0%';
+    document.getElementById('mn-level-label').textContent = '–';
+    document.getElementById('mn-test-btn').textContent = 'Test mic';
+    return;
+  }
+  try {
+    const deviceId = document.getElementById('mn-audio-device')?.value;
+    const constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
+    _micTestStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const ctx = new AudioContext();
+    const src = ctx.createMediaStreamSource(_micTestStream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    document.getElementById('mn-test-btn').textContent = 'Stop test';
+
+    function draw() {
+      analyser.getByteFrequencyData(data);
+      const avg = data.reduce((a,b) => a+b, 0) / data.length;
+      const pct = Math.min(100, avg * 2);
+      const bar = document.getElementById('mn-level-bar');
+      const label = document.getElementById('mn-level-label');
+      if (bar) { bar.style.width = pct + '%'; bar.style.background = pct > 60 ? '#ef4444' : pct > 20 ? '#22c55e' : '#94a3b8'; }
+      if (label) label.textContent = Math.round(pct) + '%';
+      _micTestAnimFrame = requestAnimationFrame(draw);
+    }
+    draw();
+  } catch(e) { toast('Could not access mic: ' + e.message); }
 }
 
 let _meetingHistory = [];
