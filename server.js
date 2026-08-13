@@ -9350,6 +9350,37 @@ Respond with JSON only:
     crm.activities = [...(crm.activities || []), activity];
     await writeCRM(crm);
 
+    // Email copy to Matt
+    const meetingLabel = title || `${meetingType.charAt(0).toUpperCase()+meetingType.slice(1)} (Recorded)`;
+    const actionItemsHtml = (parsed.actionItems||[]).length
+      ? (parsed.actionItems||[]).map(a=>`<li><strong>${a.task}</strong>${a.priority?' — '+a.priority:''}${a.dueDate?' (due '+a.dueDate+')':''}</li>`).join('')
+      : '<li>None</li>';
+    try {
+      await resend.emails.send({
+        from: 'MG Realty CRM <onboarding@resend.dev>',
+        to: 'matt@mgoldenrealty.com',
+        subject: `📋 Meeting Notes — ${meetingLabel} (${meetingDate})`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;color:#111">
+            <h2 style="border-bottom:2px solid #111;padding-bottom:8px">${meetingLabel}</h2>
+            <p style="color:#555;font-size:13px">${meetingDate}${attendees ? ' · ' + attendees : ''}${property ? ' · ' + property : ''}</p>
+            <h3>Summary</h3>
+            <p>${parsed.summary || ''}</p>
+            <h3>Action Items</h3>
+            <ul>${actionItemsHtml}</ul>
+            <h3>Next Step</h3>
+            <p>${parsed.nextStep || 'N/A'}</p>
+            ${parsed.followUpEmail ? `<h3>Follow-Up Email Draft</h3><p style="background:#f5f5f5;padding:12px;border-left:3px solid #111">${parsed.followUpEmail}</p>` : ''}
+            <h3 style="color:#888;font-size:13px">Full Transcript</h3>
+            <p style="color:#888;font-size:13px;white-space:pre-wrap">${transcript}</p>
+            <hr style="border:none;border-top:1px solid #eee;margin-top:24px">
+            <p style="color:#aaa;font-size:11px">Sent from MG Realty CRM · Recorded meeting</p>
+          </div>`
+      });
+    } catch(emailErr) {
+      console.warn('Transcribe-meeting email failed:', emailErr.message);
+    }
+
     res.json({ ok: true, transcript, ...parsed, noteText });
   } catch(e) {
     console.error('Transcribe-meeting error:', e.message);

@@ -1426,12 +1426,6 @@ label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase
       <div id="mn-results" style="display:none">
         <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em">AI Summary</div>
 
-        <!-- Badges row -->
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-          <div id="mn-sentiment-badge" style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600"></div>
-          <div id="mn-readiness-badge" style="display:none;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600"></div>
-        </div>
-
         <!-- Summary -->
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px">
           <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:600">SUMMARY</div>
@@ -14807,32 +14801,6 @@ function renderMeetingResults(data, formFields = {}) {
     date:        formFields.date        || document.getElementById('mn-date')?.value      || '',
     ...data
   };
-
-  // Sentiment badge — dark-mode safe colors
-  const sentimentBg    = { positive:'#0F3D2A', neutral:'#2C2C30', negative:'#3D0F0F' };
-  const sentimentColor = { positive:'#4ADE80', neutral:'#9090A0', negative:'#F87171' };
-  const sentimentLabel = { positive:'😊 Positive', neutral:'😐 Neutral', negative:'😟 Needs attention' };
-  const sb = document.getElementById('mn-sentiment-badge');
-  sb.style.background = sentimentBg[data.sentiment]    || '#2C2C30';
-  sb.style.color      = sentimentColor[data.sentiment] || '#9090A0';
-  sb.textContent      = sentimentLabel[data.sentiment] || data.sentiment || '';
-
-  // Readiness badge
-  const rb = document.getElementById('mn-readiness-badge');
-  if (data.readiness) {
-    const readinessCfg = {
-      hot:  { bg:'#3D1A0F', color:'#FB923C', label:'🔥 Hot'  },
-      warm: { bg:'#2D2A0A', color:'#FCD34D', label:'⚡ Warm' },
-      cold: { bg:'#0A1A2D', color:'#60A5FA', label:'❄️ Cold' }
-    };
-    const cfg = readinessCfg[data.readiness] || { bg:'#2C2C30', color:'#9090A0', label: data.readiness };
-    rb.style.background = cfg.bg;
-    rb.style.color      = cfg.color;
-    rb.textContent      = cfg.label;
-    rb.style.display    = 'inline-block';
-  } else {
-    rb.style.display = 'none';
-  }
 
   document.getElementById('mn-summary').textContent  = data.summary  || '';
   document.getElementById('mn-next-step').textContent = data.nextStep || '';
